@@ -1,0 +1,36 @@
+#!/usr/bin/python
+# -*- mode: python; tab-width: 4; indent-tabs-mode: nil -*-
+
+import os, sys, unittest, logging, platform
+
+if os.path.basename(os.path.dirname(__file__)) == 'ui':
+    sys.path.insert(0, '.')
+import hotwire
+import hotwire.logutil
+import hotwire.persist
+import hotwire.test_command
+if platform.system() == 'Linux':
+    import hotwire.test_command_unix
+    unix_avail = True
+else:
+    unix_avail = False
+import hotwire.test_completion
+import hotwire.sysdep
+import hotwire.sysdep.fs
+import hotwire.sysdep.proc_impl
+import hotwire.version
+
+def main():
+    hotwire.logutil.init(logging.ERROR, [], 'hotwire.')
+    print "Running tests on %s %s" % (hotwire.version.__version__, hotwire.version.hg_version_str())
+    hotwire.persist.Persister.getInstance().disable() 
+    suite = unittest.TestLoader().loadTestsFromModule(hotwire.test_command)
+    unittest.TextTestRunner().run(suite)
+    suite = unittest.TestLoader().loadTestsFromModule(hotwire.test_completion)
+    unittest.TextTestRunner().run(suite)
+    if unix_avail:
+        suite = unittest.TestLoader().loadTestsFromModule(hotwire.test_command_unix)
+        unittest.TextTestRunner().run(suite)
+
+if __name__ == '__main__':
+    main()
