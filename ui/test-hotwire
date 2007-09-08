@@ -22,7 +22,7 @@ import hotwire.version
 
 def main():
     hotwire.logutil.init(logging.ERROR, [], 'hotwire.')
-    print "Running tests on %s %s" % (hotwire.version.__version__, hotwire.version.hg_version_str())
+    print "Running tests on %s %s" % (hotwire.version.__version__, hotwire.version.svn_version_str())
     sys.stdout.flush()
     hotwire.persist.Persister.getInstance().disable() 
     suite = unittest.TestLoader().loadTestsFromModule(hotwire.test_command)

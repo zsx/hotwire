@@ -864,8 +864,8 @@ along with Hotwire; if not, write to the Free Software Foundation, Inc.,
 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA''')
         dialog.set_property('name', "Hotwire")
         comments = "An interactive hybrid text/graphical shell for developers and system administrators\n\n"
-        if hotwire.version.hg_version_info:
-            comments += "changeset: %s\ndate: %s\n" % (hotwire.version.hg_version_info['changeset'], hotwire.version.hg_version_info['date'],)
+        if hotwire.version.svn_version_info:
+            comments += "changeset: %s\ndate: %s\n" % (hotwire.version.svn_version_info['Revision'], hotwire.version.svn_version_info['Last Changed Date'],)
         dialog.set_property('comments', comments)
         dialog.run()
         dialog.destroy()

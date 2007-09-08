@@ -25,7 +25,7 @@ import hotwire.logutil
 import hotwire.util
 from hotwire_ui.shell import HotWindowFactory
 from hotwire.persist import Persister
-from hotwire.version import __version__, hg_version_str
+from hotwire.version import __version__, svn_version_str
 
 if sys.version_info[0] == 2 and sys.version_info[1] < 6:
     import hotwire.pycompat.webbrowser as webbrowser
@@ -44,7 +44,7 @@ def on_about_dialog_url(dialog, link):
     webbrowser.open(link)
 
 def usage():
-    sys.stdout.write('Hotwire %s %s\n' % (__version__, hg_version_str()))
+    sys.stdout.write('Hotwire %s %s\n' % (__version__, svn_version_str()))
     sys.stdout.write("%s [--debug] [--debug-modules=mod1,mod2...] [--help]\n" % (sys.argv[0],))
 
 def main():
