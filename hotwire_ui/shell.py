@@ -647,6 +647,9 @@ class Hotwire(gtk.VBox):
         completer = None
         verb = None
         addprefix = None
+        # can happen when input is empty
+        if not self.__pipeline_tree:
+            return
         for cmd in self.__pipeline_tree:
             verb = cmd[0]
             if pos >= verb.start and pos <= verb.end:
@@ -761,6 +764,11 @@ class HotWindow(gtk.Window):
         self.__old_char_width = 0
         self.__old_char_height = 0
         self.__old_geom_widget = None
+
+        # Records the last tab index from which we created a new tab, so we 
+        # can switch back when closed, unless the user manually switched tabs
+        # between.
+        self.__pre_autoswitch_index = -1
         
         self.set_default_size(720, 540)
         self.set_title('Hotwire' + subtitle)
@@ -894,6 +902,9 @@ along with Hotwire; if not, write to the Free Software Foundation, Inc.,
         return False
 
     def __focus_page(self, pn):
+        _logger.debug("got focus page, idx: %d", pn)
+        # User switched tabs, reset tab affinity
+        self.__preautoswitch_index = -1
         widget = self.__notebook.get_nth_page(pn)
         is_hw = widget.get_data('hotwire-is-hotwire')
         if is_hw:
@@ -938,9 +949,15 @@ along with Hotwire; if not, write to the Free Software Foundation, Inc.,
         self.__notebook.set_show_tabs(len(self.__notebook.get_children()) > 1)
 
     def __remove_page_widget(self, w):
+        savedidx = self.__preautoswitch_index
         idx = self.__notebook.page_num(w)
+        _logger.debug("tab closed, preautoswitch idx: %d current: %d", savedidx, idx)
         self.__notebook.remove_page(idx)
         self.__sync_tabs_visible()
+        if savedidx >= 0:
+            if idx < savedidx:
+                savedidx -= 1
+            self.__notebook.set_current_page(savedidx)
 
     def __add_widget_title(self, w):
         hbox = gtk.HBox()
@@ -971,6 +988,7 @@ along with Hotwire; if not, write to the Free Software Foundation, Inc.,
 
     def new_tab_widget(self, widget, title):
         widget.set_data('hotwire-is-hotwire', False)
+        savedidx = self.__notebook.get_current_page()
         idx = self.__notebook.append_page(widget)
         if hasattr(self.__notebook, 'set_tab_reorderable'):
             self.__notebook.set_tab_reorderable(widget, True)
@@ -979,6 +997,8 @@ along with Hotwire; if not, write to the Free Software Foundation, Inc.,
         widget.show_all()
         self.__notebook.set_current_page(idx)
         widget.connect('closed', self.__remove_page_widget)
+        _logger.debug("preautoswitch idx: %d", savedidx)
+        self.__preautoswitch_index = savedidx
 
     def new_win_hotwire(self):
         widget = self.__notebook.get_nth_page(self.__notebook.get_current_page())
