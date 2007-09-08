@@ -707,6 +707,7 @@ class HotWindow(gtk.Window):
     <menu action='FileMenu'>
       <menuitem action='NewWindow'/>
       <menuitem action='NewTab'/>
+      <menuitem action='NewTermTab'/>
       <separator/>
       <menuitem action='Close'/>
     </menu>
@@ -753,8 +754,10 @@ class HotWindow(gtk.Window):
             ('FileMenu', None, 'File'),
             ('NewWindow', gtk.STOCK_NEW, '_New Window', '<control><shift>N',
              'Open a new window', self.__new_window_cb),
-            ('NewTab', gtk.STOCK_NEW, 'New _Tab', '<control><shift>T',
+            ('NewTab', gtk.STOCK_NEW, 'New _Tab', '<control>t',
              'Open a new tab', self.__new_tab_cb),
+            ('NewTermTab', gtk.STOCK_NEW, 'New terminal tab', '<control><shift>T',
+             'Open a new terminal tab', self.__new_term_tab_cb),
             ('Close', gtk.STOCK_CLOSE, '_Close', '<control><shift>W',
              'Close the current tab', self.__close_cb),
             ('HelpMenu', None, 'Help'),
@@ -786,6 +789,16 @@ class HotWindow(gtk.Window):
 
     def __new_tab_cb(self, action):
         self.new_tab_hotwire()
+
+    def __new_term_tab_cb(self, action):
+        widget = self.__notebook.get_nth_page(self.__notebook.get_current_page())
+        is_hw = widget.get_data('hotwire-is-hotwire')
+        if is_hw:
+            cwd = widget.context.get_cwd()
+        else:
+            cwd = os.path.expanduser('~')
+        term = Terminal.getInstance().get_terminal_widget_cmd(cwd, None, '')
+        self.new_tab_widget(term, 'term')
 
     def __close_cb(self, action):
         self.__remove_page_widget(self.__notebook.get_nth_page(self.__notebook.get_current_page()))
