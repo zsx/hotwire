@@ -6,7 +6,7 @@ from hotwire.builtin import Builtin, BuiltinRegistry, OutputStreamSchema, idempo
 class PsBuiltin(Builtin):
     """List all processes."""
     def __init__(self):
-        super(PsBuiltin, self).__init__('ps',
+        super(PsBuiltin, self).__init__('proc',
                                         output=OutputStreamSchema(Process))
 
     @idempotent()

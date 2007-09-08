@@ -752,11 +752,11 @@ class HotWindow(gtk.Window):
         ag = gtk.ActionGroup('WindowActions')
         actions = [
             ('FileMenu', None, 'File'),
-            ('NewWindow', gtk.STOCK_NEW, '_New Window', '<control><shift>N',
+            ('NewWindow', gtk.STOCK_NEW, '_New Window', '<control>n',
              'Open a new window', self.__new_window_cb),
             ('NewTab', gtk.STOCK_NEW, 'New _Tab', '<control>t',
              'Open a new tab', self.__new_tab_cb),
-            ('NewTermTab', gtk.STOCK_NEW, 'New terminal tab', '<control><shift>T',
+            ('NewTermTab', gtk.STOCK_NEW, 'New t_erminal tab', '<control><shift>T',
              'Open a new terminal tab', self.__new_term_tab_cb),
             ('Close', gtk.STOCK_CLOSE, '_Close', '<control><shift>W',
              'Close the current tab', self.__close_cb),
