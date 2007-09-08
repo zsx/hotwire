@@ -5,6 +5,7 @@ import gtk, gobject, pango
 
 from hotwire.command import Pipeline,MinionPipeline,Command,HotwireContext
 from hotwire.persist import Persister
+from hotwire.globalstate import GlobalState
 from hotwire.completion import Completion, VerbCompleter, TokenCompleter, CompletionRecord, CompletionSortProxy, CompletionPrefixStripProxy
 import hotwire.command
 import hotwire.version
@@ -168,8 +169,11 @@ class Hotwire(gtk.VBox):
         self.__statusbox.pack_start(hotwidgets.Align(self.__statusline), expand=False)
         self.__miniontext = gtk.Label()
         self.__statusline.pack_start(hotwidgets.Align(self.__miniontext), expand=False)
-        self.__cwdtext = gtk.Label()
-        self.__statusline.pack_start(hotwidgets.Align(self.__cwdtext, padding_left=8), expand=False)
+        self.__doing_recentdir_sync = False
+        self.__recentdirs = gtk.combo_box_new_text()
+        self.__recentdirs.set_focus_on_click(False)
+        self.__recentdirs.connect('changed', self.__on_recentdir_selected)
+        self.__statusline.pack_start(hotwidgets.Align(self.__recentdirs), expand=False)
         self.__status = gtk.Label()
         self.__status.set_alignment(1.0, 0.5)
         self.__statusline.pack_start(self.__status, expand=True)
@@ -189,6 +193,7 @@ class Hotwire(gtk.VBox):
         self.__history_suppress = False
         self.__last_output = None
 
+        self.__sync_cwd()
         self.__update_status()
 
         self.execute_pipeline(Pipeline.parse('help', self.context),
@@ -213,11 +218,34 @@ class Hotwire(gtk.VBox):
         self.__minion.connect("cwd", self.__on_minion_cwd)
         self.__minion.connect("download", self.__on_download_progress)
 
-    def __on_cwd(self, ctx, cwd):
-        self.__cwd = cwd
+    def __sync_cwd(self):
+        max_recentdir_len = 5
         if self.__minion:
             self.__minion.set_lcwd(self.__cwd)
+        lastdirs = GlobalState.getInstance().get('recentdirs', []).get()
+        lastdirs.insert(0, self.__cwd)
+        if len(lastdirs) == max_recentdir_len:
+            lastdirs.pop(4)
+        model = self.__recentdirs.get_model()
+        if model.iter_n_children(None) == max_recentdir_len:
+            model.remove(model.iter_nth_child(None, 4))
+        model.prepend((self.__cwd,))
+        self.__doing_recentdir_sync = True
+        self.__recentdirs.set_active(0)
+        self.__doing_recentdir_sync = False
+
+    def __on_cwd(self, ctx, cwd):
+        self.__cwd = cwd
+        self.__sync_cwd()
         self.__update_status()
+
+    def __on_recentdir_selected(self, *args):
+        if self.__doing_recentdir_sync:
+            return
+        iter = self.__recentdirs.get_active_iter()
+        d = self.__recentdirs.get_model().get_value(iter, 0)
+        _logger.debug("selected recent dir %s", d)
+        self.context.do_cd(d)        
 
     def get_last_output(self):
         last = self.__last_output
@@ -255,7 +283,7 @@ class Hotwire(gtk.VBox):
         else:
             self.__miniontext.hide()
         self.__miniontext.set_text(str(self.__minion))
-        self.__cwdtext.set_text(self.__minion and self.__minion_cwd or self.context.get_cwd())
+        #self.__cwdtext.set_text(self.__minion and self.__minion_cwd or self.context.get_cwd())
         self.__status.set_text("%d active pipelines" % (self.__active_pipeline_count,))
         if self.__minion:
             self.__statusline2.set_text("(local) %s" % (self.context.get_cwd(),))
