@@ -335,9 +335,10 @@ class TextMatchDisplay(gtk.VBox):
         return result
 
 class PopupDisplay(hotwidgets.TransientPopup):
-    def __init__(self, entry, window, context=None, **kwargs):
+    def __init__(self, entry, window, context=None, tabhistory=[], **kwargs):
         super(PopupDisplay, self).__init__(entry, window, **kwargs)
         self.__context = context
+        self.__tabhistory = tabhistory
         self.tabcompletion = TextMatchDisplay(title=u'<b>Completion</b> - %s matches <b>(</b><tt>TAB</tt> next%s<b>)</b>',
                                               context=context,
                                               extended_title=', <tt>SHIFT</tt> choose')
@@ -414,14 +415,18 @@ class PopupDisplay(hotwidgets.TransientPopup):
 
     def __idle_do_history_search(self):
         self.__idle_history_search_id = 0
-        self.history.set_generator(self.__generate_history())
+        if self.__search:
+            histsrc = self.__context.history.get()
+        else:
+            histsrc = self.__tabhistory
+        self.history.set_generator(self.__generate_history(histsrc))
         visible = self.__check_hide()
         if visible:
             self.show()
             self.__queue_reposition()
 
-    def __generate_history(self):
-        for histitem in self.__context.history.get():
+    def __generate_history(self, src):
+        for histitem in src:
             if self.__search:
                 idx = histitem.find(self.__search)
                 if idx < 0:

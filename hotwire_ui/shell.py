@@ -5,7 +5,6 @@ import gtk, gobject, pango
 
 from hotwire.command import Pipeline,MinionPipeline,Command,HotwireContext
 from hotwire.persist import Persister
-from hotwire.globalstate import GlobalState
 from hotwire.completion import Completion, VerbCompleter, TokenCompleter, CompletionRecord, CompletionSortProxy, CompletionPrefixStripProxy
 import hotwire.command
 import hotwire.version
@@ -120,6 +119,7 @@ class Hotwire(gtk.VBox):
 
         self.context = HotwireClientContext(self, initcwd=initcwd)
         self.context.history = Persister.getInstance().load('history', default=[])
+        self.__tabhistory = []
         self.context.connect("cwd", self.__on_cwd)
 
         self.__cwd = self.context.get_cwd()
@@ -189,7 +189,8 @@ class Hotwire(gtk.VBox):
         self.__completion_active_position = False
         self.__completion_chosen = None
         self.__completion_suppress = False
-        self.__completions = PopupDisplay(self.__input, window, context=self.context)
+        self.__completions = PopupDisplay(self.__input, window, context=self.context,
+                                          tabhistory=self.__tabhistory)
         self.__completion_token = None
         self.__history_suppress = False
         self.__last_output = None
@@ -223,10 +224,6 @@ class Hotwire(gtk.VBox):
         max_recentdir_len = 5
         if self.__minion:
             self.__minion.set_lcwd(self.__cwd)
-        lastdirs = GlobalState.getInstance().get('recentdirs', []).get()
-        lastdirs.insert(0, self.__cwd)
-        if len(lastdirs) == max_recentdir_len:
-            lastdirs.pop(4)
         model = self.__recentdirs.get_model()
         if model.iter_n_children(None) == max_recentdir_len:
             model.remove(model.iter_nth_child(None, 4))
@@ -306,9 +303,10 @@ class Hotwire(gtk.VBox):
             pipeline.execute_sync()
 
         if add_history:
-            text = self.__input.get_property("text")
-            self.context.history.get(lock=True).insert(0, text.strip())
+            text = self.__input.get_property("text").strip()
+            self.context.history.get(lock=True).insert(0, text)
             self.context.history.save()
+            self.__tabhistory.insert(0, text)
         if reset_input:
             self.__input.set_text("")
             self.__completion_token = None
