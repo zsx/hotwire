@@ -494,11 +494,9 @@ class Pipeline(gobject.GObject):
 
             _logger.debug("%d tokens in command", len(cmd_tokens))                
             result.append(cmd_tokens)
-        # validation
-        if assertfn:
-            for cmd in result:
-                for arg in cmd:
-                    assertfn(text[arg.start:arg.end], arg.text)
+        for cmd in result:
+            for arg in cmd:
+                assert(text[arg.start:arg.end], arg.text)
         return result
 
     @staticmethod
