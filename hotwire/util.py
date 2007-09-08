@@ -1,6 +1,6 @@
 # -*- tab-width: 4; indent-tabs-mode: nil -*-
 import os, sys, traceback, shlex, string, platform
-import fnmatch
+import fnmatch, commands
 
 import gobject
 
@@ -61,19 +61,14 @@ def tracefn(f):
         return result
     return _do_trace
 
-def quote_arg(arg, trailing_only=False):
+def quote_arg(arg):
     if arg.find(' ') >= 0 or arg.find("'") >= 0:
-        return quote_shell_arg(arg, trailing_only=trailing_only)
+        return quote_shell_arg(arg)
     return arg
 
 # FIXME - is this right?
-def quote_shell_arg(cmd, trailing_only=False):
-    components = cmd.split("'") 
-    if len(components) == 1:
-        if trailing_only:
-            return cmd + "'"
-        return "'" + cmd + "'"
-    return string.join(["'" + x + r"'\'" for x in components[0:-1]], "") + "'" + components[-1] + "'"
+def quote_shell_arg(cmd):
+  return commands.mkarg(cmd)
 
 def atomic_rename(oldp, newp):
     if platform.system() == 'Windows':

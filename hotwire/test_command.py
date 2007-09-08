@@ -295,6 +295,33 @@ class PipelineRunTests(PipelineRunTestFramework):
         results = list(p.get_output())
         self.assertEquals(len(results), 4)
 
+    def testLsQuoted(self):
+        self._setupTree1()
+        hidden = os.path.join(self._tmpd, "foo'bar")
+        open(hidden, 'w').close()
+        p = Pipeline.parse("ls \"foo'bar\"", self._context)
+        p.execute_sync()
+        results = list(p.get_output())
+        self.assertEquals(len(results), 1)
+
+    def testCdQuoted(self):
+        self._setupTree1()
+        p = os.path.join(self._tmpd, "foo'bar")
+        os.mkdir(p)
+        p = Pipeline.parse("cd \"foo'bar\"", self._context)
+        p.execute_sync()
+        results = list(p.get_output())
+        self.assertEquals(len(results), 0)
+
+    def testCdQuoted2(self):
+        self._setupTree1()
+        p = os.path.join(self._tmpd, "foo\"bar")
+        os.mkdir(p)
+        p = Pipeline.parse("cd 'foo\"bar'", self._context)
+        p.execute_sync()
+        results = list(p.get_output())
+        self.assertEquals(len(results), 0)
+
     def testCp(self):
         self._setupTree2()
         self.assertEquals(os.access(os.path.join(self._tmpd, 'testf3'), os.R_OK), False)

@@ -458,13 +458,13 @@ class Pipeline(gobject.GObject):
                 # space we skipped over earlier
                 curpos += 1
                 _logger.debug("lexing '%s'", rest)
-                parser = shlex.shlex(rest)
-                parser.wordchars += './~,*\\-$()&^%@`+=><?:;!"{}[]'
-                parser.commenters = ''
-                parser.quotes = "'"
+                parser = shlex.shlex(rest, posix=True)
+                # We don't interpret any of these characters.
+                # Thus, no need to regard them as separate tokens
+                parser.wordchars += './~,*\\-$()&^%@`+=><?:;!{}[]'
                 try:
                     arg = parser.get_token()
-                    _logger.debug("parsed token '%s'", arg)
+                    _logger.debug("parsed initial token '%s'", arg)
                     had_args = not not arg
                     while arg:
                         skipquote = False
@@ -491,7 +491,8 @@ class Pipeline(gobject.GObject):
                         cmd_tokens.append(token)
                     else:
                         _logger.debug("handling unclosed quote, but token was empty")
-                
+
+            _logger.debug("%d tokens in command", len(cmd_tokens))                
             result.append(cmd_tokens)
         # validation
         if assertfn:
