@@ -16,6 +16,13 @@ def unix_basename(path):
         path = path[:-_sep_len]
     return os.path.basename(path)
 
+def path_unexpanduser(path):
+    homepath = os.path.expanduser("~")
+    # Don't unexpand ~ because it looks plain and ugly
+    if (path != homepath) and path.startswith(homepath):
+        path = '~' + path[len(homepath):]
+    return path
+
 def copy_file_or_dir(src, dest, dest_is_dir):
     stbuf = os.stat(src) 
     dest_target = dest_is_dir and os.path.join(dest, unix_basename(src)) or dest 

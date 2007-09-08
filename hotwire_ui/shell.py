@@ -14,6 +14,7 @@ import hotwire_ui.pyshell
 from hotwire.singletonmixin import Singleton
 from hotwire.sysdep.term import Terminal
 from hotwire.util import markup_for_match, quote_arg
+from hotwire.fs import path_unexpanduser
 try:
     from hotwire.minion import SshMinion
     minion_available = True
@@ -229,7 +230,8 @@ class Hotwire(gtk.VBox):
         model = self.__recentdirs.get_model()
         if model.iter_n_children(None) == max_recentdir_len:
             model.remove(model.iter_nth_child(None, 4))
-        model.prepend((self.__cwd,))
+        unexpanded = path_unexpanduser(self.__cwd)
+        model.prepend((unexpanded,))
         self.__doing_recentdir_sync = True
         self.__recentdirs.set_active(0)
         self.__doing_recentdir_sync = False
