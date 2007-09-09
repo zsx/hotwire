@@ -221,12 +221,12 @@ class Hotwire(gtk.VBox):
         self.__minion.connect("download", self.__on_download_progress)
 
     def __sync_cwd(self):
-        max_recentdir_len = 5
+        max_recentdir_len = 10
         if self.__minion:
             self.__minion.set_lcwd(self.__cwd)
         model = self.__recentdirs.get_model()
         if model.iter_n_children(None) == max_recentdir_len:
-            model.remove(model.iter_nth_child(None, 4))
+            model.remove(model.iter_nth_child(None, max_recentdir_len-1))
         unexpanded = path_unexpanduser(self.__cwd)
         model.prepend((unexpanded,))
         self.__doing_recentdir_sync = True
