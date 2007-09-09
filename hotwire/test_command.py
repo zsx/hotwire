@@ -79,7 +79,7 @@ class PipelineInstantiateTests(unittest.TestCase):
         self.assertEquals(p.get_idempotent(), False)
 
     def testPs(self):
-        p = Pipeline.parse('ps', self._context)
+        p = Pipeline.parse('proc', self._context)
         self.assertEquals(p.get_input_type(), None)
         self.assertEquals(p.get_output_type(), hotwire.sysdep.proc.Process)
         self.assertEquals(p.get_undoable(), False)
@@ -103,7 +103,7 @@ class PipelineInstantiateTests(unittest.TestCase):
         self.assertRaises(hotwire.command.PipelineParseException, lambda: Pipeline.parse('mv foo bar | sh cat', self._context))
 
     def testInvalid2(self):
-        self.assertRaises(hotwire.command.PipelineParseException, lambda: Pipeline.parse('sh cat | ps', self._context))
+        self.assertRaises(hotwire.command.PipelineParseException, lambda: Pipeline.parse('sh cat | proc', self._context))
 
     def testInvalid3(self):
         self.assertRaises(hotwire.command.PipelineParseException, lambda: Pipeline.parse('filter foo', self._context))
@@ -137,11 +137,11 @@ class PipelineRunTestFramework(unittest.TestCase):
 
 class PipelineRunTests(PipelineRunTestFramework):
     def testPs(self):
-        p = Pipeline.parse('ps', self._context)
+        p = Pipeline.parse('proc', self._context)
         p.execute_sync()
 
     def testPsFilter(self):
-        p = Pipeline.parse('ps | filter python cmd', self._context)
+        p = Pipeline.parse('proc | filter python cmd', self._context)
         p.execute()
         found_objs = False
         for obj in p.get_output(): 
@@ -150,7 +150,7 @@ class PipelineRunTests(PipelineRunTestFramework):
         self.assert_(found_objs)
 
     def testPsFilter2(self):
-        p = Pipeline.parse('ps | filter this-command-does-not-exist cmd', self._context)
+        p = Pipeline.parse('proc | filter this-command-does-not-exist cmd', self._context)
         p.execute()
         found_objs = False
         for obj in p.get_output(): 
