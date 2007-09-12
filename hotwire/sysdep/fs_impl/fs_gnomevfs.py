@@ -90,7 +90,7 @@ class GnomeVFSFilesystem(UnixFilesystem):
         # the easy way
         subprocess.call(['gnome-open', path])
 
-    def __on_appmenu_activated(self, menu, app, uri):
+    def __launch_vfsmimeapp(self, app, uri):
         if hasattr(gnomevfs, 'mime_application_launch'):
             gnomevfs.mime_application_launch(app, uri)
         else:
@@ -102,17 +102,33 @@ class GnomeVFSFilesystem(UnixFilesystem):
                     replaced_f = True
             if not replaced_f:
                 exec_components.append(uri)
-            subprocess.call(exec_components)
+            subprocess.Popen(exec_components, stdout=sys.stdout, stderr=sys.stderr)        
+
+    def launch_edit_file(self, path):
+        uri = gnomevfs.get_uri_from_local_path(path) 
+        app = gnomevfs.mime_get_default_application("text/plain")
+        self.__launch_vfsmimeapp(app, uri)
+
+    def __on_appmenu_activated(self, menu, app, uri):
+        self.__launch_vfsmimeapp(app, uri)
 
     def get_file_menuitems(self, file_obj):
         uri = gnomevfs.get_uri_from_local_path(file_obj.path) 
         vfsstat = gnomevfs.get_file_info(uri, gnomevfs.FILE_INFO_GET_MIME_TYPE)
         apps = gnomevfs.mime_get_all_applications(vfsstat.mime_type)
+        textapp = gnomevfs.mime_get_default_application("text/plain")
         menuitems = []
-        for app in apps:
+        def add_menuitem(app):
             menuitem = gtk.MenuItem('Open with %s' % (app[1],))
             menuitem.connect("activate", self.__on_appmenu_activated, app, uri)
-            menuitems.append(menuitem)
+            menuitems.append(menuitem)            
+        for app in apps:
+            add_menuitem(app)
+        add_textapp = (not file_obj.is_directory(follow_link=True)) and (textapp not in apps)
+        if apps and add_textapp:
+            menuitems.append(gtk.SeparatorMenuItem())
+        if add_textapp:
+            add_menuitem(textapp)
         return menuitems
 
 def getInstance():

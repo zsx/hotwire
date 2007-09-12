@@ -34,6 +34,9 @@ class BaseFilesystem(object):
     def launch_open_file(self, path):
         raise NotImplementedError()
 
+    def launch_edit_file(self, path):
+        raise NotImplementedError()
+
     def get_file_menuitems(self, file_obj):
         return []
 
