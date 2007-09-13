@@ -480,7 +480,7 @@ class Pipeline(gobject.GObject):
                         curpos -= 1 # we account for other space above
                 except ValueError, e:
                     # FIXME gross, but...any way to fix?
-                    was_quotation_error = (e.message == 'No closing quotation' and parser.token[0] == "'")
+                    was_quotation_error = (e.message == 'No closing quotation' and parser.token[0:1] == "'")
                     if (not accept_unclosed) or (not was_quotation_error):
                         _logger.debug("caught lexing exception", exc_info=True)
                         raise PipelineParseException(e)
