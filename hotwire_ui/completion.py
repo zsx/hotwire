@@ -362,6 +362,7 @@ class PopupDisplay(hotwidgets.TransientPopup):
         return False
 
     def set_tab_generator(self, generator):
+        _logger.debug("new tab search: %s", generator)
         if self.history.get_expanded():
             generator = None
         self.tabcompletion.set_compact(generator is not None)
@@ -385,6 +386,7 @@ class PopupDisplay(hotwidgets.TransientPopup):
         if self.tabcompletion.empty():
             self.tabcompletion.hide()
             hidden += 1
+        _logger.debug("hidden: %d", hidden)
         if hidden == 2:
             self.hide()
             return False
@@ -394,6 +396,7 @@ class PopupDisplay(hotwidgets.TransientPopup):
         self.__search = search
         self.__selected = None
         self.__saved_input = None
+        _logger.debug("new history search: %s", search)
         if not now:
             self.history.set_compact(not self.__search)
             if search and self.__idle_history_search_id == 0:
