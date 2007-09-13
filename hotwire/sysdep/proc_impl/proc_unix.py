@@ -26,7 +26,7 @@ class UnixProcessManager(object):
             pgid = None
         # Ok, we failed to kill the process group; fall back to the pid itself
         try:
-            os.kill(pid, sigum)
+            os.kill(pid, signum)
             return True
         except OSError, e:
             _logger.debug("Failed to send sig %s to pid %d", signum, pid)
