@@ -25,6 +25,8 @@ class LinuxProcessManager(UnixProcessManager):
                 except OSError, e:
                     # Ignore processes that go away as we read them
                     pass
+                except IOError, e:
+                    pass
                 
 def getInstance():
     return LinuxProcessManager()
