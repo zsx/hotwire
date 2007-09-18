@@ -647,6 +647,8 @@ class Hotwire(gtk.VBox):
         addprefix = None
         # can happen when input is empty
         if not self.__pipeline_tree:
+            _logger.debug("no tree, disabling completion")
+            self.__completions.set_tab_generator(None)
             return
         for cmd in self.__pipeline_tree:
             verb = cmd[0]
@@ -757,6 +759,7 @@ class HotWindow(gtk.Window):
         self.__notebook = gtk.Notebook()
         self.__notebook.connect('switch-page', lambda n, p, pn: self.__focus_page(pn))
         self.__notebook.show()
+        self.__tabs_visible = self.__notebook.get_show_tabs()
 
         self.__geom_hints = {}
         self.__old_char_width = 0
@@ -907,12 +910,13 @@ along with Hotwire; if not, write to the Free Software Foundation, Inc.,
         is_hw = widget.get_data('hotwire-is-hotwire')
         if is_hw:
             gobject.idle_add(self.set_focus, widget.get_entry())
-            self.__old_geom_widget = widget
+            #self.__old_geom_widget = widget
             self.set_geometry_hints(widget, **self.__geom_hints)          
         elif hasattr(widget, 'get_term_geometry'):
             (cw, ch, (xp, yp)) = widget.get_term_geometry()
-            if (cw == self.__old_char_width and ch == self.__old_char_height and widget == self.__old_geom_widget):
+            if (cw == self.__old_char_width and ch == self.__old_char_height): #and widget == self.__old_geom_widget):
                 return
+            _logger.debug("resetting geometry %s %s => %s %s", self.__old_char_width, self.__old_char_height, cw, ch)
             kwargs = {'base_width':xp,
                       'base_height':yp,
                       'width_inc':cw,
@@ -944,7 +948,10 @@ along with Hotwire; if not, write to the Free Software Foundation, Inc.,
         self.set_focus(hw.get_entry())
 
     def __sync_tabs_visible(self):
-        self.__notebook.set_show_tabs(len(self.__notebook.get_children()) > 1)
+        oldvis = self.__tabs_visible
+        self.__tabs_visible = len(self.__notebook.get_children()) > 1
+        if self.__tabs_visible != oldvis:
+            self.__notebook.set_show_tabs(self.__tabs_visible)
 
     def __remove_page_widget(self, w):
         savedidx = self.__preautoswitch_index
