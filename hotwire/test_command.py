@@ -295,6 +295,13 @@ class PipelineRunTests(PipelineRunTestFramework):
         results = list(p.get_output())
         self.assertEquals(len(results), 4)
 
+    def testLs7(self):
+        self._setupTree2()
+        p = Pipeline.parse("ls testdir2/b*", self._context)
+        p.execute_sync()
+        results = list(p.get_output())
+        self.assertEquals(len(results), 1)
+
     def testLsQuoted(self):
         self._setupTree1()
         hidden = os.path.join(self._tmpd, "foo'bar")

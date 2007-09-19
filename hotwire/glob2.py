@@ -21,13 +21,14 @@ def iglob(pathname, cwd=None):
     The pattern may contain simple shell-style wildcards a la fnmatch.
 
     """
+    wd = cwd or os.curdir
     if not has_magic(pathname):
         if os.path.lexists(pathname):
             yield pathname
         return
     dirname, basename = os.path.split(pathname)
     if not dirname:
-        for name in glob1(cwd or os.curdir, basename):
+        for name in glob1(wd, basename):
             yield name
         return
     if has_magic(dirname):
@@ -39,6 +40,7 @@ def iglob(pathname, cwd=None):
     else:
         glob_in_dir = glob0
     for dirname in dirs:
+        dirname = os.path.join(wd, dirname)
         for name in glob_in_dir(dirname, basename):
             yield os.path.join(dirname, name)
 
