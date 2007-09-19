@@ -1,0 +1,79 @@
+#!/usr/bin/python
+# -*- tab-width: 4; indent-tabs-mode: nil -*-
+
+import sys, os, getopt, logging, re, string, Queue
+
+import gtk, gobject, pango
+
+if __name__ == '__main__' and hasattr(sys.modules['__main__'], '__file__'):
+    if os.path.basename(os.path.dirname(__file__)) == 'ui':
+        sys.path.insert(0, '.')
+import hotwire
+import hotwire.sysdep
+import hotwire.config
+import hotwire.logutil
+import hotwire.util
+from hotwire_ui.editor import HotEditorWindow
+from hotwire.version import __version__, svn_version_str
+
+try:
+    from hotwire.sysdep.ipc import Ipc
+    ipc_avail = True
+except NotImplementedError, e:
+    ipc_avail = False
+
+_logger = logging.getLogger("hotwire.EditorMain")
+
+def usage():
+    sys.stdout.write('Hotwire editor %s %s\n' % (__version__, svn_version_str()))
+    sys.stdout.write("%s [--debug] [--debug-modules=mod1,mod2...] [--help]\n" % (sys.argv[0],))
+
+def main():
+    try:
+        opts, args = getopt.getopt(sys.argv[1:], "hdsn", ["help", "debug", "debug-modules=",])
+    except getopt.GetoptError:
+        usage()
+        sys.exit(2)
+
+    if len(args) != 1:
+      sys.stderr.write('no file specified, exiting\n')
+      sys.exit(1)
+
+    target_filename = args[0]
+
+    debug = False
+    debug_modules = []
+    for o, v in opts:
+        if o in ('-d', '--debug'):
+            debug = True
+        elif o in ('--debug-modules'):
+            debug_modules = v.split(',')
+        elif o in ("-h", "--help"):
+            usage()
+            sys.exit()
+
+    default_log_level = logging.ERROR
+    if debug:
+        default_log_level = logging.DEBUG
+
+    hotwire.logutil.init(default_log_level, debug_modules, 'hotwire.')
+
+    # We move to the root directory to make debugging things which don't
+    # use hotwire.get_cwd() easier
+    os.chdir('/')
+
+    _logger.debug('initializing threads')
+    gobject.threads_init()
+
+    w = HotEditorWindow(target_filename)
+    w.show_all()
+    w.connect('destroy', lambda *args: gtk.main_quit())
+    gtk.gdk.notify_startup_complete()
+
+    _logger.debug('entering mainloop')
+    gtk.gdk.threads_enter()
+    gtk.main()
+    gtk.gdk.threads_leave()
+
+if __name__ == "__main__":
+    main()
