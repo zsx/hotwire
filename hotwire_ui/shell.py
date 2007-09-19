@@ -5,7 +5,7 @@ import gtk, gobject, pango
 
 from hotwire.command import Pipeline,MinionPipeline,Command,HotwireContext
 from hotwire.persist import Persister
-from hotwire.completion import Completion, VerbCompleter, TokenCompleter, CompletionRecord, CompletionSortProxy, CompletionPrefixStripProxy
+from hotwire.completion import Completion, VerbCompleter, TokenCompleter, CompletionRecord, CompletionContext, CompletionPrefixStripProxy
 import hotwire.command
 import hotwire.version
 import hotwire_ui.widgets as hotwidgets
@@ -311,7 +311,7 @@ class Hotwire(gtk.VBox):
             self.__input.set_text("")
             self.__completion_token = None
             self.__completions.set_history_search(None)
-            self.__completions.set_tab_generator(None)
+            self.__completions.set_tab_completion(None, None)
 
         self.__update_status()
 
@@ -360,11 +360,12 @@ class Hotwire(gtk.VBox):
         self.push_msg('')
 
         resolutions = []
-        vc = CompletionSortProxy(VerbCompleter(self.__cwd))
+        vc = CompletionContext(VerbCompleter(self.__cwd))
         for cmd in self.__pipeline_tree:
             verb = cmd[0]
             if not verb.resolved:
-                matches = vc.search(verb.text, hotwire=self).__iter__()
+                vc.set_search(verb.text, hotwire=self)
+                matches = vc.search().__iter__()
                 try: 
                     resolutions.append((cmd, verb.text, matches.next().get_matchdata()[0]))
                 except StopIteration, e:
@@ -414,7 +415,12 @@ class Hotwire(gtk.VBox):
             if not self.__completion_active:
                 self.__idle_do_parse_and_complete()
             completion_do_recomplete = self.__completions.tab_is_singleton() 
-            completion = self.__completions.select_tab_next()
+            tab_prefix = self.__completions.tab_get_prefix()    
+            if tab_prefix:
+                completion_do_recomplete = True
+                completion = tab_prefix
+            else:      
+                completion = self.__completions.select_tab_next()
         else:
             completion_do_recomplete = False
             completion = self.__completions.select_tab_prev()
@@ -440,6 +446,7 @@ class Hotwire(gtk.VBox):
                 # we win, keep this completion
                 pass
             else:
+                _logger.debug("target text differs pre-completion, bailing")
                 # need to refine the results to take into account the extra text the user typed
                 return True
             self.__completion_active_position = start
@@ -450,11 +457,13 @@ class Hotwire(gtk.VBox):
         if self.__completion_token and (not isinstance(self.__completion_token, hotwire.command.ParsedVerb)) \
            and not self.__completion_token.was_unquoted: 
             completion = hotwire.command.quote_arg(completion) 
-            
+
+        _logger.debug("old text: %s", curtext)            
         curtext = curtext[:start] \
                   + completion \
                   + curtext[pos:] \
                   + ' '
+        _logger.debug("new text: %s", curtext)
         self.__completion_chosen = completion
         self.__completion_suppress = True
         self.__input.set_text(curtext)
@@ -648,7 +657,7 @@ class Hotwire(gtk.VBox):
         # can happen when input is empty
         if not self.__pipeline_tree:
             _logger.debug("no tree, disabling completion")
-            self.__completions.set_tab_generator(None)
+            self.__completions.set_tab_completion(None, None)
             return
         for cmd in self.__pipeline_tree:
             verb = cmd[0]
@@ -680,12 +689,19 @@ class Hotwire(gtk.VBox):
                 completer = TokenCompleter.getInstance() 
             self.__completion_token = hotwire.command.ParsedToken('', pos)
         completer = completer and CompletionPrefixStripProxy(completer, self.__cwd + os.sep, addprefix=addprefix)
-        self.__completer = completer and CompletionSortProxy(completer)
+        self.__completer = completer
         if self.__completer:
-            self.__completions.set_tab_generator(self.__completer.search(self.__completion_token.text, hotwire=self))
+            self.__completer_ctx = CompletionContext(self.__completer)
+            self.__completer_ctx.set_search(self.__completion_token.text, hotwire=self)
+            common_prefix = self.__completer_ctx.get_common_prefix()
+            _logger.debug("determined common completion prefix %s", common_prefix)
+            if common_prefix and (len(self.__completion_token.text) >= len(common_prefix)):
+                common_prefix = None
+            self.__completions.set_tab_completion(common_prefix, self.__completer_ctx.search())
         else:
             _logger.debug("no valid completions found")
-            self.__completions.set_tab_generator(None)
+            self.__completer_ctx = None
+            self.__completions.set_tab_completion(None, None)
 
     def __do_parse(self, throw=False):
         if not self.__parse_stale:

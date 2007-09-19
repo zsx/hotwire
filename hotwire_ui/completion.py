@@ -10,23 +10,19 @@ from hotwire_ui.pixbufcache import PixbufCache
 _logger = logging.getLogger("hotwire.ui.Completion")
 
 class GeneratorModelWindow(object):
-    def __init__(self, generator, model, selection, dispsize, uniquify=True, pullsize=100,
+    def __init__(self, generator, model, selection, dispsize, uniquify=True,
                  pullcb=None):
         super(GeneratorModelWindow, self).__init__()
         self.model = model
         self.generator = generator
         self.selection = selection
         self.dispsize = dispsize
-        self.pullsize = pullsize
         self.pullcb = pullcb
         self.__prevstack = []
         self.__nextstack = []
         self.__unique_hits = {}
         self.__expanded = False
-        self.__generator_exhausted = False
-        # feed initial item
-        self._shift()
-        for i in xrange(pullsize == -1 and 5000 or pullsize):
+        while True:
             try:
                 self.__nextstack.append(self.__generate_next())
             except StopIteration, e:
@@ -62,6 +58,9 @@ class GeneratorModelWindow(object):
 
     def get_expanded(self):
         return self.__expanded
+
+    def get_common_prefix(self):
+        return self.__common_prefix
 
     def next(self):
         selpath = self.get_selected_path()
@@ -114,15 +113,9 @@ class GeneratorModelWindow(object):
                 return nextvals
 
     def _shift(self):
-        try:
-            if len(self.__nextstack) != 0:
-                nextvals = self.__nextstack.pop(0)
-            elif not self.__generator_exhausted:
-                nextvals = self.__generate_next()
-            else:
-                return False
-        except StopIteration, e:
-            self.__generator_exhausted = True
+        if self.__nextstack:
+            nextvals = self.__nextstack.pop(0)
+        else:
             return False
         n = self.model.iter_n_children(None)
         if n >= self.dispsize:
@@ -295,7 +288,7 @@ class TextMatchDisplay(gtk.VBox):
         else:
             self.__view.get_selection().unselect_all()
         totalhits = self.__gen_window.itemcount()
-        hit_text = (totalhits >= self.__gen_window.pullsize and '> ' or '') + str(totalhits)
+        hit_text = str(totalhits)
         if self.__extended_title:
             self.__title.set_markup(self.__title_markup % (hit_text, path and self.__extended_title or ''))
         else:
@@ -305,8 +298,7 @@ class TextMatchDisplay(gtk.VBox):
                 widget.hide()
             else:
                 widget.show()
-                greater = count >= self.__gen_window.pullsize and '> ' or ''
-                widget.set_markup('<small>%s%d more</small>' % (greater, count,))
+                widget.set_markup('<small>%d more</small>' % (count,))
         fmt_hitcount(self.__gen_window.prev_itemcount(), self.__prevhits)
         fmt_hitcount(self.__gen_window.next_itemcount(), self.__nexthits)
 
@@ -339,6 +331,7 @@ class PopupDisplay(hotwidgets.TransientPopup):
         super(PopupDisplay, self).__init__(entry, window, **kwargs)
         self.__context = context
         self.__tabhistory = tabhistory
+        self.__tabprefix = None
         self.tabcompletion = TextMatchDisplay(title=u'<b>Completion</b> - %s matches <b>(</b><tt>TAB</tt> next%s<b>)</b>',
                                               context=context,
                                               extended_title=', <tt>SHIFT</tt> choose')
@@ -361,8 +354,9 @@ class PopupDisplay(hotwidgets.TransientPopup):
         self.__idle_reposition_id = 0
         return False
 
-    def set_tab_generator(self, generator):
-        _logger.debug("new tab search: %s", generator)
+    def set_tab_completion(self, prefix, generator):
+        _logger.debug("new tab prefix: %s search: %s", prefix, generator)
+        self.__tabprefix = prefix
         if self.history.get_expanded():
             generator = None
         self.tabcompletion.set_compact(generator is not None)
@@ -451,6 +445,9 @@ class PopupDisplay(hotwidgets.TransientPopup):
 
     def tab_is_singleton(self):
         return self.tabcompletion.itemcount() == 1
+
+    def tab_get_prefix(self):
+        return self.__tabprefix
 
     def select_tab_next(self):
         res = self.tabcompletion.select_next()

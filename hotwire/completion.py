@@ -181,14 +181,6 @@ class CompletionProxy(object):
     def search(self, *args, **kwargs):
         self.__source.search(*args, **kwargs)
 
-class CompletionSortProxy(CompletionProxy):
-    def __init__(self, source):
-        self.__source = source
-
-    def search(self, text, **kwargs):
-        for item in sorted(self.__source.search(text, **kwargs)):
-            yield item
-
 class CompletionPrefixStripProxy(CompletionProxy):
     def __init__(self, source, prefix, addprefix=None):
         self.__source = source
@@ -204,6 +196,31 @@ class CompletionPrefixStripProxy(CompletionProxy):
                 yield item
             else:
                 yield item
+
+class CompletionContext(object):
+    def __init__(self, source):
+        self.__source = source
+
+    def get_common_prefix(self):
+        if len(self.__sorted_items) <= 1:
+            return None
+        for item in self.__sorted_items:
+            if item.start > 0:
+                return None
+        min_item = self.__sorted_items[0]
+        max_item = self.__sorted_items[-1]
+        n = min(len(min_item.mstr), len(max_item.mstr))
+        for i in xrange(n):
+            if min_item.mstr[i] != max_item.mstr[i]:
+                return min_item.mstr[:i]
+        return min_item.mstr[:n]
+
+    def set_search(self, text, find_common_prefix=False, **kwargs):
+        self.__sorted_items = sorted(self.__source.search(text, **kwargs))
+
+    def search(self):
+        for item in self.__sorted_items:
+            yield item
 
 def path_filter_item(path, input):
     (dirname, basename) = os.path.split(path)
