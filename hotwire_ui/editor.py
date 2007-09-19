@@ -53,14 +53,17 @@ class HotEditorWindow(gtk.Window):
         
         vbox.pack_start(scroll, True, True)
 
-        _logger.debug("reading %s", self.__filename)
-        f = open(self.__filename, 'r')
-        self.__original_text = f.read()
-        if gtksourceview_avail:
-            self.input.begin_not_undoable_action()
-        self.input.set_property('text', self.__original_text)
-        if gtksourceview_avail:
-            self.input.end_not_undoable_action()
+        if os.path.isfile(self.__filename):
+            _logger.debug("reading %s", self.__filename)
+            f = open(self.__filename, 'r')
+            self.__original_text = f.read()
+            if gtksourceview_avail:
+                self.input.begin_not_undoable_action()
+            self.input.set_property('text', self.__original_text)
+            if gtksourceview_avail:
+                self.input.end_not_undoable_action()
+        else:
+            self.__original_text = None
 
         self.__statusbar = gtk.Statusbar()
         self.__statusbar_ctx = self.__statusbar.get_context_id("HotEditor")

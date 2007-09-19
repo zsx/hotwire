@@ -58,10 +58,6 @@ def main():
 
     hotwire.logutil.init(default_log_level, debug_modules, 'hotwire.')
 
-    # We move to the root directory to make debugging things which don't
-    # use hotwire.get_cwd() easier
-    os.chdir('/')
-
     _logger.debug('initializing threads')
     gobject.threads_init()
 
