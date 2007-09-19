@@ -64,6 +64,9 @@ class HotEditorWindow(gtk.Window):
                 self.input.end_not_undoable_action()
         else:
             self.__original_text = None
+        
+        self.input.move_mark_by_name('insert', self.input.get_start_iter())
+        self.input.move_mark_by_name('selection_bound', self.input.get_start_iter())
 
         self.__statusbar = gtk.Statusbar()
         self.__statusbar_ctx = self.__statusbar.get_context_id("HotEditor")
