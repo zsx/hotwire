@@ -1,4 +1,4 @@
-import sys, os
+import sys, os, logging
 
 import gtk, gobject
 
@@ -6,6 +6,8 @@ import hotwire
 from hotwire.singletonmixin import Singleton
 from hotwire_ui.pixbufcache import PixbufCache
 import hotwire_ui.widgets as hotwidgets
+
+_logger = logging.getLogger("hotwire.ui.Render")
 
 def menuitem(name=None):
     def addtypes(f):
@@ -221,17 +223,15 @@ class TreeObjectsRenderer(ObjectsRenderer):
     # Like GtkTreeView.get_path_at_pos, but excludes headers
     def _get_path_at_pos_no_headers(self, x, y):
         potential_path = self._table.get_path_at_pos(x, y)
-        if not potential_path:
-            return False
-        destrow = self._table.get_dest_row_at_pos(x, y)
-        if not destrow:
-            return False
+        if potential_path is None:
+            return None
         return potential_path
 
     def __on_button_press(self, table, e):
         potential_path = self._get_path_at_pos_no_headers(int(e.x), int(e.y))
-        if not potential_path:
+        if potential_path is None:
             return False
+        _logger.debug("potential path is %s", potential_path)
         (path, col, rel_x, rel_y) = potential_path        
         if e.button > 1:
             iter = self._model.get_iter(path)
