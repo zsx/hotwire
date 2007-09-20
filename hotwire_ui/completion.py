@@ -11,7 +11,7 @@ _logger = logging.getLogger("hotwire.ui.Completion")
 
 class GeneratorModelWindow(object):
     def __init__(self, generator, model, selection, dispsize, uniquify=True,
-                 pullcb=None):
+                 pullcb=None, init_dispsize=0):
         super(GeneratorModelWindow, self).__init__()
         self.model = model
         self.generator = generator
@@ -26,6 +26,9 @@ class GeneratorModelWindow(object):
             try:
                 self.__nextstack.append(self.__generate_next())
             except StopIteration, e:
+                break
+        for i in xrange(init_dispsize):
+            if not self._shift(): 
                 break
         self.__first_is_next = True
 
@@ -161,10 +164,11 @@ class GeneratorModelWindow(object):
 
 class TextMatchDisplay(gtk.VBox):
     def __init__(self, title='', dispcount=5, context=None,
-                 extended_title=None):
+                 extended_title=None, init_dispsize=0):
         super(TextMatchDisplay, self).__init__()
         self.__context = context
         self.__dispcount = dispcount
+        self.__init_dispsize = init_dispsize
         self.__title = gtk.Label()
         self.__title_markup = title
         self.__extended_title = extended_title
@@ -239,7 +243,8 @@ class TextMatchDisplay(gtk.VBox):
             self.__gen_window = GeneratorModelWindow(more.__iter__(), self.__model,
                                                      self.__view.get_selection(),
                                                      self.__dispcount,
-                                                     pullcb=self.__set_icon_cb)
+                                                     pullcb=self.__set_icon_cb,
+                                                     init_dispsize=self.__init_dispsize)
         else:
             self.__gen_window = None
         self.__sync_display()
@@ -337,7 +342,7 @@ class PopupDisplay(hotwidgets.TransientPopup):
                                               extended_title=', <tt>SHIFT</tt> choose')
         self.get_box().pack_start(self.tabcompletion, expand=True)
         self.history = TextMatchDisplay(title=u'<b>History</b> - %s matches <b>(</b><tt>\u2191</tt><b>)</b>',
-                                        context=context)
+                                        context=context, init_dispsize=1)
         self.get_box().pack_start(self.history, expand=True)
         self.__idle_history_search_id = 0
         self.__search = None
