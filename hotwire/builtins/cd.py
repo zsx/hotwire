@@ -21,7 +21,6 @@ class CdBuiltin(Builtin):
         else:
             target_dir = dir
         new_dir = context.hotwire.chdir(target_dir)
-        context.push_undo(lambda: context.hotwire.do_cd(context.cwd)) 
         for result in BuiltinRegistry.getInstance()['ls'].execute(context, [new_dir]):
             yield result
 BuiltinRegistry.getInstance().register(CdBuiltin())
