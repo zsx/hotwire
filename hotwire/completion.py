@@ -259,7 +259,7 @@ class PathCompleter(BaseCompleter):
             (match, exact) = _match(fname, input_fname)
             if match:
                 if is_dir:
-                    resultpath = FilePath(path + os.sep)
+                    resultpath = FilePath(path + '/') # Always use / because we normpath where needed
                 else:
                     resultpath = path
                 have_fcompletions = True
