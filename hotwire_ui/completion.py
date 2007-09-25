@@ -341,6 +341,7 @@ class PopupDisplay(hotwidgets.TransientPopup):
                                               context=context,
                                               extended_title=', <tt>SHIFT</tt> choose')
         self.get_box().pack_start(self.tabcompletion, expand=True)
+        self.get_box().pack_start(gtk.HSeparator(), expand=False)
         self.history = TextMatchDisplay(title=u'<b>History</b> - %s matches <b>(</b><tt>\u2191</tt><b>)</b>',
                                         context=context, init_dispsize=1)
         self.get_box().pack_start(self.history, expand=True)
