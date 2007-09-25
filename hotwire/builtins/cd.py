@@ -1,6 +1,6 @@
 import os, sys, stat
 
-from hotwire.builtin import Builtin, BuiltinRegistry, OutputStreamSchema, parseargs, undoable
+from hotwire.builtin import Builtin, BuiltinRegistry, OutputStreamSchema, parseargs, idempotent
 from hotwire.fs import FilePath, DirectoryGenerator
 from hotwire.completion import CdCompleter 
 
@@ -14,7 +14,7 @@ class CdBuiltin(Builtin):
         return CdCompleter.getInstance()
 
     @parseargs('str')
-    @undoable()
+    @idempotent()
     def execute(self, context, dir=None):
         if not dir:
             target_dir = os.path.expanduser("~")
