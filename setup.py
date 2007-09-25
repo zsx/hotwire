@@ -53,7 +53,8 @@ kwargs = {}
 
 if 'py2exe' in sys.argv:
     import py2exe
-    kwargs['windows'] = [{'script': 'ui/hotwire', 'icon_resources': [(1, 'hotwire.ico')]}]
+    kwargs['windows'] = [{'script': 'ui/hotwire', #'icon_resources': [(1, 'hotwire.ico')]
+                        }]
     kwargs['options'] = {'py2exe': {'packages': 'encodings',
                                     'includes': 'cairo, pango, pangocairo, atk, gobject'}
                          }
