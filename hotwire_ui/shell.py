@@ -924,6 +924,7 @@ along with Hotwire; if not, write to the Free Software Foundation, Inc.,
                     widget.copy()
                 else:
                     widget.paste()
+                return True
         return False
 
     @log_except(_logger)
