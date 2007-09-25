@@ -1,6 +1,6 @@
 [Setup]
 AppName=hotwire
-AppVerName=hotwire 0.556
+AppVerName=hotwire 0.595
 AppPublisher=me
 AppPublisherURL=http://submind.verbum.org/hotwire
 DefaultDirName={pf}\hotwire
@@ -11,7 +11,7 @@ Compression=lzma
 SolidCompression=true
 AllowUNCPath=false
 VersionInfoVersion=1.0
-VersionInfoCompany=me inc
+VersionInfoCompany=hotwire-shell.org
 VersionInfoDescription=hotwire
 
 [Dirs]
