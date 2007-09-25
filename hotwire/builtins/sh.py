@@ -1,5 +1,10 @@
 # -*- tab-width: 4 -*-
-import subprocess, string, threading, logging
+import os, sys, subprocess, string, threading, logging
+try:
+    import pty
+    pty_available = True
+except:
+    pty_available = False
 
 import hotwire
 from hotwire.text import MarkupText
@@ -14,9 +19,7 @@ class ShBuiltin(Builtin):
     def __init__(self):
         super(ShBuiltin, self).__init__('sh',
                                         input=InputStreamSchema(str, optional=True),
-                                        outputs=[OutputStreamSchema(str),
-                                                 OutputStreamSchema(str, name='stderr',
-                                                                    merge_default=True)])
+                                        outputs=[OutputStreamSchema(str)])
 
     def __inputreader(self, input, stdin):
         for val in input:
@@ -35,14 +38,6 @@ class ShBuiltin(Builtin):
             _logger.debug("Caught error reading from subprocess pipe", exc_info=True)
             pass
 
-    def __stderrwriter(self, context, stderr):
-        for val in ShBuiltin.__unbuffered_readlines(stderr):
-            nonewline_val = val[:-1] 
-            markup = MarkupText(nonewline_val)
-            markup.add_markup('red', 0, len(nonewline_val))
-            context.auxstream_append('stderr', markup)
-        stderr.close()
-
     def cancel(self, context):
         if context.attribs.has_key('pid'):
             ProcessManager.getInstance().interrupt_pid(context.attribs['pid'])
@@ -51,28 +46,44 @@ class ShBuiltin(Builtin):
     @hasstatus()
     def execute(self, context, arg):
         extra_args = ProcessManager.getInstance().get_extra_subproc_args()
-        
+
+        if pty_available:
+            # We create a pseudo-terminal to ensure that the subprocess is line-buffered.
+            # Yes, this is gross, but as far as I know there is no other way to
+            # control the buffering used by subprocesses.
+            (master_fd, slave_fd) = pty.openpty()
+            _logger.debug("allocated pty fds %d %d", master_fd, slave_fd)
+            stdout_target = slave_fd
+        else:
+            _logger.debug("no pty available, not allocating fds")
+            (master_fd, slave_fd) = (None, None)
+            stdout_target = subprocess.PIPE
+
         subproc = subprocess.Popen([arg],
                                    shell=True,
                                    bufsize=1,
                                    universal_newlines=True,
                                    stdin=context.input and subprocess.PIPE or None,
-                                   stdout=subprocess.PIPE,
-                                   stderr=subprocess.PIPE,
+                                   stdout=stdout_target,
+                                   stderr=subprocess.STDOUT,
                                    cwd=context.cwd,
-								   **extra_args) 
+                                   **extra_args)
         if not subproc.pid:
-			raise ValueError('Failed to execute %s' % (arg,))
+            raise ValueError('Failed to execute %s' % (arg,))
         context.attribs['pid'] = subproc.pid
         if context.cancelled:
             self.cancel(context)
         context.status_notify('Running (pid %d)' % (context.attribs['pid'],))
         if context.input:
             MiniThreadPool.getInstance().run(lambda: self.__inputreader(context.input, subproc.stdin))
-        MiniThreadPool.getInstance().run(lambda: self.__stderrwriter(context, subproc.stderr))
-        for line in ShBuiltin.__unbuffered_readlines(subproc.stdout):
-		    yield line[:-1]
-        subproc.stdout.close()
+        if pty_available:
+            os.close(slave_fd)
+            stdout_read = os.fdopen(master_fd, 'rU')
+        else:
+            stdout_read = subproc.stdout
+        for line in ShBuiltin.__unbuffered_readlines(stdout_read):
+            yield line[:-1]
+        stdout_read.close()
         retcode = subproc.wait()
         if retcode >= 0:
             retcode_str = '%d' % (retcode,)
