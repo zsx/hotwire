@@ -1,4 +1,5 @@
 import os, sys, threading, Queue, logging, string, re, time, shlex
+from StringIO import StringIO
 
 import gobject
 
@@ -6,7 +7,7 @@ import hotwire.fs
 from hotwire.async import CancellableQueueIterator, IterableQueue, MiniThreadPool
 from hotwire.builtin import BuiltinRegistry
 import hotwire.util
-from hotwire.util import quote_arg
+from hotwire.util import quote_arg, assert_strings_equal
 
 _logger = logging.getLogger("hotwire.Command")
 
@@ -261,6 +262,26 @@ class ParsedVerb(ParsedToken):
         self.resolved = True
         self.builtin = None #FIXME or delete
 
+class CountingStream(object):
+    def __init__(self, stream):
+        super(CountingStream, self).__init__()
+        self.__stream = stream
+        self.__offset = 0
+        self.__at_eof = False
+
+    def read(self, c):
+        result = self.__stream.read(c)
+        resultlen = len(result)
+        self.__offset += resultlen
+        self.__at_eof = resultlen < c
+        return result
+
+    def at_eof(self):
+        return self.__at_eof
+
+    def get_count(self):
+        return self.__offset
+
 class Pipeline(gobject.GObject):
     """A sequence of Commands."""
 
@@ -429,6 +450,7 @@ class Pipeline(gobject.GObject):
               ]
 """
         result = []
+        _logger.debug("parsing '%s'", text)
         pipeline_items = text.split(" | ")
         if pipeline_items[0] == '':
             return result
@@ -458,26 +480,29 @@ class Pipeline(gobject.GObject):
                 # space we skipped over earlier
                 curpos += 1
                 _logger.debug("lexing '%s'", rest)
-                parser = shlex.shlex(rest, posix=True)
-                # We don't interpret any of these characters.
-                # Thus, no need to regard them as separate tokens
-                parser.wordchars += './~,*\\-$()&^%@`+=><?:;!{}[]'
+                # The goal of this code is to tokenize the input stream.  A token
+                # includes the parsed text (i.e. removing quotes etc.), while retaining
+                # knowledge of the original input offsets of the token.  It is not
+                # beautiful code and honestly was arrived at after some trial and error.
+                # It could probably be cleaned up by sucking in shlex and doing this internally.
+                countstream = CountingStream(StringIO(rest))
+                parser = shlex.shlex(countstream, posix=True)
+                parser.whitespace_split = True
                 try:
+                    streamstart = 0
                     arg = parser.get_token()
-                    _logger.debug("parsed initial token '%s'", arg)
                     had_args = not not arg
                     while arg:
-                        skipquote = False
-                        if arg[0] == "'" and arg[-1] == "'":
-                            arg = arg[1:-1]
-                            skipquote = True
-                        token = ParsedToken(arg, curpos + (skipquote and 1 or 0))
-                        curpos = token.end+1+(skipquote and 1 or 0)
+                        streamend = countstream.get_count()
+                        arglen = streamend-streamstart
+                        if not countstream.at_eof():
+                            arglen -= 1
+                        token = ParsedToken(arg, curpos+streamstart, end=curpos+streamstart+arglen)
+                        _logger.debug("parsed token (%s %s) '%s' '%s'", token.start, token.end, token.text, text[token.start:token.end])
                         cmd_tokens.append(token)
+                        streamstart = countstream.get_count()
                         arg = parser.get_token()
-                        _logger.debug("parsed token '%s'", arg)
-                    if had_args:
-                        curpos -= 1 # we account for other space above
+                    curpos += countstream.get_count()
                 except ValueError, e:
                     # FIXME gross, but...any way to fix?
                     was_quotation_error = (e.message == 'No closing quotation' and parser.token[0:1] == "'")
@@ -494,9 +519,6 @@ class Pipeline(gobject.GObject):
 
             _logger.debug("%d tokens in command", len(cmd_tokens))                
             result.append(cmd_tokens)
-        for cmd in result:
-            for arg in cmd:
-                assert(text[arg.start:arg.end], arg.text)
         return result
 
     @staticmethod

@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- mode: python; tab-width: 4; indent-tabs-mode: nil -*-
 
-import os, sys, unittest, logging, platform
+import os, sys, unittest, logging, platform, getopt
 
 if os.path.basename(os.path.dirname(__file__)) == 'ui':
     sys.path.insert(0, '.')
@@ -19,9 +19,34 @@ import hotwire.sysdep
 import hotwire.sysdep.fs
 import hotwire.sysdep.proc_impl
 import hotwire.version
+from hotwire.version import __version__, svn_version_str
+
+def usage():
+    sys.stdout.write('Hotwire %s %s\n' % (__version__, svn_version_str()))
+    sys.stdout.write("%s [--debug] [--debug-modules=mod1,mod2...] [--help]\n" % (sys.argv[0],))
 
 def main():
-    hotwire.logutil.init(logging.ERROR, [], 'hotwire.')
+    try:
+        opts, args = getopt.getopt(sys.argv[1:], "hd", ["help", "debug", "debug-modules="])
+    except getopt.GetoptError:
+        usage()
+        sys.exit(2)
+
+    debug = False
+    debug_modules = []
+    for o, v in opts:
+        if o in ('-d', '--debug'):
+            debug = True
+        elif o in ('--debug-modules'):
+            debug_modules = v.split(',')
+        elif o in ("-h", "--help"):
+            usage()
+            sys.exit()
+
+    default_log_level = logging.ERROR
+    if debug:
+        default_log_level = logging.DEBUG
+    hotwire.logutil.init(default_log_level, debug_modules, 'hotwire.')
     print "Running tests on %s %s" % (hotwire.version.__version__, hotwire.version.svn_version_str())
     sys.stdout.flush()
     hotwire.persist.Persister.getInstance().disable() 

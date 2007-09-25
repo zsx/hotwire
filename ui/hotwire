@@ -86,6 +86,8 @@ def main():
 
     hotwire.logutil.init(default_log_level, debug_modules, 'hotwire.')
 
+    _logger.debug("logging initialized, debug: %s", __debug__)
+
     if thread_debug:
         hotwire.util.start_thread_dump_task(7000, sys.stderr)
     if minion_thread_debug:

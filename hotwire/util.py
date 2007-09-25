@@ -10,6 +10,10 @@ try:
 except:
     have_threadframe = False
 
+def assert_strings_equal(x, y):
+  if x != y:
+    raise AssertionError("%s != %s" % (x, y))
+
 def markup_for_match(text, start, end, matchtarget=None):
     source = matchtarget or text
     return  '%s<b>%s</b>%s%s' % (gobject.markup_escape_text(source[0:start]),

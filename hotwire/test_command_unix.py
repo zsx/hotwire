@@ -29,7 +29,7 @@ class PipelineRunTestsUnix(PipelineRunTestFramework):
 
     def testSh4(self):
         self._setupTree1()
-        p = Pipeline.parse("sh ls -d *test*", self._context)
+        p = Pipeline.parse("sh ls -1 -d *test*", self._context)
         p.execute_sync()
         results = list(p.get_output())
         results.sort()
@@ -39,7 +39,7 @@ class PipelineRunTestsUnix(PipelineRunTestFramework):
 
     def testSh5(self):
         self._setupTree1()
-        p = Pipeline.parse("sh ls -d *test* | filter dir", self._context)
+        p = Pipeline.parse("sh ls -1 -d *test* | filter dir", self._context)
         p.execute_sync()
         results = list(p.get_output())
         results.sort()
