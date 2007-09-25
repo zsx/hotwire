@@ -21,6 +21,7 @@ except:
     minion_available = False
 from hotwire_ui.command import CommandExecutionDisplay
 from hotwire_ui.completion import PopupDisplay
+from hotwire.logutil import log_except
 
 _logger = logging.getLogger("hotwire.ui.Shell")
 
@@ -494,6 +495,7 @@ class Hotwire(gtk.VBox):
     def __on_entry_focus_lost(self, entry, e):
         self.__completions.hide()
 
+    @log_except(_logger)
     def __on_input_keyrelease(self, e):
         shiftval = gtk.gdk.keyval_from_name('Shift_L') 
         if e.keyval == shiftval and self.__shift_only: 
@@ -506,6 +508,7 @@ class Hotwire(gtk.VBox):
             self.__queue_parse()
         return False
 
+    @log_except(_logger)
     def __on_input_keypress(self, e):
         curtext = self.__input.get_property("text") 
 
@@ -670,6 +673,7 @@ class Hotwire(gtk.VBox):
             prev_token = verb.text
             for i,token in enumerate(cmd[1:]):
                 if not ((pos >= token.start) and (pos <= token.end)):
+                    _logger.debug("skipping token (%s %s) out of %d: %s ", token.start, token.end, pos, token.text)
                     prev_token = token
                     continue
                 if verb.resolved:
@@ -804,13 +808,9 @@ class HotWindow(gtk.Window):
         self.new_tab_hotwire(initcwd=initcwd)
 
     def __create_ui(self):
-        ag = gtk.ActionGroup('WindowActions')
+        self.__ag = ag = gtk.ActionGroup('WindowActions')
         actions = [
             ('FileMenu', None, 'File'),
-            ('NewWindow', gtk.STOCK_NEW, '_New Window', '<control>n',
-             'Open a new window', self.__new_window_cb),
-            ('NewTab', gtk.STOCK_NEW, 'New _Tab', '<control>t',
-             'Open a new tab', self.__new_tab_cb),
             ('NewTermTab', gtk.STOCK_NEW, 'New t_erminal tab', '<control><shift>T',
              'Open a new terminal tab', self.__new_term_tab_cb),
             ('Close', gtk.STOCK_CLOSE, '_Close', '<control><shift>W',
@@ -818,10 +818,17 @@ class HotWindow(gtk.Window):
             ('HelpMenu', None, 'Help'),
             ('About', gtk.STOCK_ABOUT, '_About', None, 'About Hotwire', self.__help_about_cb),
             ]
+        self.__nonterm_actions = [
+            ('NewWindow', gtk.STOCK_NEW, '_New Window', '<control>n',
+             'Open a new window', self.__new_window_cb),
+            ('NewTab', gtk.STOCK_NEW, 'New _Tab', '<control>t',
+             'Open a new tab', self.__new_tab_cb)]
         ag.add_actions(actions)
+        ag.add_actions(self.__nonterm_actions)
         self.__ui = gtk.UIManager()
         self.__ui.insert_action_group(ag, 0)
         self.__ui.add_ui_from_string(self.__ui_string)
+        self.__nonterm_accels_installed = True
         self.add_accel_group(self.__ui.get_accel_group())
 
     def __show_pyshell(self):
@@ -887,6 +894,7 @@ along with Hotwire; if not, write to the Free Software Foundation, Inc.,
         dialog.run()
         dialog.destroy()
 
+    @log_except(_logger)
     def __on_keypress(self, s2, e):
         if e.keyval == gtk.gdk.keyval_from_name('s') and \
              e.state & gtk.gdk.CONTROL_MASK and \
@@ -918,6 +926,7 @@ along with Hotwire; if not, write to the Free Software Foundation, Inc.,
                     widget.paste()
         return False
 
+    @log_except(_logger)
     def __focus_page(self, pn):
         _logger.debug("got focus page, idx: %d", pn)
         # User switched tabs, reset tab affinity
@@ -927,24 +936,39 @@ along with Hotwire; if not, write to the Free Software Foundation, Inc.,
         if is_hw:
             gobject.idle_add(self.set_focus, widget.get_entry())
             #self.__old_geom_widget = widget
-            self.set_geometry_hints(widget, **self.__geom_hints)          
+            self.set_geometry_hints(widget, **self.__geom_hints)       
         elif hasattr(widget, 'get_term_geometry'):
             (cw, ch, (xp, yp)) = widget.get_term_geometry()
-            if (cw == self.__old_char_width and ch == self.__old_char_height): #and widget == self.__old_geom_widget):
-                return
-            _logger.debug("resetting geometry %s %s => %s %s", self.__old_char_width, self.__old_char_height, cw, ch)
-            kwargs = {'base_width':xp,
-                      'base_height':yp,
-                      'width_inc':cw,
-                      'height_inc':ch,
-                      'min_width':xp+cw*4,
-                      'min_height':yp+ch*2}
-            _logger.debug("setting geom hints: %s", kwargs)
-            self.__geom_hints = kwargs
-            self.set_geometry_hints(widget, **kwargs)
-            self.__old_char_width = cw
-            self.__old_char_height = ch
-            self.__old_geom_widget = widget
+            if not (cw == self.__old_char_width and ch == self.__old_char_height): #and widget == self.__old_geom_widget):
+                _logger.debug("resetting geometry %s %s => %s %s", self.__old_char_width, self.__old_char_height, cw, ch)
+                kwargs = {'base_width':xp,
+                          'base_height':yp,
+                          'width_inc':cw,
+                          'height_inc':ch,
+                          'min_width':xp+cw*4,
+                          'min_height':yp+ch*2}
+                _logger.debug("setting geom hints: %s", kwargs)
+                self.__geom_hints = kwargs
+                self.set_geometry_hints(widget, **kwargs)
+                self.__old_char_width = cw
+                self.__old_char_height = ch
+                self.__old_geom_widget = widget
+
+        install_accels = is_hw
+        _logger.debug("current accel install: %s new: %s", self.__nonterm_accels_installed, install_accels)
+        if self.__nonterm_accels_installed != install_accels:
+            if install_accels:
+                _logger.debug("connecting nonterm accelerators")
+            else:
+                _logger.debug("disconnecting nonterm accelerators")    
+            for action in self.__nonterm_actions:
+                actionitem = self.__ag.get_action(action[0])
+                if install_accels:
+                    actionitem.connect_accelerator()
+                else:
+                    actionitem.disconnect_accelerator()
+            self.__nonterm_accels_installed = install_accels
+            
 
     def new_tab_hotwire(self, initcwd=None):
         hw = Hotwire(initcwd=initcwd, window=self)
