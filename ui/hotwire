@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- tab-width: 4; indent-tabs-mode: nil -*-
 
-import sys, os, getopt, logging, re, string, Queue
+import sys, os, getopt, logging, re, string, Queue, locale
 
 import gtk, gobject, pango
 
@@ -87,6 +87,8 @@ def main():
     hotwire.logutil.init(default_log_level, debug_modules, 'hotwire.')
 
     _logger.debug("logging initialized, debug: %s", __debug__)
+
+    locale.setlocale(locale.LC_ALL, '')
 
     if thread_debug:
         hotwire.util.start_thread_dump_task(7000, sys.stderr)

@@ -1,10 +1,13 @@
-import os, os.path, stat
+import os, os.path, stat, logging, locale
 
 from hotwire.iterdir import iterdir
 
 from hotwire.builtin import Builtin, BuiltinRegistry, InputStreamSchema, OutputStreamSchema, parseargs, idempotent, options
 from hotwire.fs import FilePath,DirectoryGenerator
 from hotwire.sysdep.fs import Filesystem
+from hotwire.util import xmap
+
+_logger = logging.getLogger("hotwire.builtins.ls")
 
 class LsBuiltin(Builtin):
     """List contents of a directory."""
@@ -12,6 +15,16 @@ class LsBuiltin(Builtin):
         super(LsBuiltin, self).__init__('ls', aliases=['dir'],
                                         input=InputStreamSchema(str, optional=True),
                                         output=OutputStreamSchema(FilePath))
+
+    def __ls_dir(self, dir, show_all):
+        fs = Filesystem.getInstance()
+        for x in DirectoryGenerator(dir):
+            if show_all:
+                yield x
+            else:
+                bn = os.path.basename(x)
+                if not (fs.get_basename_is_ignored(bn)):
+                    yield x
 
     @parseargs('shglob')
     @idempotent()
@@ -32,15 +45,10 @@ class LsBuiltin(Builtin):
                 return
             else:
                 dir = context.cwd
-            fs = Filesystem.getInstance()
-            for x in DirectoryGenerator(dir):
-                if show_all:
-                    yield x
-                else:
-                    bn = os.path.basename(x)
-                    if not (fs.get_basename_is_ignored(bn)):
-                        yield x
+            generator = self.__ls_dir(dir, show_all)
         else:
-            for arg in args:
-                yield FilePath(arg, context.cwd)
+            generator = xmap(lambda arg: FilePath(arg, context.cwd), args)
+        generator = sorted(generator, locale.strcoll)
+        for x in generator:
+            yield x
 BuiltinRegistry.getInstance().register(LsBuiltin())

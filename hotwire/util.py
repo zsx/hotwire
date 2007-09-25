@@ -10,6 +10,10 @@ try:
 except:
     have_threadframe = False
 
+def xmap(f, l):
+  for x in l:
+    yield f(x)
+
 def assert_strings_equal(x, y):
   if x != y:
     raise AssertionError("%s != %s" % (x, y))
