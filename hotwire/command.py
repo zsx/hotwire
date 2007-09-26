@@ -176,8 +176,8 @@ class Command(gobject.GObject):
             def arg_to_opts(arg):
                 if builtin_opts is None:
                     return False
-		if arg.startswith('-') and len(arg) >= 2:
-		    args = list(arg[1:])
+                if arg.startswith('-') and len(arg) >= 2:
+                    args = list(arg[1:])
                 elif arg.startswith('--'):
                     args = [arg[1:]]
                 else:
@@ -224,13 +224,16 @@ class Command(gobject.GObject):
             if opt_format:
                 kwargs['in_opt_format'] = in_opt_format
                 _logger.debug("chose optimized format %s", opt_format)
-            for result in self.builtin.execute(self.context, *target_args, **kwargs):
-                # if it has status, let it do its own cleanup
-                if self._cancelled and not self.builtin.get_hasstatus():
-                    _logger.debug("%s cancelled, returning", self)
-                    self.output.put(self.map_fn(None))
-                    return
-                self.output.put(self.map_fn(result))
+            try:
+                for result in self.builtin.execute(self.context, *target_args, **kwargs):
+                    # if it has status, let it do its own cleanup
+                    if self._cancelled and not self.builtin.get_hasstatus():
+                        _logger.debug("%s cancelled, returning", self)
+                        self.output.put(self.map_fn(None))
+                        return
+                    self.output.put(self.map_fn(result))
+            finally:
+                self.builtin.cleanup(self.context)
         except Exception, e:
             _logger.exception("Caught exception: %s", e)
             self.emit("exception", e)

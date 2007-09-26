@@ -111,6 +111,9 @@ class Builtin(object):
 
     def execute(self, context, *args):
         raise NotImplementedError()
+    
+    def cleanup(self, context):
+        pass
 
     def __get_exec_attr_or_none(self, attr):
         func = self.execute 

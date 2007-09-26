@@ -41,6 +41,12 @@ class ShBuiltin(Builtin):
     def cancel(self, context):
         if context.attribs.has_key('pid'):
             ProcessManager.getInstance().interrupt_pid(context.attribs['pid'])
+            
+    def cleanup(self, context):
+        if 'master_fd' in context.attribs:
+            os.close(context.attribs['master_fd'])
+        if 'stdout_read' in context.attribs:
+            context.attribs['stdout_read'].close()
 
     @parseargs('str-shquoted')
     @hasstatus()
@@ -52,6 +58,7 @@ class ShBuiltin(Builtin):
             # Yes, this is gross, but as far as I know there is no other way to
             # control the buffering used by subprocesses.
             (master_fd, slave_fd) = pty.openpty()
+            context.attribs['master_fd'] = master_fd
             _logger.debug("allocated pty fds %d %d", master_fd, slave_fd)
             stdout_target = slave_fd
         else:
@@ -69,6 +76,7 @@ class ShBuiltin(Builtin):
                                    cwd=context.cwd,
                                    **extra_args)
         if not subproc.pid:
+            os.close(slave_fd)
             raise ValueError('Failed to execute %s' % (arg,))
         context.attribs['pid'] = subproc.pid
         if context.cancelled:
@@ -79,6 +87,8 @@ class ShBuiltin(Builtin):
         if pty_available:
             os.close(slave_fd)
             stdout_read = os.fdopen(master_fd, 'rU')
+            del context.attribs['master_fd']
+            context.attribs['stdout_read'] = stdout_read
         else:
             stdout_read = subproc.stdout
         for line in ShBuiltin.__unbuffered_readlines(stdout_read):

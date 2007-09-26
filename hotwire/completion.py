@@ -267,14 +267,14 @@ class PathCompleter(BaseCompleter):
                                          hint_no_space=True, exact=False, ctxhit=True)
 
 class DirExecutableGenerator(object):
-	def __init__(self, dir, include_subdirs=False):
-		self.dir = dir
+    def __init__(self, dir, include_subdirs=False):
+        self.dir = dir
         self.__include_subdirs = include_subdirs
-		self.__x_filter = Filesystem.getInstance().get_executable_filter() 
+        self.__x_filter = Filesystem.getInstance().get_executable_filter() 
 
-	def __iter__(self):
-		for elt in DirectoryGenerator(self.dir):
-			fullpath = FilePath(elt, self.dir)
+    def __iter__(self):
+        for elt in DirectoryGenerator(self.dir):
+            fullpath = FilePath(elt, self.dir)
             if self.__include_subdirs:
                 try:
                     stbuf = os.stat(fullpath)
