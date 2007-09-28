@@ -62,19 +62,27 @@ class CommandExecutionDisplay(gtk.VBox):
         self.__title.set_alignment(0, 0.5)
         self.__title.set_ellipsize(True)
         self.__titlebox.pack_start(hotwidgets.Align(self.__title, padding_left=4), expand=True)
+        self.__statusbox = gtk.HBox()
+        self.pack_start(self.__statusbox, expand=False)
         self.__state = 'waiting'
-        self.__status = gtk.Label()
-        self.__titlebox.pack_start(hotwidgets.Align(self.__status, xalign=1.0, padding_left=4, padding_right=4), expand=False)
-
+        self.__status_left = gtk.Label()
+        self.__status_right = gtk.Label()
+        self.__statusbox.pack_start(hotwidgets.Align(self.__status_left, padding_left=4), expand=False)
+        self.__action = hotwidgets.Link()
+        self.__action.connect("clicked", self.__on_action)
+        self.__statusbox.pack_start(hotwidgets.Align(self.__action), expand=False)   
+        self.__statusbox.pack_start(hotwidgets.Align(self.__status_right), expand=False)        
+        
         self.__undoable = self.__pipeline.get_undoable() and (not self.__pipeline.get_idempotent())
 
         status_cmds = list(pipeline.get_status_commands())
+        self.__pipeline_status_visible = False
         if status_cmds:
             self.__cmd_statuses = gtk.HBox()
             show_cmd_name = len(status_cmds) > 1
             for cmdname in status_cmds:
                 self.__cmd_statuses.pack_start(CommandStatusDisplay(show_cmd_name and cmdname or None), expand=True)
-            self.pack_start(hotwidgets.Align(self.__cmd_statuses, padding_left=4), expand=False)
+            self.__statusbox.pack_start(hotwidgets.Align(self.__cmd_statuses), expand=False)
         else:
             self.__cmd_statuses = None
             self.__cmd_status_show_cmd = False
@@ -88,10 +96,6 @@ class CommandExecutionDisplay(gtk.VBox):
             self.__objects.append_ostream(aux.schema.otype, aux.name, aux.queue, aux.schema.merge_default)
                 
         self.pack_start(self.__objects, expand=(self.__pipeline.get_output_type() is not None))
-
-        self.__action = hotwidgets.Link()
-        self.__action.connect("clicked", self.__on_action)
-        self.__titlebox.pack_start(hotwidgets.Align(self.__action, xalign=1.0, padding_left=8), expand=False)
 
         self.__exception_text = gtk.Label() 
         self.pack_start(self.__exception_text, expand=False)
@@ -190,44 +194,58 @@ class CommandExecutionDisplay(gtk.VBox):
         else:
             self.__title.set_markup('<tt>%s</tt>' % (gobject.markup_escape_text(self.__pipeline_str),))
             
-        if self.__state == 'waiting':
-            self.__status.set_text('Waiting...')
-        elif self.__state == 'cancelled':
-            self.__status.set_text('Cancelled')
-        elif self.__state == 'executing':
-            self.__status.set_text('Executing, %d objects' % (self.__objects and self.__objects.get_ocount() or 0,))
-            self.__action.set_text('Cancel')
-        elif self.__state == 'complete':
-            def _color(str, color):
-                return '<span foreground="%s">%s</span>' % (color,gobject.markup_escape_text(str))
-            if self.__undoable and (not (self.__cancelled or self.__undone)):
-                self.__action.set_text('Undo')
+        ocount = self.__objects and self.__objects.get_ocount() or 0
+            
+        def set_status_action(status_text_left, action_text='', status_markup=False):
+            if action_text:
+                status_text_left += " ("
+            if status_markup:
+                self.__status_left.set_markup(status_text_left)
+            else:                
+                self.__status_left.set_text(status_text_left)
+            if action_text:
+                self.__action.set_text(action_text)
                 self.__action.show()
             else:
                 self.__action.set_text('')
                 self.__action.hide()
-            if self.__exception:
-                self.__status.set_markup(_color("Exception", "red"))
-            elif self.__cancelled:
-                self.__status.set_markup(_color('Cancelled', "red"))
-            elif self.__undone:
-                self.__status.set_markup(_color('Undone', "red"))
+            status_right_start = action_text and ')' or ''
+            status_right_end = self.__pipeline_status_visible and '; ' or ''
+            self.__status_right.set_text(status_right_start + (", %d objects" % (ocount,)) + status_right_end)
+            
+        if self.__state == 'waiting':
+            set_status_action('Waiting...')
+        elif self.__state == 'cancelled':
+            set_status_action('Cancelled')
+        elif self.__state == 'executing':
+            set_status_action('Executing', 'Cancel')
+        elif self.__state == 'complete':
+            def _color(str, color):
+                return '<span foreground="%s">%s</span>' % (color,gobject.markup_escape_text(str))
+            if self.__undoable and (not (self.__cancelled or self.__undone)):
+                action = 'Undo'
             else:
-                if self.__objects:
-                    self.__status.set_text('Complete, %d objects' % (self.__objects.get_ocount(),))
-                else:
-                    self.__status.set_text('Complete')
+                action = ''
+            if self.__exception:
+                set_status_action(_color("Exception", "red"), action, status_markup=True)
+            elif self.__cancelled:
+                set_status_action(_color('Cancelled', "red"), action, status_markup=True)
+            elif self.__undone:
+                set_status_action(_color('Undone', "red"), action, status_markup=True)
+            else:
+                set_status_action('Complete', action)
             
     def execute(self):
         self.__state = 'executing'
-        self.__status.set_text('(Executing)')
         self.__pipeline.execute(opt_formats=self.__objects.get_opt_formats())
         self.__update_titlebox()
 
     def __on_pipeline_status(self, pipeline, cmdidx, cmd, *args):
         _logger.debug("got pipeline status idx=%d", cmdidx)
+        self.__pipeline_status_visible = True
         statusdisp = self.__cmd_statuses.get_children()[cmdidx]
         statusdisp.set_status(*args)
+        self.__update_titlebox()
 
     def __on_pipeline_exception(self, pipeline, cmd, e):
         if self.__state == 'complete':
@@ -277,3 +295,4 @@ class CommandExecutionDisplay(gtk.VBox):
         self.window.set_cursor(cursor)
         self.__mouse_hovering = hand
         self.__update_titlebox()
+    

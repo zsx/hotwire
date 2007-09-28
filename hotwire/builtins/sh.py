@@ -81,7 +81,7 @@ class ShBuiltin(Builtin):
         context.attribs['pid'] = subproc.pid
         if context.cancelled:
             self.cancel(context)
-        context.status_notify('Running (pid %d)' % (context.attribs['pid'],))
+        context.status_notify('pid %d' % (context.attribs['pid'],))
         if context.input:
             MiniThreadPool.getInstance().run(lambda: self.__inputreader(context.input, subproc.stdin))
         if pty_available:
