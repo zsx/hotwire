@@ -5,6 +5,7 @@ import gtk, gobject
 import hotwire_ui.widgets as hotwidgets
 from hotwire_ui.odisp import MultiObjectsDisplay
 from hotwire.async import QueueIterator, IterableQueue
+from hotwire.logutil import log_except
 
 _logger = logging.getLogger("hotwire.ui.Command")
 
@@ -153,7 +154,7 @@ class CommandExecutionDisplay(gtk.VBox):
 
     def __toggle_visible(self):
         self.__visible = not self.__visible
-        _logger.debug("toggling visiblity to %s", self.__visible)
+        _logger.debug("toggling visiblity %s: %s", self.__visible, self.__pipeline)
         if self.__objects:
             if self.__visible:
                 self.__objects.show()
@@ -180,8 +181,8 @@ class CommandExecutionDisplay(gtk.VBox):
             self.emit("close")
         self.__update_titlebox()
 
-    def set_visible(self):
-        if not self.__visible:
+    def set_visible(self, arg=True):
+        if self.__visible != arg:
             self.__toggle_visible()
 
     def set_hidden(self):
@@ -296,3 +297,180 @@ class CommandExecutionDisplay(gtk.VBox):
         self.__mouse_hovering = hand
         self.__update_titlebox()
     
+class CommandExecutionGroup(gtk.VBox):
+    MAX_SAVED_OUTPUT = 3
+    def __init__(self, ui=None):
+        super(CommandExecutionGroup, self).__init__()
+        self.__ui = ui
+        ui_string = '''
+<ui>
+  <menubar name='Menubar'>
+    <menu action='ViewMenu'>      
+      <menuitem action='PreviousCommand'/>
+      <menuitem action='NextCommand'/>
+    </menu>
+  </menubar>
+</ui>'''    
+        ui.add_ui_from_string(ui_string)     
+        actions = [
+            ('PreviousCommand', gtk.STOCK_GO_UP, '_Previous', '<control>Up', 'View previous command', self.__on_previous_cmd),
+            ('NextCommand', gtk.STOCK_GO_DOWN, '_Next', '<control>Down', 'View next command', self.__on_next_cmd),
+        ]     
+        self.__ag = ag = gtk.ActionGroup('CommandActions')
+        ag.add_actions(actions)
+        ui.insert_action_group(ag, 0)         
+         
+        self.__header = gtk.HBox()
+        #self.__title = gtk.Label('Previous commands')
+        #self.__header.pack_start(self.__title, expand=False)
+        #uparrow = ag.get_action('PreviousCommand').create_tool_item()
+        #self.__header.pack_start(uparrow, expand=False)
+        #downarrow = ag.get_action('NextCommand').create_tool_item()
+        #self.__header.pack_start(downarrow, expand=False)        
+        self.__execstatus = gtk.Label()
+        self.__header.pack_start(hotwidgets.Align(self.__execstatus, padding_left=8), expand=False)
+        self.pack_start(hotwidgets.Align(self.__header, xalign=0.0), expand=False)
+        self.pack_start(gtk.HSeparator(), expand=False)        
+        self.__cmd_vbox = gtk.VBox()
+        self.pack_start(self.__cmd_vbox, expand=True)
+        self.__current_cmd_box = gtk.EventBox()
+        self.pack_start(self.__current_cmd_box, expand=True)
+        self.__expanded = False
+        self.__cached_executing_count = 0
+        self.__cached_total_count = 0
+        self.__redisplay()
+        
+    def __on_previous_cmd(self, a):
+        self.open_output(True)
+        
+    def __on_next_cmd(self, a):
+        self.open_output(False)
+        
+    def expand(self):
+        if self.__expanded:
+            return
+        _logger.debug("expanding")
+        self.__expanded = True
+        self.__redisplay()
+        
+    def unexpand(self):
+        if not self.__expanded:
+            return
+        _logger.debug("unexpanding")        
+        self.__expanded = False
+        self.__redisplay()
+        
+    def __get_complete_commands(self):
+        for child in self.__iter_prevcmds():
+            if child.get_state() != 'executing':
+                yield child
+        
+    def add_cmd(self, cmd):
+        _logger.debug("adding child %s", cmd)        
+        oldcmd = self.__current_cmd_box.get_child()
+        if oldcmd:
+            self.__current_cmd_box.remove(oldcmd)
+            oldcmd.set_visible(False)
+            self.__cmd_vbox.pack_start(oldcmd, expand=True)
+        self.__current_cmd_box.add(cmd)
+        cmd.connect("complete", self.__handle_cmd_complete)
+        cmd.connect("close", self.__handle_cmd_close)        
+        cmd.connect("visible", self.__handle_display_visiblity)
+        self.__redisplay()
+        
+    def __iter_prevcmds(self):
+        for child in self.__cmd_vbox.get_children():
+            yield child
+    
+    @log_except(_logger)
+    def __handle_cmd_complete(self, *args):
+        self.__redisplay()
+      
+    @log_except(_logger)        
+    def __handle_cmd_close(self, p):
+        self.__cmd_vbox.remove(p) 
+        self.__redisplay()    
+        
+    def __repack_expand(self, widget, expand, parent=None):
+        container = widget.get_parent()      
+        if not container or (not hasattr(container, 'set_child_packing')):
+            return
+        print "repack %s %s %s" % (expand, container, widget)
+        (_, fill, padding, pack_type) = container.query_child_packing(widget)
+        container.set_child_packing(widget, expand, fill, padding, pack_type) 
+        
+    @log_except(_logger)
+    def __handle_display_visiblity(self, display, vis):
+        current = self.__current_cmd_box.get_child()
+        if current == display:
+            return
+        self.__repack_expand(display, vis)
+        
+    def __recompute(self):
+        total = 0
+        executing = 0
+        for child in self.__iter_prevcmds():
+            total += 1
+            if child.get_state() == 'executing':
+                executing += 1
+        self.__cached_total_count = total
+        self.__cached_executing_count = executing        
+        
+    def __redisplay(self):
+        complete_cmds = list(self.__get_complete_commands())
+        if len(complete_cmds) > self.MAX_SAVED_OUTPUT:
+            child = complete_cmds[0]
+            _logger.debug("removing child %s", child)            
+            child.disconnect()
+            self.__cmd_vbox.remove(child)        
+        self.__recompute()
+        if self.__cached_executing_count > 0:
+            self.__execstatus.show()
+            self.__execstatus.set_text('%d executing' % (self.__cached_executing_count,))
+        else:
+            self.__execstatus.hide()
+        current = self.__current_cmd_box.get_child() 
+        if not self.__expanded:
+            self.__cmd_vbox.hide()
+            for child in self.__iter_prevcmds():
+                child.set_hidden()
+        else:
+            self.__cmd_vbox.show()
+        if current:
+            current.set_visible(not self.__expanded)
+            self.__repack_expand(self.__current_cmd_box, not self.__expanded, parent=self)            
+ 
+    def get_last_visible(self):
+        last_vis_output = None
+        for output in self.__iter_prevcmds():
+            if output.get_visible():
+                return output
+        if not last_vis_output:
+            current = self.__current_cmd_box.get_child()  
+            return current and current.get_visible()
+ 
+    def open_output(self, do_prev=False):
+        curvis = None
+        prev = None
+        prev_visible = None
+        target = None
+        children = list(self.__iter_prevcmds())
+        if not self.__expanded and do_prev:
+            self.expand()
+            target = children and children[-1]
+        elif not do_prev:
+            children = reversed(children)
+        if not target:
+            for output in children:
+                if not output.get_visible():
+                    prev = output
+                    continue
+                target = prev
+                break
+        if target:
+            target.set_visible()
+            for output in children:
+                if output != target and output.get_visible():
+                    output.set_hidden()
+        elif not do_prev:
+            self.unexpand()

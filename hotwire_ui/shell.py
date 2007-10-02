@@ -19,7 +19,7 @@ try:
     minion_available = True
 except:
     minion_available = False
-from hotwire_ui.command import CommandExecutionDisplay
+from hotwire_ui.command import CommandExecutionDisplay,CommandExecutionGroup
 from hotwire_ui.completion import PopupDisplay
 from hotwire.logutil import log_except
 
@@ -113,10 +113,12 @@ class Hotwire(gtk.VBox):
         "title" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (gobject.TYPE_STRING,)),
         "new-tab-widget" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (gobject.TYPE_PYOBJECT, gobject.TYPE_STRING))
     }
-    def __init__(self, initcwd=None, window=None):
+    def __init__(self, initcwd=None, window=None, ui=None):
         super(Hotwire, self).__init__()
 
         _logger.debug("Creating Hotwire instance, initcwd=%s", initcwd)
+
+        self.__ui = ui
 
         self.context = HotwireClientContext(self, initcwd=initcwd)
         self.context.history = Persister.getInstance().load('history', default=[])
@@ -128,10 +130,6 @@ class Hotwire(gtk.VBox):
         self.__minion = None
         self.__minion_cwd = None
 
-        self.__max_visible_complete = 3
-
-        self.__active_pipeline_count = 0
-
         self.__paned = gtk.VBox()
         self.__topbox = gtk.VBox()
         self.__welcome = gtk.Label('Welcome to Hotwire.')
@@ -139,7 +137,7 @@ class Hotwire(gtk.VBox):
         self.__paned.pack_start(self.__welcome_align, expand=True)
         self.pack_start(self.__paned, expand=True)
 
-        self.__outputs = gtk.VBox()
+        self.__outputs = CommandExecutionGroup(ui=ui)
         self.__topbox.pack_start(self.__outputs, expand=True)
 
         self.__downloads = Downloads()
@@ -169,19 +167,11 @@ class Hotwire(gtk.VBox):
 
         self.__statusline = gtk.HBox()
         self.__statusbox.pack_start(hotwidgets.Align(self.__statusline), expand=False)
-        self.__miniontext = gtk.Label()
-        self.__statusline.pack_start(hotwidgets.Align(self.__miniontext), expand=False)
         self.__doing_recentdir_sync = False
         self.__recentdirs = gtk.combo_box_new_text()
         self.__recentdirs.set_focus_on_click(False)
         self.__recentdirs.connect('changed', self.__on_recentdir_selected)
         self.__statusline.pack_start(hotwidgets.Align(self.__recentdirs), expand=False)
-        self.__status = gtk.Label()
-        self.__status.set_alignment(1.0, 0.5)
-        self.__statusline.pack_start(self.__status, expand=True)
-
-        self.__statusline2 = gtk.Label()
-        self.__statusbox.pack_start(self.__statusline2, expand=False)
 
         self.__idle_parse_id = 0
         self.__parse_stale = False
@@ -273,27 +263,11 @@ class Hotwire(gtk.VBox):
     def get_entry(self):
         return self.__input
 
-    def __handle_display_visiblity(self, display, vis):
-        (expand, fill, padding, pack_type) = self.__outputs.query_child_packing(display)
-        self.__outputs.set_child_packing(display, vis, fill, padding, pack_type)
-
     def __update_status(self):
-        if self.remote_active():
-            self.__miniontext.show()
-        else:
-            self.__miniontext.hide()
-        self.__miniontext.set_text(str(self.__minion))
-        #self.__cwdtext.set_text(self.__minion and self.__minion_cwd or self.context.get_cwd())
-        self.__status.set_text("%d active pipelines" % (self.__active_pipeline_count,))
-        if self.__minion:
-            self.__statusline2.set_text("(local) %s" % (self.context.get_cwd(),))
-            self.__statusline2.show()
-        else:
-            self.__statusline2.hide()
         self.emit("title", self.get_title())
 
     def get_title(self):
-        return '%s%s (%d)' % (self.__minion and (self.__minion + ' ') or '', os.path.basename(self.context.get_cwd()), self.__active_pipeline_count)
+        return '%s' % (os.path.basename(self.context.get_cwd()),)
 
     def execute_pipeline(self, pipeline,
                          add_history=True,
@@ -326,21 +300,9 @@ class Hotwire(gtk.VBox):
             self.__welcome = None
             self.__welcome_align = None
 
-        if not (pipeline.get_output_type() is None):
-            for display in self.__outputs.get_children():
-                display.set_hidden()
-        
         output_display = CommandExecutionDisplay(self.context, pipeline)
-        output_display.connect("visible", self.__handle_display_visiblity)
-        self.__active_pipeline_count += 1
-        output_display.connect("complete", self.__handle_pipeline_complete)
-        output_display.connect("close", self.__handle_pipeline_close)
         output_display.show_all()
-        outputs = [output for output in self.__outputs.get_children() if output.get_state() == 'complete']
-        if len(outputs) >= self.__max_visible_complete:
-            outputs[0].disconnect()
-            self.__outputs.remove(outputs[0])
-        self.__outputs.pack_start(output_display, expand=(pipeline.get_output_type() is not None))
+        self.__outputs.add_cmd(output_display)
         output_display.execute()
         self.__last_output = output_display
 
@@ -396,13 +358,6 @@ class Hotwire(gtk.VBox):
             pipeline = MinionPipeline.parse(self.__minion, text, context=self.context)
 
         self.execute_pipeline(pipeline)
-
-    def __handle_pipeline_close(self, p):
-        self.__outputs.remove(p)
-
-    def __handle_pipeline_complete(self, p):
-        self.__active_pipeline_count -= 1        
-        self.__update_status()
 
     def __do_completion(self, back):
         curtext = self.__input.get_property("text") 
@@ -574,42 +529,14 @@ class Hotwire(gtk.VBox):
         else:
             return False
 
-    def __open_output(self, do_prev=False):
-        curvis = None
-        prev = None
-        prev_visible = None
-        target = None
-        children = self.__outputs.get_children() 
-        if not do_prev:
-            children = reversed(children)
-        for output in children:
-            if not output.get_visible():
-                prev = output
-                continue
-            target = prev
-            break
-        if target:
-            target.set_visible()
-            for output in self.__outputs.get_children():
-                if output != target and output.get_visible():
-                    output.set_hidden()
-
     def __open_prev_output(self):
-        self.__open_output(do_prev=True)
+        self.__outputs.open_output(do_prev=True)
 
     def __open_next_output(self):
-        self.__open_output()
-
-    def __get_last_vis_output(self):
-        last_vis_output = None
-        for output in self.__outputs.get_children():
-            if output.get_visible():
-                return output
-        if not last_vis_output:
-            return None
+        self.__outputs.open_output()
 
     def __handle_output_scroll(self, e):
-        last_vis_output = self.__get_last_vis_output()
+        last_vis_output = self.__outputs.get_last_visible()
         if not last_vis_output:
             return False
         if e.keyval == gtk.gdk.keyval_from_name('Page_Up'):
@@ -764,6 +691,8 @@ class HotWindow(gtk.Window):
       <separator/>
       <menuitem action='Close'/>
     </menu>
+    <menu action='ViewMenu'>
+    </menu>
     <menu action='HelpMenu'>
       <menuitem action='About'/>
     </menu>
@@ -815,6 +744,7 @@ class HotWindow(gtk.Window):
              'Open a new terminal tab', self.__new_term_tab_cb),
             ('Close', gtk.STOCK_CLOSE, '_Close', '<control><shift>W',
              'Close the current tab', self.__close_cb),
+            ('ViewMenu', None, 'View'),             
             ('HelpMenu', None, 'Help'),
             ('About', gtk.STOCK_ABOUT, '_About', None, 'About Hotwire', self.__help_about_cb),
             ]
@@ -845,6 +775,12 @@ class HotWindow(gtk.Window):
             if widget.on_mouse_press(e):
                 return True
         return False
+    
+    def __view_previous_cb(self):
+        self.__outputs.open_output(True)
+        
+    def __view_next_cb(self):
+        self.__outputs.open_output(False)
     
     def __new_window_cb(self, action):
         self.new_win_hotwire()
@@ -972,7 +908,7 @@ along with Hotwire; if not, write to the Free Software Foundation, Inc.,
             
 
     def new_tab_hotwire(self, initcwd=None):
-        hw = Hotwire(initcwd=initcwd, window=self)
+        hw = Hotwire(initcwd=initcwd, window=self, ui=self.__ui)
         hw.set_data('hotwire-is-hotwire', True)
 
         idx = self.__notebook.append_page(hw)
