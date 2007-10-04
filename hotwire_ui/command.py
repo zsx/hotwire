@@ -301,25 +301,6 @@ class CommandExecutionGroup(gtk.VBox):
     MAX_SAVED_OUTPUT = 3
     def __init__(self, ui=None):
         super(CommandExecutionGroup, self).__init__()
-        self.__ui = ui
-        ui_string = '''
-<ui>
-  <menubar name='Menubar'>
-    <menu action='ViewMenu'>      
-      <menuitem action='PreviousCommand'/>
-      <menuitem action='NextCommand'/>
-    </menu>
-  </menubar>
-</ui>'''    
-        ui.add_ui_from_string(ui_string)     
-        actions = [
-            ('PreviousCommand', gtk.STOCK_GO_UP, '_Previous', '<control>Up', 'View previous command', self.__on_previous_cmd),
-            ('NextCommand', gtk.STOCK_GO_DOWN, '_Next', '<control>Down', 'View next command', self.__on_next_cmd),
-        ]     
-        self.__ag = ag = gtk.ActionGroup('CommandActions')
-        ag.add_actions(actions)
-        ui.insert_action_group(ag, 0)         
-         
         self.__header = gtk.HBox()
         #self.__title = gtk.Label('Previous commands')
         #self.__header.pack_start(self.__title, expand=False)
@@ -339,12 +320,6 @@ class CommandExecutionGroup(gtk.VBox):
         self.__cached_executing_count = 0
         self.__cached_total_count = 0
         self.__redisplay()
-        
-    def __on_previous_cmd(self, a):
-        self.open_output(True)
-        
-    def __on_next_cmd(self, a):
-        self.open_output(False)
         
     def expand(self):
         if self.__expanded:
@@ -395,7 +370,6 @@ class CommandExecutionGroup(gtk.VBox):
         container = widget.get_parent()      
         if not container or (not hasattr(container, 'set_child_packing')):
             return
-        print "repack %s %s %s" % (expand, container, widget)
         (_, fill, padding, pack_type) = container.query_child_packing(widget)
         container.set_child_packing(widget, expand, fill, padding, pack_type) 
         
@@ -446,16 +420,20 @@ class CommandExecutionGroup(gtk.VBox):
             if output.get_visible():
                 return output
         if not last_vis_output:
-            current = self.__current_cmd_box.get_child()  
-            return current and current.get_visible()
+            current = self.__current_cmd_box.get_child()
+            if current and current.get_visible():
+                return current
+            return None
  
-    def open_output(self, do_prev=False):
+    def open_output(self, do_prev=False, dry_run=False):
         curvis = None
         prev = None
         prev_visible = None
         target = None
         children = list(self.__iter_prevcmds())
         if not self.__expanded and do_prev:
+            if dry_run:
+                return True
             self.expand()
             target = children and children[-1]
         elif not do_prev:
@@ -468,9 +446,13 @@ class CommandExecutionGroup(gtk.VBox):
                 target = prev
                 break
         if target:
+            if dry_run:
+                return True
             target.set_visible()
             for output in children:
                 if output != target and output.get_visible():
                     output.set_hidden()
         elif not do_prev:
+            if dry_run:
+                return True
             self.unexpand()

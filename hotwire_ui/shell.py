@@ -671,7 +671,12 @@ class Hotwire(gtk.VBox):
 
     def controls_copypaste(self):
         return True
-
+    
+    def do_previous(self):
+        self.__outputs.open_output(True)
+        
+    def do_next(self):
+        self.__outputs.open_output(False)
             
 class HotWindow(gtk.Window):
     ascii_nums = [long(x+ord('0')) for x in xrange(10)]
@@ -699,6 +704,15 @@ class HotWindow(gtk.Window):
   </menubar>
 </ui>
 """
+        self.__hotwire_ui_string = """
+<ui>
+  <menubar name='Menubar'>
+    <menu action='ViewMenu'>      
+      <menuitem action='PreviousCommand'/>
+      <menuitem action='NextCommand'/>
+    </menu>
+  </menubar>
+</ui>"""        
         self.__create_ui()
         vbox.pack_start(self.__ui.get_widget('/Menubar'), expand=False)
 
@@ -754,12 +768,20 @@ class HotWindow(gtk.Window):
             ('NewTab', gtk.STOCK_NEW, 'New _Tab', '<control>t',
              'Open a new tab', self.__new_tab_cb)]
         ag.add_actions(actions)
-        ag.add_actions(self.__nonterm_actions)
+        ag.add_actions(self.__nonterm_actions)      
+        self.__hotwire_actions = [
+            ('PreviousCommand', gtk.STOCK_GO_UP, '_Previous', '<control>Up', 'View previous command', self.__view_previous_cb),
+            ('NextCommand', gtk.STOCK_GO_DOWN, '_Next', '<control>Down', 'View next command', self.__view_next_cb),
+        ]
+        self.__hotwire_ag = gtk.ActionGroup('HotwireActions')
+        self.__hotwire_ag.add_actions(self.__hotwire_actions)       
         self.__ui = gtk.UIManager()
         self.__ui.insert_action_group(ag, 0)
+        self.__ui.insert_action_group(self.__hotwire_ag, 1)         
         self.__ui.add_ui_from_string(self.__ui_string)
         self.__nonterm_accels_installed = True
         self.add_accel_group(self.__ui.get_accel_group())
+        self.__hotwire_ui_mergeid = None        
 
     def __show_pyshell(self):
         if self.__pyshell:
@@ -776,11 +798,13 @@ class HotWindow(gtk.Window):
                 return True
         return False
     
-    def __view_previous_cb(self):
-        self.__outputs.open_output(True)
+    def __view_previous_cb(self, a):
+        widget = self.__notebook.get_nth_page(self.__notebook.get_current_page())        
+        widget.do_previous()
         
-    def __view_next_cb(self):
-        self.__outputs.open_output(False)
+    def __view_next_cb(self, a):
+        widget = self.__notebook.get_nth_page(self.__notebook.get_current_page())        
+        widget.do_next()
     
     def __new_window_cb(self, action):
         self.new_win_hotwire()
@@ -801,7 +825,7 @@ class HotWindow(gtk.Window):
     def __close_cb(self, action):
         self.__remove_page_widget(self.__notebook.get_nth_page(self.__notebook.get_current_page()))
         if self.__notebook.get_n_pages() == 0:
-            self.destroy()
+            self.destroy()          
 
     def __help_about_cb(self, action):
         dialog = gtk.AboutDialog()
@@ -890,6 +914,12 @@ along with Hotwire; if not, write to the Free Software Foundation, Inc.,
                 self.__old_char_width = cw
                 self.__old_char_height = ch
                 self.__old_geom_widget = widget
+
+        if is_hw and (self.__hotwire_ui_mergeid is None):
+             self.__hotwire_ui_mergeid = self.__ui.add_ui_from_string(self.__hotwire_ui_string)
+        elif (not is_hw) and (self.__hotwire_ui_mergeid is not None):
+            self.__ui.remove_ui(self.__hotwire_ui_mergeid)
+            self.__hotwire_ui_mergeid = None            
 
         install_accels = is_hw
         _logger.debug("current accel install: %s new: %s", self.__nonterm_accels_installed, install_accels)
