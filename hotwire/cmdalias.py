@@ -7,6 +7,7 @@ from hotwire.singletonmixin import Singleton
 _logger = logging.getLogger("hotwire.CmdAlias")
 
 default_aliases = {'vi': 'term vi',
+                   'vim': 'term vim',
                    'ssh': 'term ssh',
                    'man': 'term man',
                    'top': 'term top',
