@@ -109,6 +109,7 @@ class Command(gobject.GObject):
     """Represents a complete executable object in a pipeline."""
 
     __gsignals__ = {
+        "complete" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, []),                    
         "status" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (gobject.TYPE_STRING, gobject.TYPE_INT)),
         "exception" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (gobject.TYPE_PYOBJECT,)),
     }
@@ -230,6 +231,7 @@ class Command(gobject.GObject):
                     if self._cancelled and not self.builtin.get_hasstatus():
                         _logger.debug("%s cancelled, returning", self)
                         self.output.put(self.map_fn(None))
+                        self.emit("complete")                        
                         return
                     self.output.put(self.map_fn(result))
             finally:
@@ -238,6 +240,7 @@ class Command(gobject.GObject):
             _logger.exception("Caught exception: %s", e)
             self.emit("exception", e)
         self.output.put(self.map_fn(None))
+        self.emit("complete")        
 
     def __str__(self):
         return self.builtin.name + " " + string.join(map(unicode, self.args), " ")
@@ -289,8 +292,9 @@ class Pipeline(gobject.GObject):
     """A sequence of Commands."""
 
     __gsignals__ = {
+        "state-changed" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, []),        
         "status" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (gobject.TYPE_UINT, gobject.TYPE_PYOBJECT, gobject.TYPE_STRING, gobject.TYPE_INT)),
-        "exception" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (gobject.TYPE_PYOBJECT, gobject.TYPE_PYOBJECT)),
+        "exception" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (gobject.TYPE_PYOBJECT,gobject.TYPE_PYOBJECT)),        
     }
 
     __ws_re = re.compile(r'\s+')
@@ -313,6 +317,11 @@ class Pipeline(gobject.GObject):
         self.__cmd_statuses_lock = threading.Lock()
         self.__idle_emit_cmd_status_id = 0
         self.__cmd_statuses = {}
+        self.__cmd_complete_count = 0
+        self.__state = 'waiting'
+        
+    def get_state(self):
+        return self.__state     
 
     def disconnect(self):
         for cmd in self.__components:
@@ -321,6 +330,7 @@ class Pipeline(gobject.GObject):
     def __execute_internal(self, func, opt_formats=[]):
         _logger.debug("Executing %s", self)
         for cmd in self.__components:
+            cmd.connect("complete", self.__on_cmd_complete)            
             cmd.connect("exception", self.__on_cmd_exception)
             cmd.connect("status", self.__on_cmd_status)
         prev_opt_formats = []
@@ -331,6 +341,13 @@ class Pipeline(gobject.GObject):
         last = self.__components[-1] 
         last.output.negotiate(prev_opt_formats, opt_formats)
         func(last)
+        self.__set_state('executing')
+        
+    def __set_state(self, state):
+        if self.__state in ('complete', 'cancelled'):
+            return
+        self.__state = state
+        self.emit('state-changed')        
 
     def execute(self, **kwargs):
         self.__execute_internal(Command.execute, **kwargs)
@@ -364,6 +381,7 @@ class Pipeline(gobject.GObject):
         self.__cmd_statuses_lock.release()
 
     def __idle_emit_cmd_status(self, cmd):
+        _logger.debug("command status: %s", cmd)        
         self.__cmd_statuses_lock.acquire()
         self.__idle_emit_cmd_status_id = 0
         text, progress = self.__cmd_statuses[cmd]
@@ -376,13 +394,29 @@ class Pipeline(gobject.GObject):
                 cmd_idx += 1
         self.emit("status", cmd_idx, cmd, text, progress)
 
+    def __on_cmd_complete(self, cmd):
+        _logger.debug("command complete: %s", cmd)        
+        gobject.idle_add(lambda: self.__idle_handle_cmd_complete(cmd))
+        
+    def __idle_handle_cmd_complete(self, cmd):
+        self.__cmd_complete_count += 1
+        if self.__cmd_complete_count == len(self.__components):
+            self.__set_state('complete')
+
     def __on_cmd_exception(self, cmd, e):
+        if not self.__state == 'executing':
+            return        
         try:
-            self.cancel()
+            self.cancel(changestate=False)
         except:
             _logger.exception("Nested exception while cancelling")
             pass
-        gobject.idle_add(lambda: self.emit("exception", cmd, e))
+        self.emit("exception", e, cmd)
+        self.__exception_info = (e.__class__, str(e), cmd)
+        self.__set_state('exception')
+        
+    def get_exception_info(self):
+        return self.__exception_info
 
     def get_output(self):
         return self.__components[-1].output
@@ -401,9 +435,13 @@ class Pipeline(gobject.GObject):
             for obj in cmd.get_auxstreams():
                 yield obj
 
-    def cancel(self):
+    def cancel(self, changestate=True):
+        if not self.__state == 'executing':
+            return
+        if changestate:
+            self.__set_state('cancelled')        
         for component in self.__components:
-            component.cancel()
+            component.cancel()        
 
     def is_nostatus(self):
         return self.__components[0].builtin.nostatus

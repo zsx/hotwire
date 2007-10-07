@@ -126,16 +126,20 @@ class MultiObjectsDisplay(gtk.Notebook):
         "changed" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, ()),
     }
         
-    def __init__(self, context, suppress_noyield=False):
+    def __init__(self, context, pipeline):
         super(MultiObjectsDisplay, self).__init__()
         self.__context = context
+        self.__pipeline = pipeline
         self.__cancelled = False
         self.__default_odisp = None
         self.__queues = {}
         self.__ocount = 0
         self.__do_autoswitch = True
-        self.__suppress_noyield = suppress_noyield
+        self.__suppress_noyield = not not list(pipeline.get_status_commands())
         self.set_show_tabs(False)
+        self.append_ostream(pipeline.get_output_type(), None, pipeline.get_output(), False)
+        for aux in pipeline.get_auxstreams():
+            self.append_ostream(aux.schema.otype, aux.name, aux.queue, aux.schema.merge_default)
 
     def start_search(self, old_focus):
         self.__default_odisp.start_search(old_focus)

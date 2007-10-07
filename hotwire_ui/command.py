@@ -29,14 +29,13 @@ class CommandStatusDisplay(gtk.HBox):
                 self.__progress.show()
             self.__progress.set_fraction(progress/100.0)
 
-class CommandExecutionDisplay(gtk.VBox):
+class CommandExecutionHeader(gtk.VBox):
     __gsignals__ = {
-        "close" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, ()),
-        "visible" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (gobject.TYPE_PYOBJECT,)),
+        "setvisible" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, []),
         "complete" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, ()),
     }
-    def __init__(self, context, pipeline, **args):
-        super(CommandExecutionDisplay, self).__init__(**args)
+    def __init__(self, context, pipeline, odisp, **args):
+        super(CommandExecutionHeader, self).__init__(**args)
         self.__pipeline = pipeline
         self.__visible = True
         self.__cancelled = False
@@ -44,8 +43,8 @@ class CommandExecutionDisplay(gtk.VBox):
         self.__exception = False
         self.__mouse_hovering = False
 
+        self.__pipeline.connect("state-changed", self.__on_pipeline_state_change)
         self.__pipeline.connect("status", self.__on_pipeline_status)
-        self.__pipeline.connect("exception", self.__on_pipeline_exception)
         
         self.__titlebox_ebox = gtk.EventBox()
         self.__titlebox_ebox.add_events(gtk.gdk.BUTTON_PRESS_MASK
@@ -65,7 +64,6 @@ class CommandExecutionDisplay(gtk.VBox):
         self.__titlebox.pack_start(hotwidgets.Align(self.__title, padding_left=4), expand=True)
         self.__statusbox = gtk.HBox()
         self.pack_start(self.__statusbox, expand=False)
-        self.__state = 'waiting'
         self.__status_left = gtk.Label()
         self.__status_right = gtk.Label()
         self.__statusbox.pack_start(hotwidgets.Align(self.__status_left, padding_left=4), expand=False)
@@ -88,15 +86,8 @@ class CommandExecutionDisplay(gtk.VBox):
             self.__cmd_statuses = None
             self.__cmd_status_show_cmd = False
 
-        self.__objects = MultiObjectsDisplay(context, suppress_noyield=not not status_cmds)
-        self.__objects.append_ostream(pipeline.get_output_type(), None,
-                                      pipeline.get_output(), False)
-        self.__objects.connect("primary-complete", lambda o: self.__on_execution_complete())
+        self.__objects = odisp
         self.__objects.connect("changed", lambda o: self.__update_titlebox())
-        for aux in pipeline.get_auxstreams():
-            self.__objects.append_ostream(aux.schema.otype, aux.name, aux.queue, aux.schema.merge_default)
-                
-        self.pack_start(self.__objects, expand=(self.__pipeline.get_output_type() is not None))
 
         self.__exception_text = gtk.Label() 
         self.pack_start(self.__exception_text, expand=False)
@@ -106,7 +97,7 @@ class CommandExecutionDisplay(gtk.VBox):
         return self.__pipeline
 
     def get_state(self):
-        return self.__state
+        return self.__pipeline.get_state()
 
     def get_visible(self):
         return self.__visible
@@ -152,42 +143,21 @@ class CommandExecutionDisplay(gtk.VBox):
             queue.put(obj)
         queue.put(None)
 
-    def __toggle_visible(self):
-        self.__visible = not self.__visible
-        _logger.debug("toggling visiblity %s: %s", self.__visible, self.__pipeline)
-        if self.__objects:
-            if self.__visible:
-                self.__objects.show()
-            else:
-                self.__objects.hide()
-        self.__update_titlebox()
-        self.emit("visible", self.__visible)
-
     def __do_cancel(self):
-        if self.__cancelled:
+        if self.__pipeline.get_state() != 'executing':
             return
-        self.__cancelled = True
         self.__objects.cancel()
         self.__pipeline.cancel()
-        self.__state = 'complete'
 
     def __on_action(self, w):
-        if self.__state == 'executing':
+        if self.get_state() == 'executing':
             self.__do_cancel()
-        elif self.__state == 'complete' and (self.__undoable and not self.__undone):
-            self.__undone = True
+        elif self.get_state() == 'complete' and (self.__pipeline.get_undoable()):
             self.__pipeline.undo()
-        elif self.__state == 'complete':
-            self.emit("close")
         self.__update_titlebox()
 
-    def set_visible(self, arg=True):
-        if self.__visible != arg:
-            self.__toggle_visible()
-
-    def set_hidden(self):
-        if self.__visible:
-            self.__toggle_visible()
+    def get_objects_widget(self):
+        return self.__objects
 
     def __update_titlebox(self):
         if self.__mouse_hovering:
@@ -214,13 +184,14 @@ class CommandExecutionDisplay(gtk.VBox):
             status_right_end = self.__pipeline_status_visible and '; ' or ''
             self.__status_right.set_text(status_right_start + (", %d objects" % (ocount,)) + status_right_end)
             
-        if self.__state == 'waiting':
+        state = self.get_state()
+        if state == 'waiting':
             set_status_action('Waiting...')
-        elif self.__state == 'cancelled':
+        elif state == 'cancelled':
             set_status_action('Cancelled')
-        elif self.__state == 'executing':
+        elif state == 'executing':
             set_status_action('Executing', 'Cancel')
-        elif self.__state == 'complete':
+        elif state == 'complete':
             def _color(str, color):
                 return '<span foreground="%s">%s</span>' % (color,gobject.markup_escape_text(str))
             if self.__undoable and (not (self.__cancelled or self.__undone)):
@@ -235,11 +206,6 @@ class CommandExecutionDisplay(gtk.VBox):
                 set_status_action(_color('Undone', "red"), action, status_markup=True)
             else:
                 set_status_action('Complete', action)
-            
-    def execute(self):
-        self.__state = 'executing'
-        self.__pipeline.execute(opt_formats=self.__objects.get_opt_formats())
-        self.__update_titlebox()
 
     def __on_pipeline_status(self, pipeline, cmdidx, cmd, *args):
         _logger.debug("got pipeline status idx=%d", cmdidx)
@@ -248,37 +214,25 @@ class CommandExecutionDisplay(gtk.VBox):
         statusdisp.set_status(*args)
         self.__update_titlebox()
 
-    def __on_pipeline_exception(self, pipeline, cmd, e):
-        if self.__state == 'complete':
+    def __on_pipeline_state_change(self, pipeline):
+        _logger.debug("state change for pipeline %s", self.__pipeline_str)
+        state = self.__pipeline.get_state()
+        self.__update_titlebox()         
+        if state == 'executing':
             return
-        _logger.debug("execution exeception for %s", self.__pipeline_str)
-        self.__state = 'complete'
-        self.__exception = True
-        self.__exception_text.show()
-        self.__exception_text.set_text("Exception %s: %s" % (e.__class__, e)) 
-        self.__update_titlebox()
-        self.emit("complete")
-
-    def __on_execution_complete(self):
-        if self.__state == 'complete':
-            return
-        _logger.debug("execution complete for %s", self.__pipeline_str)
-        self.__state = 'complete'
-        self.__update_titlebox()
+        elif state in ('cancelled', 'complete'):
+            pass
+        elif state == 'exception':
+            self.__exception_text.show()
+            excinfo = self.__pipeline.get_exception_info()
+            self.__exception_text.set_text("Exception %s: %s" % (excinfo[0], excinfo[1]))
+        else:
+            raise Exception("Unknown state %s" % (state,)) 
         self.emit("complete")
 
     def __on_button_press(self, e):
-        if e.button in (1, 3):
-            menu = gtk.Menu()
-            showhide = gtk.MenuItem(label=(self.__visible and 'Hide' or 'Show'))
-            menu.append(showhide)
-            showhide.connect("activate", lambda m: self.__toggle_visible())
-            remove = gtk.MenuItem(label='Remove')
-            remove.set_sensitive(self.__state != 'executing')
-            menu.append(remove)
-            remove.connect("activate", lambda m: self.emit("close"))
-            menu.show_all()
-            menu.popup(None, None, None, e.button, e.time)
+        if e.button == 1:
+            self.emit('setvisible')
             return True
         return False
 
@@ -297,25 +251,54 @@ class CommandExecutionDisplay(gtk.VBox):
         self.__mouse_hovering = hand
         self.__update_titlebox()
     
-class CommandExecutionGroup(gtk.VBox):
+class CommandExecutionDisplay(gtk.VBox):
+    def __init__(self, context, pipeline, odisp):
+        super(CommandExecutionDisplay, self).__init__()
+        self.odisp = odisp
+        self.cmd_header = CommandExecutionHeader(context, pipeline, odisp)
+        self.pack_start(self.cmd_header, expand=False)
+        self.pack_start(odisp, expand=True)
+    
+class CommandExecutionHistory(gtk.VBox):
+    __gsignals__ = {
+        "show-command" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (gobject.TYPE_PYOBJECT,)),
+    }    
+    def __init__(self, context):
+        super(CommandExecutionHistory, self).__init__()
+        self.__context = context
+        self.__cmd_overview = gtk.VBox()
+        self.__cmd_overview_scroll = scroll = gtk.ScrolledWindow()
+        scroll.set_property('hscrollbar-policy', gtk.POLICY_NEVER)
+        scroll.add_with_viewport(self.__cmd_overview)
+        self.pack_start(scroll, expand=True)        
+
+    def add_pipeline(self, pipeline, odisp):
+        cmd = CommandExecutionHeader(self.__context, pipeline, odisp)
+        cmd.show_all()
+        cmd.connect("setvisible", self.__handle_cmd_show)        
+        self.__cmd_overview.pack_start(cmd, expand=False)
+        
+    @log_except(_logger)
+    def __handle_cmd_show(self, cmd):
+        self.emit("show-command", cmd)        
+    
+class CommandExecutionControl(gtk.VBox):
     MAX_SAVED_OUTPUT = 3
-    def __init__(self, ui=None):
-        super(CommandExecutionGroup, self).__init__()
-        self.__header = gtk.HBox()
-        #self.__title = gtk.Label('Previous commands')
-        #self.__header.pack_start(self.__title, expand=False)
-        #uparrow = ag.get_action('PreviousCommand').create_tool_item()
-        #self.__header.pack_start(uparrow, expand=False)
-        #downarrow = ag.get_action('NextCommand').create_tool_item()
-        #self.__header.pack_start(downarrow, expand=False)        
+    def __init__(self, context):
+        super(CommandExecutionControl, self).__init__()
+        self.__context = context
+        self.__header = gtk.HBox()      
         self.__execstatus = gtk.Label()
         self.__header.pack_start(hotwidgets.Align(self.__execstatus, padding_left=8), expand=False)
         self.pack_start(hotwidgets.Align(self.__header, xalign=0.0), expand=False)
-        self.pack_start(gtk.HSeparator(), expand=False)        
-        self.__cmd_vbox = gtk.VBox()
-        self.pack_start(self.__cmd_vbox, expand=True)
-        self.__current_cmd_box = gtk.EventBox()
-        self.pack_start(self.__current_cmd_box, expand=True)
+        self.pack_start(gtk.HSeparator(), expand=False)
+        self.__cmd_notebook = gtk.Notebook()
+        self.__cmd_notebook.set_show_tabs(False)
+        self.__cmd_notebook.set_show_border(False)
+        self.pack_start(self.__cmd_notebook, expand=True)        
+        self.__cmd_overview = CommandExecutionHistory(self.__context)
+        self.__cmd_overview.connect('show-command', self.__on_show_command)
+        self.pack_start(self.__cmd_overview, expand=True)
         self.__expanded = False
         self.__cached_executing_count = 0
         self.__cached_total_count = 0
@@ -331,7 +314,7 @@ class CommandExecutionGroup(gtk.VBox):
     def unexpand(self):
         if not self.__expanded:
             return
-        _logger.debug("unexpanding")        
+        _logger.debug("unexpanding")
         self.__expanded = False
         self.__redisplay()
         
@@ -340,45 +323,38 @@ class CommandExecutionGroup(gtk.VBox):
             if child.get_state() != 'executing':
                 yield child
         
-    def add_cmd(self, cmd):
-        _logger.debug("adding child %s", cmd)        
-        oldcmd = self.__current_cmd_box.get_child()
-        if oldcmd:
-            self.__current_cmd_box.remove(oldcmd)
-            oldcmd.set_visible(False)
-            self.__cmd_vbox.pack_start(oldcmd, expand=True)
-        self.__current_cmd_box.add(cmd)
-        cmd.connect("complete", self.__handle_cmd_complete)
-        cmd.connect("close", self.__handle_cmd_close)        
-        cmd.connect("visible", self.__handle_display_visiblity)
+    def add_pipeline(self, pipeline):
+        _logger.debug("adding child %s", pipeline)
+        odisp = MultiObjectsDisplay(self.__context, pipeline) 
+        cmd = CommandExecutionDisplay(self.__context, pipeline, odisp)
+        cmd.show_all()
+        pgnum = self.__cmd_notebook.append_page(cmd)
+        self.__cmd_notebook.set_current_page(pgnum)
+        self.__cmd_overview.add_pipeline(pipeline, odisp)
+        #cmd.connect("complete", self.__handle_cmd_complete)
+        #cmd.connect("close", self.__handle_cmd_close)        
         self.__redisplay()
         
     def __iter_prevcmds(self):
-        for child in self.__cmd_vbox.get_children():
-            yield child
+        for child in self.__cmd_notebook.get_children():
+            yield child.cmd_header
     
     @log_except(_logger)
     def __handle_cmd_complete(self, *args):
         self.__redisplay()
       
     @log_except(_logger)        
-    def __handle_cmd_close(self, p):
-        self.__cmd_vbox.remove(p) 
-        self.__redisplay()    
-        
-    def __repack_expand(self, widget, expand, parent=None):
-        container = widget.get_parent()      
-        if not container or (not hasattr(container, 'set_child_packing')):
-            return
-        (_, fill, padding, pack_type) = container.query_child_packing(widget)
-        container.set_child_packing(widget, expand, fill, padding, pack_type) 
-        
-    @log_except(_logger)
-    def __handle_display_visiblity(self, display, vis):
-        current = self.__current_cmd_box.get_child()
-        if current == display:
-            return
-        self.__repack_expand(display, vis)
+    def __on_show_command(self, overview, cmd):
+        _logger.debug("showing command %s", cmd)
+        self.unexpand()
+        target = None
+        for child in self.__cmd_notebook.get_children():
+            if child.cmd_header.get_pipeline() == cmd.get_pipeline():
+                target = child
+                break
+        if target:
+            pgnum = self.__cmd_notebook.page_num(target)
+            self.__cmd_notebook.set_current_page(pgnum)
         
     def __recompute(self):
         total = 0
@@ -396,34 +372,25 @@ class CommandExecutionGroup(gtk.VBox):
             child = complete_cmds[0]
             _logger.debug("removing child %s", child)            
             child.disconnect()
-            self.__cmd_vbox.remove(child)        
+            #self.__cmd_overview.remove(child)        
         self.__recompute()
         if self.__cached_executing_count > 0:
             self.__execstatus.show()
             self.__execstatus.set_text('%d executing' % (self.__cached_executing_count,))
         else:
             self.__execstatus.hide()
-        current = self.__current_cmd_box.get_child() 
         if not self.__expanded:
-            self.__cmd_vbox.hide()
-            for child in self.__iter_prevcmds():
-                child.set_hidden()
+            self.__cmd_overview.hide()
+            self.__cmd_notebook.show()
         else:
-            self.__cmd_vbox.show()
-        if current:
-            current.set_visible(not self.__expanded)
-            self.__repack_expand(self.__current_cmd_box, not self.__expanded, parent=self)            
+            self.__cmd_overview.show()
+            self.__cmd_notebook.hide()         
  
     def get_last_visible(self):
-        last_vis_output = None
-        for output in self.__iter_prevcmds():
-            if output.get_visible():
-                return output
-        if not last_vis_output:
-            current = self.__current_cmd_box.get_child()
-            if current and current.get_visible():
-                return current
+        page = self.__cmd_notebook.get_current_page()
+        if page < 0:
             return None
+        return self.__cmd_notebook.get_nth_page(page)
  
     def open_output(self, do_prev=False, dry_run=False):
         curvis = None
@@ -448,10 +415,6 @@ class CommandExecutionGroup(gtk.VBox):
         if target:
             if dry_run:
                 return True
-            target.set_visible()
-            for output in children:
-                if output != target and output.get_visible():
-                    output.set_hidden()
         elif not do_prev:
             if dry_run:
                 return True

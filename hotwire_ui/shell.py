@@ -19,7 +19,7 @@ try:
     minion_available = True
 except:
     minion_available = False
-from hotwire_ui.command import CommandExecutionDisplay,CommandExecutionGroup
+from hotwire_ui.command import CommandExecutionDisplay,CommandExecutionControl
 from hotwire_ui.completion import PopupDisplay
 from hotwire.logutil import log_except
 
@@ -137,7 +137,7 @@ class Hotwire(gtk.VBox):
         self.__paned.pack_start(self.__welcome_align, expand=True)
         self.pack_start(self.__paned, expand=True)
 
-        self.__outputs = CommandExecutionGroup(ui=ui)
+        self.__outputs = CommandExecutionControl(self.context)
         self.__topbox.pack_start(self.__outputs, expand=True)
 
         self.__downloads = Downloads()
@@ -189,9 +189,7 @@ class Hotwire(gtk.VBox):
         self.__sync_cwd()
         self.__update_status()
 
-        self.execute_pipeline(Pipeline.parse('help', self.context),
-                              add_history=False,
-                              reset_input=False)
+        gobject.idle_add(lambda: self.execute_pipeline(Pipeline.parse('help', self.context), add_history=False, reset_input=False))
 
     def append_tab(self, widget, title):
         self.emit("new-tab-widget", widget, title)
@@ -300,11 +298,8 @@ class Hotwire(gtk.VBox):
             self.__welcome = None
             self.__welcome_align = None
 
-        output_display = CommandExecutionDisplay(self.context, pipeline)
-        output_display.show_all()
-        self.__outputs.add_cmd(output_display)
-        output_display.execute()
-        self.__last_output = output_display
+        self.__outputs.add_pipeline(pipeline)
+        pipeline.execute()
 
     def __execute(self):
         self.__completions.hide()
