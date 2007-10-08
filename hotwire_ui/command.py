@@ -278,45 +278,41 @@ class CommandExecutionHistory(gtk.VBox):
         cmd.connect("setvisible", self.__handle_cmd_show)        
         self.__cmd_overview.pack_start(cmd, expand=False)
         
+    def scroll_to_bottom(self):
+        vadjust = self.__cmd_overview_scroll.get_vadjustment()
+        vadjust.value = max(vadjust.lower, vadjust.upper - vadjust.page_size)        
+        
     @log_except(_logger)
     def __handle_cmd_show(self, cmd):
         self.emit("show-command", cmd)        
     
 class CommandExecutionControl(gtk.VBox):
     MAX_SAVED_OUTPUT = 3
-    def __init__(self, context):
+    def __init__(self, context, ui):
         super(CommandExecutionControl, self).__init__()
         self.__context = context
-        self.__header = gtk.HBox()      
-        self.__execstatus = gtk.Label()
-        self.__header.pack_start(hotwidgets.Align(self.__execstatus, padding_left=8), expand=False)
+        self.__header = gtk.HBox()
+        self.__header.pack_start(gtk.Arrow(gtk.ARROW_UP, gtk.SHADOW_IN), expand=False)   
+        self.__header_label = gtk.Label()
+        self.__header.pack_start(hotwidgets.Align(self.__header_label), expand=False)
         self.pack_start(hotwidgets.Align(self.__header, xalign=0.0), expand=False)
-        self.pack_start(gtk.HSeparator(), expand=False)
         self.__cmd_notebook = gtk.Notebook()
+        self.__cmd_notebook.connect('switch-page', self.__on_page_switch)
         self.__cmd_notebook.set_show_tabs(False)
         self.__cmd_notebook.set_show_border(False)
         self.pack_start(self.__cmd_notebook, expand=True)        
         self.__cmd_overview = CommandExecutionHistory(self.__context)
         self.__cmd_overview.connect('show-command', self.__on_show_command)
         self.pack_start(self.__cmd_overview, expand=True)
-        self.__expanded = False
+        self.__footer = gtk.HBox()
+        self.__footer.pack_start(gtk.Arrow(gtk.ARROW_DOWN, gtk.SHADOW_IN), expand=False)           
+        self.__footer_label = gtk.Label()
+        self.__footer.pack_start(hotwidgets.Align(self.__footer_label), expand=False)        
+        self.pack_start(hotwidgets.Align(self.__footer, xalign=0.0), expand=False)        
+        self.__history_visible = False
         self.__cached_executing_count = 0
         self.__cached_total_count = 0
-        self.__redisplay()
-        
-    def expand(self):
-        if self.__expanded:
-            return
-        _logger.debug("expanding")
-        self.__expanded = True
-        self.__redisplay()
-        
-    def unexpand(self):
-        if not self.__expanded:
-            return
-        _logger.debug("unexpanding")
-        self.__expanded = False
-        self.__redisplay()
+        self.__sync()
         
     def __get_complete_commands(self):
         for child in self.__iter_prevcmds():
@@ -331,9 +327,7 @@ class CommandExecutionControl(gtk.VBox):
         pgnum = self.__cmd_notebook.append_page(cmd)
         self.__cmd_notebook.set_current_page(pgnum)
         self.__cmd_overview.add_pipeline(pipeline, odisp)
-        #cmd.connect("complete", self.__handle_cmd_complete)
-        #cmd.connect("close", self.__handle_cmd_close)        
-        self.__redisplay()
+        self.__sync()
         
     def __iter_prevcmds(self):
         for child in self.__cmd_notebook.get_children():
@@ -346,7 +340,7 @@ class CommandExecutionControl(gtk.VBox):
     @log_except(_logger)        
     def __on_show_command(self, overview, cmd):
         _logger.debug("showing command %s", cmd)
-        self.unexpand()
+        self.__toggle_history_expanded()
         target = None
         for child in self.__cmd_notebook.get_children():
             if child.cmd_header.get_pipeline() == cmd.get_pipeline():
@@ -354,68 +348,62 @@ class CommandExecutionControl(gtk.VBox):
                 break
         if target:
             pgnum = self.__cmd_notebook.page_num(target)
-            self.__cmd_notebook.set_current_page(pgnum)
-        
-    def __recompute(self):
-        total = 0
-        executing = 0
-        for child in self.__iter_prevcmds():
-            total += 1
-            if child.get_state() == 'executing':
-                executing += 1
-        self.__cached_total_count = total
-        self.__cached_executing_count = executing        
-        
-    def __redisplay(self):
-        complete_cmds = list(self.__get_complete_commands())
-        if len(complete_cmds) > self.MAX_SAVED_OUTPUT:
-            child = complete_cmds[0]
-            _logger.debug("removing child %s", child)            
-            child.disconnect()
-            #self.__cmd_overview.remove(child)        
-        self.__recompute()
-        if self.__cached_executing_count > 0:
-            self.__execstatus.show()
-            self.__execstatus.set_text('%d executing' % (self.__cached_executing_count,))
-        else:
-            self.__execstatus.hide()
-        if not self.__expanded:
-            self.__cmd_overview.hide()
-            self.__cmd_notebook.show()
-        else:
-            self.__cmd_overview.show()
-            self.__cmd_notebook.hide()         
+            self.__cmd_notebook.set_current_page(pgnum)       
  
     def get_last_visible(self):
         page = self.__cmd_notebook.get_current_page()
         if page < 0:
             return None
         return self.__cmd_notebook.get_nth_page(page)
+    
+    def __toggle_history_expanded(self):
+        self.__history_visible = not self.__history_visible
+        self.__sync()
+        
+    def __sync(self):
+        if self.__history_visible:
+            self.__cmd_overview.show()
+            self.__cmd_notebook.hide()
+            self.__header.hide()
+            self.__footer.hide()            
+        else:
+            self.__cmd_overview.hide()
+            self.__cmd_notebook.show() 
+            self.__header.show()
+            self.__footer.show()                          
+ 
+    def __on_page_switch(self, notebook, page, nth):
+        n_pages = self.__cmd_notebook.get_n_pages()
+        diff = (n_pages-1) - nth
+        def set_label(container, label, n):
+            if n == 0:
+                container.hide_all()
+                return
+            container.show_all()
+            label.set_text(' %d commands' % (n,))
+        set_label(self.__header, self.__header_label, nth)
+        set_label(self.__footer, self.__footer_label, diff)      
  
     def open_output(self, do_prev=False, dry_run=False):
-        curvis = None
-        prev = None
-        prev_visible = None
-        target = None
-        children = list(self.__iter_prevcmds())
-        if not self.__expanded and do_prev:
-            if dry_run:
-                return True
-            self.expand()
-            target = children and children[-1]
-        elif not do_prev:
-            children = reversed(children)
-        if not target:
-            for output in children:
-                if not output.get_visible():
-                    prev = output
-                    continue
-                target = prev
-                break
-        if target:
-            if dry_run:
-                return True
-        elif not do_prev:
-            if dry_run:
-                return True
-            self.unexpand()
+        nth = self.__cmd_notebook.get_current_page()
+        n_pages = self.__cmd_notebook.get_n_pages()
+        _logger.debug("histmode: %s do_prev: %s nth: %s n_pages: %s", self.__history_visible, do_prev, nth, n_pages)   
+        if nth == (n_pages-1):             
+            if self.__history_visible and do_prev:
+                if dry_run:
+                    return True
+                self.__toggle_history_expanded()
+            elif (self.__history_visible and not do_prev) or (not self.__history_visible and do_prev):
+                if dry_run:
+                    return True
+                self.__toggle_history_expanded()
+                return                                
+        if do_prev and nth > 0:
+            target_nth = nth - 1
+        elif (not do_prev) and nth < n_pages-1:
+            target_nth = nth + 1        
+        else:
+            return False
+        if dry_run:
+            return True
+        self.__cmd_notebook.set_current_page(target_nth)

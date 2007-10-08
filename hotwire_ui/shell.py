@@ -137,7 +137,7 @@ class Hotwire(gtk.VBox):
         self.__paned.pack_start(self.__welcome_align, expand=True)
         self.pack_start(self.__paned, expand=True)
 
-        self.__outputs = CommandExecutionControl(self.context)
+        self.__outputs = CommandExecutionControl(self.context, self.__ui)
         self.__topbox.pack_start(self.__outputs, expand=True)
 
         self.__downloads = Downloads()
