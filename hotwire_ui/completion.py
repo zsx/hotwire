@@ -184,7 +184,7 @@ class TextMatchDisplay(gtk.VBox):
         col = self.__view.get_column(colidx-1)
         col.set_expand(True)
         self.__view.insert_column_with_data_func(-1, '',
-                                                 hotwidgets.CellRendererText(alignment=pango.ALIGN_RIGHT),
+                                                 hotwidgets.CellRendererText(),
                                                  self.__render_matchtype)
         self.pack_start(self.__title, expand=False)
         self.__prevhits = gtk.Label()
