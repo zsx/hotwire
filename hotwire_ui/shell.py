@@ -12,6 +12,7 @@ import hotwire_ui.widgets as hotwidgets
 import hotwire_ui.pyshell
 from hotwire.singletonmixin import Singleton
 from hotwire.sysdep.term import Terminal
+from hotwire.gutil import *
 from hotwire.util import markup_for_match, quote_arg
 from hotwire.fs import path_unexpanduser
 try:
@@ -222,6 +223,7 @@ class Hotwire(gtk.VBox):
         self.__recentdirs.set_active(0)
         self.__doing_recentdir_sync = False
 
+    @defer_idle_func(timeout=0) # commands can invoke the cwd signal from a thread context
     def __on_cwd(self, ctx, cwd):
         self.__cwd = cwd
         self.__sync_cwd()
@@ -506,8 +508,6 @@ class Hotwire(gtk.VBox):
         elif e.keyval == gtk.gdk.keyval_from_name('Escape'):
             self.__completions.hide()
             return True
-        elif self.__handle_output_scroll(e):
-            return True
         elif e.keyval == gtk.gdk.keyval_from_name('s') and e.state & gtk.gdk.CONTROL_MASK:
             last_vis_output = self.__get_last_vis_output()
             if not last_vis_output:
@@ -529,25 +529,6 @@ class Hotwire(gtk.VBox):
 
     def __open_next_output(self):
         self.__outputs.open_output()
-
-    def __handle_output_scroll(self, e):
-        last_vis_output = self.__outputs.get_last_visible()
-        if not last_vis_output:
-            return False
-        if e.keyval == gtk.gdk.keyval_from_name('Page_Up'):
-            last_vis_output.scroll_up()
-            return True
-        elif e.keyval == gtk.gdk.keyval_from_name('Page_Down'):
-            last_vis_output.scroll_down()
-            return True
-        elif e.keyval == gtk.gdk.keyval_from_name('Home'):
-            last_vis_output.scroll_up(True)
-            return True
-        elif e.keyval == gtk.gdk.keyval_from_name('End'):
-            last_vis_output.scroll_down(True)
-            return True
-        else:
-            return False
 
     def __unqueue_parse(self):
         if self.__idle_parse_id > 0:
@@ -667,6 +648,9 @@ class Hotwire(gtk.VBox):
     def controls_copypaste(self):
         return True
     
+    def do_scroll(self, prev, full):
+        self.__outputs.do_scroll(prev, full)
+    
     def do_previous(self):
         self.__outputs.open_output(True)
         
@@ -702,7 +686,12 @@ class HotWindow(gtk.Window):
         self.__hotwire_ui_string = """
 <ui>
   <menubar name='Menubar'>
-    <menu action='ViewMenu'>      
+    <menu action='ViewMenu'>
+      <menuitem action='ScrollHome'/>
+      <menuitem action='ScrollEnd'/>
+      <menuitem action='ScrollPgUp'/>
+      <menuitem action='ScrollPgDown'/>
+      <separator/>
       <menuitem action='PreviousCommand'/>
       <menuitem action='NextCommand'/>
     </menu>
@@ -765,6 +754,10 @@ class HotWindow(gtk.Window):
         ag.add_actions(actions)
         ag.add_actions(self.__nonterm_actions)      
         self.__hotwire_actions = [
+            ('ScrollHome', None, 'Output _Top', 'Home', 'Scroll to output top', self.__view_home_cb),
+            ('ScrollEnd', None, 'Output _Bottom', 'End', 'Scroll to output bottom', self.__view_end_cb), 
+            ('ScrollPgUp', None, 'Output Page _Up', 'Page_Up', 'Scroll output up', self.__view_up_cb),
+            ('ScrollPgDown', None, 'Output Page _Down', 'Page_Down', 'Scroll output down', self.__view_down_cb),             
             ('PreviousCommand', gtk.STOCK_GO_UP, '_Previous', '<control>Up', 'View previous command', self.__view_previous_cb),
             ('NextCommand', gtk.STOCK_GO_DOWN, '_Next', '<control>Down', 'View next command', self.__view_next_cb),
         ]
@@ -800,6 +793,22 @@ class HotWindow(gtk.Window):
     def __view_next_cb(self, a):
         widget = self.__notebook.get_nth_page(self.__notebook.get_current_page())        
         widget.do_next()
+        
+    def __view_home_cb(self, a):
+        widget = self.__notebook.get_nth_page(self.__notebook.get_current_page())        
+        widget.do_scroll(True, True)
+        
+    def __view_end_cb(self, a):
+        widget = self.__notebook.get_nth_page(self.__notebook.get_current_page())        
+        widget.do_scroll(False, True)    
+        
+    def __view_up_cb(self, a):
+        widget = self.__notebook.get_nth_page(self.__notebook.get_current_page())        
+        widget.do_scroll(True, False)
+        
+    def __view_down_cb(self, a):
+        widget = self.__notebook.get_nth_page(self.__notebook.get_current_page())        
+        widget.do_scroll(False, False)   
     
     def __new_window_cb(self, action):
         self.new_win_hotwire()

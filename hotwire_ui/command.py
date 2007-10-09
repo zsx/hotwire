@@ -280,6 +280,9 @@ class CommandExecutionHistory(gtk.VBox):
         
     def get_overview_list(self):
         return self.__cmd_overview.get_children()
+    
+    def remove_overview(self, oview):
+        self.__cmd_overview.remove(oview)
         
     def scroll_to_bottom(self):
         vadjust = self.__cmd_overview_scroll.get_vadjustment()
@@ -353,7 +356,7 @@ class CommandExecutionControl(gtk.VBox):
         for child in self.__cmd_overview.get_overview_list():
             if not child.get_pipeline() == pipeline:
                 continue
-            self.__cmd_overview.remove(child)
+            self.__cmd_overview.remove_overview(child)
     
     @log_except(_logger)
     def __handle_cmd_complete(self, *args):
@@ -372,12 +375,19 @@ class CommandExecutionControl(gtk.VBox):
             pgnum = self.__cmd_notebook.page_num(target)
             self.__cmd_notebook.set_current_page(pgnum)
  
-    def get_last_visible(self):
+    def get_current_cmd(self):
         page = self.__cmd_notebook.get_current_page()
         if page < 0:
             return None
-        return self.__cmd_notebook.get_nth_page(page)
+        return self.__cmd_notebook.get_nth_page(page).cmd_header
     
+    def do_scroll(self, prev, full):
+        cmd = self.get_current_cmd()
+        if prev:
+            cmd.scroll_up(full)
+        else:
+            cmd.scroll_down(full)
+        
     def __toggle_history_expanded(self):
         self.__history_visible = not self.__history_visible
         self.__sync()
