@@ -153,11 +153,11 @@ class Command(gobject.GObject):
     def get_output_opt_formats(self):
         return self.builtin.get_output_opt_formats()
 
-    def execute(self, **kwargs): 
-        MiniThreadPool.getInstance().run(lambda: self.__run(**kwargs))
-
-    def execute_sync(self, **kwargs):
-        self.__run(**kwargs)
+    def execute(self, force_sync, **kwargs):
+        if force_sync or not self.builtin.get_threaded():
+            self.__run(**kwargs)
+        else:            
+            MiniThreadPool.getInstance().run(lambda: self.__run(**kwargs))
 
     def set_output_queue(self, queue, map_fn):
         self.output = queue
@@ -328,7 +328,7 @@ class Pipeline(gobject.GObject):
         for cmd in self.__components:
             cmd.disconnect()
     
-    def __execute_internal(self, func, opt_formats=[]):
+    def __execute_internal(self, force_sync, opt_formats=[]):
         _logger.debug("Executing %s", self)
         for cmd in self.__components:
             cmd.connect("complete", self.__on_cmd_complete)            
@@ -337,11 +337,11 @@ class Pipeline(gobject.GObject):
         prev_opt_formats = []
         for cmd in self.__components[:-1]:
             cmd.output.negotiate(prev_opt_formats, cmd.get_input_opt_formats())
-            func(cmd)
+            cmd.execute(force_sync)
             prev_opt_formats = cmd.get_output_opt_formats()
         last = self.__components[-1] 
         last.output.negotiate(prev_opt_formats, opt_formats)
-        func(last)
+        last.execute(force_sync)
         self.__set_state('executing')
         
     def __set_state(self, state):
@@ -353,10 +353,10 @@ class Pipeline(gobject.GObject):
         self.emit('state-changed')
 
     def execute(self, **kwargs):
-        self.__execute_internal(Command.execute, **kwargs)
+        self.__execute_internal(False, **kwargs)
 
     def execute_sync(self, **kwargs):
-        self.__execute_internal(Command.execute_sync, **kwargs)
+        self.__execute_internal(True, **kwargs)
 
     def push_undo(self, fn):
         self.__undo.append(fn)

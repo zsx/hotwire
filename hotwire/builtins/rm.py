@@ -4,17 +4,18 @@ import hotwire
 from hotwire.fs import FilePath, unix_basename
 from hotwire.sysdep.fs import Filesystem
 
-from hotwire.builtin import BuiltinRegistry, parseargs, undoable, hasstatus
+from hotwire.builtin import BuiltinRegistry
 from hotwire.builtins.fileop import FileOpBuiltin
 
 class RmBuiltin(FileOpBuiltin):
     """Move a file to the trash."""
     def __init__(self):
-        super(RmBuiltin, self).__init__('rm', aliases=['delete'])
+        super(RmBuiltin, self).__init__('rm', aliases=['delete'],
+                                        parseargs='shglob',
+                                        undoable=True,
+                                        hasstatus=True,
+                                        threaded=True)
 
-    @parseargs('shglob')
-    @undoable()
-    @hasstatus()
     def execute(self, context, args):
         sources = map(lambda arg: FilePath(arg, context.hotwire.get_cwd()), args) 
         sources_total = len(sources)

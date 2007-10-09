@@ -1,14 +1,13 @@
 import hotwire
-from hotwire.builtin import Builtin, BuiltinRegistry, idempotent
+from hotwire.builtin import Builtin, BuiltinRegistry
 from hotwire.fs import FilePath
 from hotwire.sysdep.fs import Filesystem
 
 class OpenBuiltin(Builtin):
     """Open a file using default platform action."""
     def __init__(self):
-        super(OpenBuiltin, self).__init__('open')
+        super(OpenBuiltin, self).__init__('open', idempotent=True)
 
-    @idempotent()
     def execute(self, context, *args):
         fs = Filesystem.getInstance()
         for arg in args:

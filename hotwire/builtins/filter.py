@@ -1,7 +1,7 @@
 import re
 
 from hotwire.text import MarkupText
-from hotwire.builtin import Builtin, BuiltinRegistry, InputStreamSchema, OutputStreamSchema, idempotent, options
+from hotwire.builtin import Builtin, BuiltinRegistry, InputStreamSchema, OutputStreamSchema
 
 class StringMatch(MarkupText):
     def __new__(cls, value, match):
@@ -15,10 +15,9 @@ class FilterBuiltin(Builtin):
     def __init__(self):
         super(FilterBuiltin, self).__init__('filter',
                                             input=InputStreamSchema('any'),
-                                            output=OutputStreamSchema('identity'))
+                                            output=OutputStreamSchema('identity'),
+                                            options=['-i', '--ignore-case'])
 
-    @idempotent()
-    @options(['-i', '--ignore-case'])
     def execute(self, context, regexp, prop=None, options=[]):
         if prop and prop[-2:] == '()':
             target_prop = prop[:-2]

@@ -1,7 +1,7 @@
 import re
 
 from hotwire.text import MarkupText
-from hotwire.builtin import Builtin, BuiltinRegistry, InputStreamSchema, OutputStreamSchema, idempotent
+from hotwire.builtin import Builtin, BuiltinRegistry, InputStreamSchema, OutputStreamSchema
 
 
 class PropBuiltin(Builtin):
@@ -9,9 +9,9 @@ class PropBuiltin(Builtin):
     def __init__(self):
         super(PropBuiltin, self).__init__('prop',
                                           input=InputStreamSchema('any'),
-                                          output=OutputStreamSchema('any'))
+                                          output=OutputStreamSchema('any'),
+                                          idempotent=True)
 
-    @idempotent()
     def execute(self, context, prop):
         if prop[-2:] == '()':
             target_prop = prop[:-2]

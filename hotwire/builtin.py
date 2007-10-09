@@ -20,70 +20,11 @@ class OutputStreamSchema(ObjectStreamSchema):
         self.merge_default = merge_default
         self.typefunc = typefunc
 
-def undoable():
-    def annotate(f):
-        setattr(f, 'hotwire_undoable', True)
-        return f
-    return annotate
-
-def idempotent():
-    def annotate(f):
-        setattr(f, 'hotwire_idempotent', True)
-        return f
-    return annotate
-
 class HotwireBuiltinArg(object):
     def __init__(self, t, optional, completer_class=None):
         self.argtype = t
         self.optional = optional
         self.completer_class = completer_class
-
-def parseargs(ct):
-    if not ct in ('ws-tokenize', 'str', 'shglob', 'str-shquoted'):
-        raise ValueError('Bad parseargs: %s' % (ct,))
-    def annotate(f):
-        setattr(f, 'hotwire_parseargs', ct)
-        return f
-    return annotate
-
-def argtypes(*args):
-    def annotate(f):
-        arg_objs = []
-        func_arg_count = len(f.func_code.co_varnames)
-        func_opt_count = f.func_defaults and len(f.func_defaults) or 0
-        func_req_count = func_arg_count - func_opt_count
-        if func_arg_count != len(args):
-            raise TypeError("argtypes len %d doesn't match function argument count %d",
-                            len(args), func_arg_count)
-        for i,arg in enumerate(args):
-            argval = arg
-            completer = None
-            if isinstance(arg, tuple):
-                argval = arg[0]
-                completer = arg[1]
-            optional = i > func_arg_count
-            arg_objs.append(HotwireBuiltinArg(arg, optional, completer))
-        setattr(f, 'hotwire_arg_types', tuple(arg_objs))
-        return f
-    return annnotate
-
-def options(*args):
-    def annotate(f):
-        setattr(f, 'hotwire_options', tuple(args))
-        return f
-    return annotate
-
-def locality(locality):
-    def annotate(f):
-        setattr(f, 'hotwire_locality', locality)
-        return f
-    return annotate
-
-def hasstatus():
-    def annotate(f):
-        setattr(f, 'hotwire_hasstatus', True)
-        return f
-    return annotate
 
 def _attr_or_none(o, a):
     return hasattr(o, a) and getattr(o, a) or None
@@ -93,15 +34,33 @@ class Builtin(object):
                  input=None,
                  output=None,
                  outputs=[],
+                 options=[],
                  aliases=[], 
                  remote_only=False, 
-                 nostatus=False):
+                 nostatus=False,
+                 parseargs='ws-parsed',
+                 idempotent=False,
+                 undoable=False,
+                 hasstatus=False,
+                 threaded=False,
+                 locality='local',
+                 api_version=0):
         self.input=input
         self.outputs = output and [output] or outputs
+        self.options = options
         self.name = name
         self.aliases = aliases 
         self.remote_only = remote_only 
         self.nostatus = nostatus
+        if not parseargs in ('ws-parsed', 'str', 'shglob', 'str-shquoted'):
+            raise ValueError('Bad parseargs: %s' % (parseargs,))        
+        self.parseargs = parseargs
+        self.idempotent = idempotent
+        self.undoable = undoable
+        self.hasstatus = hasstatus
+        self.threaded = threaded
+        self.locality = locality
+        self.api_version = api_version
 
     def get_completer(self, *args, **kwargs):
         return None
@@ -159,22 +118,28 @@ class Builtin(object):
         return None
 
     def get_locality(self):
-        return self.__get_exec_attr_or_none('hotwire_locality')
+        return self.locality
 
     def get_parseargs(self):
-        return self.__get_exec_attr_or_none('hotwire_parseargs') or 'ws-parsed'
+        return self.parseargs or 'ws-parsed'
 
     def get_options(self):
-        return self.__get_exec_attr_or_none('hotwire_options') or None 
+        return self.options
 
     def get_idempotent(self):
-        return self.__get_exec_attr_or_none('hotwire_idempotent') or False
+        return self.idempotent
 
     def get_undoable(self):
-        return self.__get_exec_attr_or_none('hotwire_undoable') or False
+        return self.undoable
+    
+    def get_threaded(self):
+        return self.threaded
 
     def get_hasstatus(self):
-        return self.__get_exec_attr_or_none('hotwire_hasstatus') or False
+        return self.hasstatus
+    
+    def get_api_version(self):
+        return self.api_version
 
 class BuiltinRegistry(Singleton):
     def __init__(self):

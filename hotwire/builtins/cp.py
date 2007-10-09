@@ -4,16 +4,17 @@ import hotwire
 import hotwire.fs
 from hotwire.fs import FilePath
 
-from hotwire.builtin import Builtin, BuiltinRegistry, parseargs, hasstatus  
+from hotwire.builtin import Builtin, BuiltinRegistry  
 from hotwire.builtins.fileop import FileOpBuiltin
 
 class CpBuiltin(FileOpBuiltin):
     """Copy sources to destination."""
     def __init__(self):
-        super(CpBuiltin, self).__init__('cp', aliases=['copy'])
+        super(CpBuiltin, self).__init__('cp', aliases=['copy'],
+                                        parseargs='shglob',
+                                        hasstatus=True,
+                                        threaded=True)
 
-    @parseargs('shglob')
-    @hasstatus()
     def execute(self, context, args):
         if not args:
             raise ValueError("Need source and destination")

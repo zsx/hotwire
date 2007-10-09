@@ -1,15 +1,16 @@
 from hotwire.fs import FilePath
 
-from hotwire.builtin import Builtin, BuiltinRegistry, OutputStreamSchema, parseargs, idempotent
+from hotwire.builtin import Builtin, BuiltinRegistry, OutputStreamSchema
 
 class CatBuiltin(Builtin):
     """Concatenate files."""
     def __init__(self):
         super(CatBuiltin, self).__init__('cat',
-                                         output=OutputStreamSchema(str))
+                                         output=OutputStreamSchema(str),
+                                         parseargs='shglob',
+                                         idempotent=True,
+                                         threaded=True)
 
-    @parseargs('shglob')
-    @idempotent()
     def execute(self, context, args):
         for f in args:
             for line in file(FilePath(f, context.hotwire.get_cwd()), 'r'):

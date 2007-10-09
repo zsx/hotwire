@@ -21,7 +21,8 @@ class FSearchBuiltin(FileOpBuiltin):
     """Search directory tree for files matching a regular expression."""
     def __init__(self):
         super(FSearchBuiltin, self).__init__('fsearch',
-                                             output=OutputStreamSchema(FileStringMatch))
+                                             output=OutputStreamSchema(FileStringMatch),
+                                             threaded=True)
 
     def execute(self, context, regexp, path=None):
         fs = Filesystem.getInstance()

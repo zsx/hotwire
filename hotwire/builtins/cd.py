@@ -1,6 +1,6 @@
 import os, sys, stat
 
-from hotwire.builtin import Builtin, BuiltinRegistry, OutputStreamSchema, parseargs, idempotent
+from hotwire.builtin import Builtin, BuiltinRegistry, OutputStreamSchema
 from hotwire.fs import FilePath, DirectoryGenerator
 from hotwire.completion import CdCompleter 
 
@@ -8,13 +8,14 @@ class CdBuiltin(Builtin):
     """Change working directory and list its contents."""
     def __init__(self):
         super(CdBuiltin, self).__init__('cd',
-                                        output=OutputStreamSchema(FilePath))
+                                        output=OutputStreamSchema(FilePath),
+                                        parseargs='str',
+                                        idempotent=True,
+                                        threaded=True)
 
     def get_completer(self, argpos, context):
         return CdCompleter.getInstance()
 
-    @parseargs('str')
-    @idempotent()
     def execute(self, context, dir=None):
         if not dir:
             target_dir = os.path.expanduser("~")

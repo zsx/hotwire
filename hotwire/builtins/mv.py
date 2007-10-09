@@ -3,16 +3,17 @@ import os, sys, shutil, stat
 import hotwire
 from hotwire.fs import FilePath, unix_basename
 
-from hotwire.builtin import BuiltinRegistry, parseargs, hasstatus
+from hotwire.builtin import BuiltinRegistry
 from hotwire.builtins.fileop import FileOpBuiltin
 
 class MvBuiltin(FileOpBuiltin):
     """Rename initial arguments to destination."""
     def __init__(self):
-        super(MvBuiltin, self).__init__('mv', aliases=['move'])
+        super(MvBuiltin, self).__init__('mv', aliases=['move'],
+                                        parseargs='shglob',
+                                        hasstatus=True,
+                                        threaded=True)
 
-    @parseargs('shglob')
-    @hasstatus()
     def execute(self, context, args):
         if not args:
             raise ValueError("Need source and destination")
