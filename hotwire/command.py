@@ -319,6 +319,7 @@ class Pipeline(gobject.GObject):
         self.__cmd_statuses = {}
         self.__cmd_complete_count = 0
         self.__state = 'waiting'
+        self.__completion_time = None
         
     def get_state(self):
         return self.__state     
@@ -346,8 +347,10 @@ class Pipeline(gobject.GObject):
     def __set_state(self, state):
         if self.__state in ('complete', 'cancelled'):
             return
+        if state in ('complete', 'cancelled'):
+            self.__completion_time = time.time()
         self.__state = state
-        self.emit('state-changed')        
+        self.emit('state-changed')
 
     def execute(self, **kwargs):
         self.__execute_internal(Command.execute, **kwargs)
@@ -364,6 +367,9 @@ class Pipeline(gobject.GObject):
     def undo(self):
         for fn in self.__undo:
             fn()
+
+    def get_completion_time(self):
+        return self.__completion_time
 
     def get_idempotent(self):
         return self.__idempotent

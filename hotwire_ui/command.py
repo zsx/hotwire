@@ -1,4 +1,4 @@
-import logging
+import os, sys, logging, time
 
 import gtk, gobject
 
@@ -278,6 +278,9 @@ class CommandExecutionHistory(gtk.VBox):
         cmd.connect("setvisible", self.__handle_cmd_show)        
         self.__cmd_overview.pack_start(cmd, expand=False)
         
+    def get_overview_list(self):
+        return self.__cmd_overview.get_children()
+        
     def scroll_to_bottom(self):
         vadjust = self.__cmd_overview_scroll.get_vadjustment()
         vadjust.value = max(vadjust.lower, vadjust.upper - vadjust.page_size)        
@@ -287,7 +290,7 @@ class CommandExecutionHistory(gtk.VBox):
         self.emit("show-command", cmd)        
     
 class CommandExecutionControl(gtk.VBox):
-    MAX_SAVED_OUTPUT = 3
+    COMPLETE_CMD_EXPIRATION_SECS = 5 * 60
     def __init__(self, context, ui):
         super(CommandExecutionControl, self).__init__()
         self.__context = context
@@ -315,9 +318,13 @@ class CommandExecutionControl(gtk.VBox):
         self.__sync()
         
     def __get_complete_commands(self):
-        for child in self.__iter_prevcmds():
+        for child in self.__iter_cmds():
             if child.get_state() != 'executing':
                 yield child
+            
+    def __iter_cmds(self):
+        for child in self.__cmd_notebook.get_children():
+            yield child.cmd_header            
         
     def add_pipeline(self, pipeline):
         _logger.debug("adding child %s", pipeline)
@@ -328,10 +335,25 @@ class CommandExecutionControl(gtk.VBox):
         self.__cmd_notebook.set_current_page(pgnum)
         self.__cmd_overview.add_pipeline(pipeline, odisp)
         self.__sync()
+        curtime = time.time()
+        for cmd in self.__iter_cmds():
+            pipeline = cmd.get_pipeline()
+            compl_time = pipeline.get_completion_time() 
+            if not compl_time:
+                continue
+            if curtime - compl_time > self.COMPLETE_CMD_EXPIRATION_SECS:
+                self.remove_pipeline(pipeline)
         
-    def __iter_prevcmds(self):
+    def remove_pipeline(self, pipeline):
+        pipeline.disconnect()        
         for child in self.__cmd_notebook.get_children():
-            yield child.cmd_header
+            if not child.cmd_header.get_pipeline() == pipeline:
+                continue
+            self.__cmd_notebook.remove(child)
+        for child in self.__cmd_overview.get_overview_list():
+            if not child.get_pipeline() == pipeline:
+                continue
+            self.__cmd_overview.remove(child)
     
     @log_except(_logger)
     def __handle_cmd_complete(self, *args):
@@ -348,7 +370,7 @@ class CommandExecutionControl(gtk.VBox):
                 break
         if target:
             pgnum = self.__cmd_notebook.page_num(target)
-            self.__cmd_notebook.set_current_page(pgnum)       
+            self.__cmd_notebook.set_current_page(pgnum)
  
     def get_last_visible(self):
         page = self.__cmd_notebook.get_current_page()
@@ -359,13 +381,15 @@ class CommandExecutionControl(gtk.VBox):
     def __toggle_history_expanded(self):
         self.__history_visible = not self.__history_visible
         self.__sync()
+        if self.__history_visible:
+            self.__cmd_overview.scroll_to_bottom()            
         
     def __sync(self):
         if self.__history_visible:
             self.__cmd_overview.show()
             self.__cmd_notebook.hide()
             self.__header.hide()
-            self.__footer.hide()            
+            self.__footer.hide()
         else:
             self.__cmd_overview.hide()
             self.__cmd_notebook.show() 
@@ -387,7 +411,7 @@ class CommandExecutionControl(gtk.VBox):
     def open_output(self, do_prev=False, dry_run=False):
         nth = self.__cmd_notebook.get_current_page()
         n_pages = self.__cmd_notebook.get_n_pages()
-        _logger.debug("histmode: %s do_prev: %s nth: %s n_pages: %s", self.__history_visible, do_prev, nth, n_pages)   
+        _logger.debug("histmode: %s do_prev: %s nth: %s n_pages: %s", self.__history_visible, do_prev, nth, n_pages)
         if nth == (n_pages-1):             
             if self.__history_visible and do_prev:
                 if dry_run:
@@ -397,7 +421,7 @@ class CommandExecutionControl(gtk.VBox):
                 if dry_run:
                     return True
                 self.__toggle_history_expanded()
-                return                                
+                return
         if do_prev and nth > 0:
             target_nth = nth - 1
         elif (not do_prev) and nth < n_pages-1:
