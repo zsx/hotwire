@@ -171,6 +171,9 @@ class File(gobject.GObject):
         
         self.__permstring = buf.getvalue()
         return self.__permstring
+    
+    def get_mime(self):
+        return None
 
     def get_stat(self):
         self._get_stat_async()

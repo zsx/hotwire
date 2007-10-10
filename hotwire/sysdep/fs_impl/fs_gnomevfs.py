@@ -40,6 +40,9 @@ class GnomeVfsFile(UnixFile):
     
     def get_gid(self):
         return self.vfsstat and self.vfsstat.gid
+    
+    def get_mime(self):
+        return self.vfsstat and self.vfsstat.mime_type
             
     def get_file_type_char(self):
         vfsstat = self.vfsstat

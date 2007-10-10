@@ -61,7 +61,12 @@ class FilePathRenderer(TreeObjectsRenderer):
                                                            hotwidgets.CellRendererText(),
                                                            self._render_permissions)
         col = self._table.get_column(colidx-1)
-        col.set_resizable(True)         
+        col.set_resizable(True)  
+        colidx = self._table.insert_column_with_data_func(-1, 'File Type',
+                                                           hotwidgets.CellRendererText(),
+                                                           self._render_mime)
+        col = self._table.get_column(colidx-1)
+        col.set_resizable(True)                
 
     def _file_for_iter(self, model, iter):
         return model.get_value(iter, 1)
@@ -115,7 +120,12 @@ class FilePathRenderer(TreeObjectsRenderer):
     def _render_permissions(self, col, cell, model, iter):
         obj = self._file_for_iter(model, iter)
         perms = obj.get_permissions_string()
-        cell.set_property('text', perms or '')            
+        cell.set_property('text', perms or '')       
+        
+    def _render_mime(self, col, cell, model, iter):
+        obj = self._file_for_iter(model, iter)
+        mime = obj.get_mime()
+        cell.set_property('text', mime or '')                 
 
     def _get_row(self, obj):
         file_obj = self.__fs.get_file(obj)
