@@ -320,7 +320,7 @@ class Hotwire(gtk.VBox):
                 self.push_msg("Failed to parse pipeline: %s" % (e.args[0],))
                 return
         _logger.debug("executing '%s'", self.__pipeline_tree)
-        if len(self.__pipeline_tree) == 0:
+        if not self.__pipeline_tree or len(self.__pipeline_tree) == 0:
             _logger.debug("Nothing to execute")
             return
 
