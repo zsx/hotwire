@@ -159,7 +159,9 @@ class UnicodeRenderer(ObjectsRenderer):
         if monospace:
             self.__text.modify_font(pango.FontDescription("monospace"))
         self.__text.connect('event-after', self.__on_event_after)
+        self._buf.connect('mark-set', self.__on_mark_set)
         self.__wrap_lines = False
+        self.__have_selection = False
         self.__sync_wrap()
         self.__text.set_editable(False)
         self.__text.set_cursor_visible(False)
@@ -209,6 +211,13 @@ class UnicodeRenderer(ObjectsRenderer):
     def __on_visibility_notify(self, text, vis):
         (x, y) = self.__text.get_pointer()
         self.__update_cursor_for_coords(x, y)
+        
+    def __on_mark_set(self, *args):
+        have_sel = self._buf.get_has_selection()
+        if have_sel == self.__have_selection:
+            return
+        self.context.get_ui().get_action('/Menubar/EditMenu/Copy').set_sensitive(have_sel)
+        self.__have_selection = have_sel
 
     def __update_cursor_for_coords(self, x, y):
         iter = self.__text.get_iter_at_location(x, y)
@@ -278,6 +287,9 @@ class UnicodeRenderer(ObjectsRenderer):
 
     def get_autoscroll(self):
         return True
+
+    def can_copy(self):
+        return self._buf.get_selection_bounds()
 
     def do_copy(self):
         bounds = self._buf.get_selection_bounds()

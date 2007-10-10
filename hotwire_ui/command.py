@@ -110,19 +110,6 @@ class CommandExecutionHeader(gtk.VBox):
         if self.__objects:
             self.__objects.scroll_down(full)
 
-    def start_search(self, old_focus):
-        if self.__objects:
-            self.__objects.start_search(old_focus)
-
-    def do_copy_or_cancel(self):
-        if self.__objects:
-            if not self.__objects.do_copy():
-                self.__do_cancel()
-                self.__update_titlebox()
-            else:
-                return True
-        return False
-
     def disconnect(self):
         self.__pipeline.disconnect()
 
@@ -142,12 +129,6 @@ class CommandExecutionHeader(gtk.VBox):
         for obj in self.__objects.get_objects():
             queue.put(obj)
         queue.put(None)
-
-    def __do_cancel(self):
-        if self.__pipeline.get_state() != 'executing':
-            return
-        self.__objects.cancel()
-        self.__pipeline.cancel()
 
     def __on_action(self, w):
         if self.get_state() == 'executing':
@@ -258,6 +239,10 @@ class CommandExecutionDisplay(gtk.VBox):
         self.cmd_header = CommandExecutionHeader(context, pipeline, odisp)
         self.pack_start(self.cmd_header, expand=False)
         self.pack_start(odisp, expand=True)
+        
+    def cancel(self):
+        self.odisp.cancel()
+        self.cmd_header.get_pipeline().cancel()
     
 class CommandExecutionHistory(gtk.VBox):
     __gsignals__ = {
@@ -293,9 +278,44 @@ class CommandExecutionHistory(gtk.VBox):
         self.emit("show-command", cmd)        
     
 class CommandExecutionControl(gtk.VBox):
+    # This may be a sucky policy, but it's less sucky than what came before.
     COMPLETE_CMD_EXPIRATION_SECS = 5 * 60
-    def __init__(self, context, ui):
+    def __init__(self, context):
         super(CommandExecutionControl, self).__init__()
+        self.__ui_string = """
+<ui>
+  <accelerator action='ScrollHome'/>
+  <accelerator action='ScrollEnd'/>
+  <accelerator action='ScrollPgUp'/>
+  <accelerator action='ScrollPgDown'/>
+  <menubar name='Menubar'>
+    <menu action='EditMenu'>
+      <menuitem action='Copy'/>
+      <separator/>
+      <menuitem action='Search'/>      
+    </menu>
+    <menu action='ViewMenu'>
+      <menuitem action='PreviousCommand'/>
+      <menuitem action='NextCommand'/>
+    </menu>
+    <menu action='ControlMenu'>
+      <menuitem action='Cancel'/>      
+    </menu>    
+  </menubar>
+</ui>"""         
+        self.__actions = [
+            ('Copy', None, '_Copy', '<control>c', 'Copy output', self.__copy_cb),                          
+            ('Cancel', None, '_Cancel', '<control><shift>c', 'Cancel current command', self.__cancel_cb),
+            ('Search', None, '_Search', '<control>s', 'Search output', self.__search_cb),
+            ('ScrollHome', None, 'Output _Top', 'Home', 'Scroll to output top', self.__view_home_cb),
+            ('ScrollEnd', None, 'Output _Bottom', 'End', 'Scroll to output bottom', self.__view_end_cb), 
+            ('ScrollPgUp', None, 'Output Page _Up', 'Page_Up', 'Scroll output up', self.__view_up_cb),
+            ('ScrollPgDown', None, 'Output Page _Down', 'Page_Down', 'Scroll output down', self.__view_down_cb),             
+            ('PreviousCommand', gtk.STOCK_GO_UP, '_Previous', '<control>Up', 'View previous command', self.__view_previous_cb),
+            ('NextCommand', gtk.STOCK_GO_DOWN, '_Next', '<control>Down', 'View next command', self.__view_next_cb),
+        ]        
+        self.__action_group = gtk.ActionGroup('HotwireActions')
+        self.__action_group.add_actions(self.__actions)        
         self.__context = context
         self.__header = gtk.HBox()
         self.__header.pack_start(gtk.Arrow(gtk.ARROW_UP, gtk.SHADOW_IN), expand=False)   
@@ -318,8 +338,12 @@ class CommandExecutionControl(gtk.VBox):
         self.__history_visible = False
         self.__cached_executing_count = 0
         self.__cached_total_count = 0
-        self.__sync()
+        self.__sync_visible()
+        self.__sync_cmd_sensitivity()
         
+    def get_ui(self):
+        return (self.__ui_string, self.__action_group)
+    
     def __get_complete_commands(self):
         for child in self.__iter_cmds():
             if child.get_state() != 'executing':
@@ -333,11 +357,13 @@ class CommandExecutionControl(gtk.VBox):
         _logger.debug("adding child %s", pipeline)
         odisp = MultiObjectsDisplay(self.__context, pipeline) 
         cmd = CommandExecutionDisplay(self.__context, pipeline, odisp)
+        cmd.cmd_header.connect('complete', self.__handle_cmd_complete)
         cmd.show_all()
         pgnum = self.__cmd_notebook.append_page(cmd)
         self.__cmd_notebook.set_current_page(pgnum)
         self.__cmd_overview.add_pipeline(pipeline, odisp)
-        self.__sync()
+        self.__sync_visible()
+        self.__sync_cmd_sensitivity()
         curtime = time.time()
         for cmd in self.__iter_cmds():
             pipeline = cmd.get_pipeline()
@@ -360,7 +386,7 @@ class CommandExecutionControl(gtk.VBox):
     
     @log_except(_logger)
     def __handle_cmd_complete(self, *args):
-        self.__redisplay()
+        self.__sync_cmd_sensitivity()
       
     @log_except(_logger)        
     def __on_show_command(self, overview, cmd):
@@ -375,13 +401,50 @@ class CommandExecutionControl(gtk.VBox):
             pgnum = self.__cmd_notebook.page_num(target)
             self.__cmd_notebook.set_current_page(pgnum)
  
-    def get_current_cmd(self):
+    def get_current_cmd(self, full=False):
         page = self.__cmd_notebook.get_current_page()
         if page < 0:
             return None
-        return self.__cmd_notebook.get_nth_page(page).cmd_header
+        cmd = self.__cmd_notebook.get_nth_page(page)
+        if full:
+            return cmd
+        return cmd.cmd_header
+
+    def __copy_cb(self, a):
+        _logger.debug("doing copy cmd")
+        cmd = self.get_current_cmd(full=True)
+        cmd.odisp.do_copy()
     
-    def do_scroll(self, prev, full):
+    def __cancel_cb(self, a):
+        _logger.debug("doing cancel cmd")
+        cmd = self.get_current_cmd(full=True)
+        cmd.cancel()
+        
+    def __search_cb(self,a ):
+        cmd = self.get_current_cmd(full=True)
+        top = self.get_toplevel()
+        lastfocused = top.get_focus()
+        cmd.odisp.start_search(lastfocused)
+    
+    def __view_previous_cb(self, a):
+        self.open_output(True)
+        
+    def __view_next_cb(self, a):
+        self.open_output(False)
+        
+    def __view_home_cb(self, a):
+        self.__do_scroll(True, True)
+        
+    def __view_end_cb(self, a):
+        self.__do_scroll(False, True)    
+        
+    def __view_up_cb(self, a):
+        self.__do_scroll(True, False)
+        
+    def __view_down_cb(self, a):
+        self.__do_scroll(False, False)       
+    
+    def __do_scroll(self, prev, full):
         cmd = self.get_current_cmd()
         if prev:
             cmd.scroll_up(full)
@@ -390,11 +453,12 @@ class CommandExecutionControl(gtk.VBox):
         
     def __toggle_history_expanded(self):
         self.__history_visible = not self.__history_visible
-        self.__sync()
+        self.__sync_visible()
+        self.__sync_cmd_sensitivity()
         if self.__history_visible:
             self.__cmd_overview.scroll_to_bottom()            
         
-    def __sync(self):
+    def __sync_visible(self):
         if self.__history_visible:
             self.__cmd_overview.show()
             self.__cmd_notebook.hide()
@@ -404,19 +468,46 @@ class CommandExecutionControl(gtk.VBox):
             self.__cmd_overview.hide()
             self.__cmd_notebook.show() 
             self.__header.show()
-            self.__footer.show()                          
+            self.__footer.show()
+            
+    def __sync_cmd_sensitivity(self, curpage=None):
+        actions = map(self.__action_group.get_action, ['Copy', 'Cancel', 'PreviousCommand', 'NextCommand'])
+        if self.__history_visible:
+            for action in actions:
+                action.set_sensitive(False)          
+        else:            
+            cmd = self.get_current_cmd(full=True)
+            if not cmd:
+                for action in actions:
+                    action.set_sensitive(False)
+                    return                
+            actions[1].set_sensitive(not not (cmd and cmd.cmd_header.get_pipeline().get_state() in ('waiting', 'executing')))
+        actions[2] .set_sensitive(self.__get_prevcmd_count(curpage) > 0)
+        actions[3].set_sensitive(self.__get_nextcmd_count(curpage) > 0)        
+        
+    def __get_prevcmd_count(self, cur=None):
+        if cur is not None:
+            return cur
+        return self.__cmd_notebook.get_current_page()
+    
+    def __get_nextcmd_count(self, cur=None):
+        if cur is not None:
+            nth = cur
+        else:       
+            nth = self.__cmd_notebook.get_current_page()        
+        n_pages = self.__cmd_notebook.get_n_pages()
+        return (n_pages-1) - nth        
  
     def __on_page_switch(self, notebook, page, nth):
-        n_pages = self.__cmd_notebook.get_n_pages()
-        diff = (n_pages-1) - nth
         def set_label(container, label, n):
             if n == 0:
                 container.hide_all()
                 return
             container.show_all()
             label.set_text(' %d commands' % (n,))
-        set_label(self.__header, self.__header_label, nth)
-        set_label(self.__footer, self.__footer_label, diff)      
+        set_label(self.__header, self.__header_label, self.__get_prevcmd_count(nth))
+        set_label(self.__footer, self.__footer_label, self.__get_nextcmd_count(nth))
+        self.__sync_cmd_sensitivity(curpage=nth)
  
     def open_output(self, do_prev=False, dry_run=False):
         nth = self.__cmd_notebook.get_current_page()

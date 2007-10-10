@@ -27,6 +27,21 @@ class TerminalWidget(gtk.VBox):
     }
     def __init__(self, stream=None, title=''):
         super(TerminalWidget, self).__init__()
+        self.__ui_string = """
+<ui>
+  <menubar name='Menubar'>
+    <menu action='EditMenu'>
+      <menuitem action='Copy'/>
+      <menuitem action='Paste'/>
+    </menu>       
+  </menubar>
+</ui>"""         
+        self.__actions = [
+            ('Copy', None, '_Copy', '<control><shift>c', 'Copy selected text', self.__copy_cb),
+            ('Paste', None, '_Paste', '<control><shift>V', 'Paste text', self.__paste_cb),
+        ]
+        self.__action_group = gtk.ActionGroup('TerminalActions')
+        self.__action_group.add_actions(self.__actions)
         self._stream = stream
         self.__title = title
         self.__header = gtk.HBox()
@@ -47,32 +62,19 @@ class TerminalWidget(gtk.VBox):
         self.pack_start(self.__termbox, expand=True)
 
         self.__term = None
+        
+    def get_ui(self):
+        return (self.__ui_string, self.__action_group)
 
-    def copy(self):
-        self.__term.copy()
+    def _selection_changed(self, have_selection):
+        self.__action_group.get_action('Copy').set_sensitive(have_selection)
 
-    def paste(self):
-        self.__term.paste()
-
-    def on_mouse_press(self, e):
-        _logger.debug("button press %s", e)
-        if e.button == 3:
-            menu = gtk.Menu()
-            menuitem = gtk.MenuItem('Copy')
-            menuitem.connect("activate", self.__on_copy_activated)
-            menu.append(menuitem)
-            menuitem = gtk.MenuItem('Paste')
-            menuitem.connect("activate", self.__on_paste_activated)
-            menu.append(menuitem)
-            menu.show_all()
-            menu.popup(None, None, None, e.button, e.time)
-            return True
-        return False
-
-    def __on_copy_activated(self, menu):
+    def __copy_cb(self, a):
+        _logger.debug("doing copy")
         self.copy()
 
-    def __on_paste_activated(self, menu):
+    def __paste_cb(self, a):
+        _logger.debug("doing paste")        
         self.paste()
         
     def _pack_terminal(self, termwidget):
@@ -100,7 +102,3 @@ class TerminalWidget(gtk.VBox):
 
     def close(self):
         raise NotImplementedError()
-
-    def controls_copypaste(self):
-        return False
-

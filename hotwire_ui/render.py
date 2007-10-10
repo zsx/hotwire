@@ -32,7 +32,7 @@ class ClassRendererMapping(Singleton):
     def register(self, cls, target_class):
         self.__map[cls] = target_class
 
-class ObjectsRenderer(object):
+class ObjectsRenderer(gobject.GObject):
     def __init__(self, context):
         super(ObjectsRenderer, self).__init__()
         self.context = context
@@ -54,7 +54,7 @@ class ObjectsRenderer(object):
 
     def get_search(self):
         raise NotImplementedError()
-
+    
     def do_copy(self):
         return False
 

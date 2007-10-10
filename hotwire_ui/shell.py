@@ -60,6 +60,9 @@ class HotwireClientContext(hotwire.command.HotwireContext):
         title = str(pipeline)
         term = Terminal.getInstance().get_terminal_widget_cmd(cwd, arg, title)
         self.__hotwire.append_tab(term, title)
+        
+    def get_ui(self):
+        return self.__hotwire.get_global_ui()
 
 class DownloadStatus(gtk.HBox):
     def __init__(self, fname):
@@ -138,7 +141,7 @@ class Hotwire(gtk.VBox):
         self.__paned.pack_start(self.__welcome_align, expand=True)
         self.pack_start(self.__paned, expand=True)
 
-        self.__outputs = CommandExecutionControl(self.context, self.__ui)
+        self.__outputs = CommandExecutionControl(self.context)
         self.__topbox.pack_start(self.__outputs, expand=True)
 
         self.__downloads = Downloads()
@@ -161,7 +164,6 @@ class Hotwire(gtk.VBox):
         self.__input.connect("key-release-event", lambda i, e: self.__on_input_keyrelease(e))
         self.__input.connect("focus-out-event", self.__on_entry_focus_lost)
         self.__bottom.pack_start(self.__input, expand=False)
-
 
         self.__statusbox = gtk.VBox()
         self.__bottom.pack_start(self.__statusbox, expand=False)
@@ -191,6 +193,12 @@ class Hotwire(gtk.VBox):
         self.__update_status()
 
         gobject.idle_add(lambda: self.execute_pipeline(Pipeline.parse('help', self.context), add_history=False, reset_input=False))
+
+    def get_global_ui(self):
+        return self.__ui
+
+    def get_ui(self):
+        return self.__outputs.get_ui()
 
     def append_tab(self, widget, title):
         self.emit("new-tab-widget", widget, title)
@@ -508,19 +516,6 @@ class Hotwire(gtk.VBox):
         elif e.keyval == gtk.gdk.keyval_from_name('Escape'):
             self.__completions.hide()
             return True
-        elif e.keyval == gtk.gdk.keyval_from_name('s') and e.state & gtk.gdk.CONTROL_MASK:
-            last_vis_output = self.__get_last_vis_output()
-            if not last_vis_output:
-                return False
-            try:
-                last_vis_output.start_search(self.__input)
-            except NotImplementedError, e:
-                self.push_msg("Can't search this object display")
-        elif e.keyval == gtk.gdk.keyval_from_name('c') and e.state & gtk.gdk.CONTROL_MASK:
-            last_vis_output = self.__get_last_vis_output()
-            if not last_vis_output:
-                return False
-            return last_vis_output.do_copy_or_cancel()
         else:
             return False
 
@@ -644,18 +639,6 @@ class Hotwire(gtk.VBox):
     def show_all(self):
         super(Hotwire, self).show_all()
         self.__downloads.hide()
-
-    def controls_copypaste(self):
-        return True
-    
-    def do_scroll(self, prev, full):
-        self.__outputs.do_scroll(prev, full)
-    
-    def do_previous(self):
-        self.__outputs.open_output(True)
-        
-    def do_next(self):
-        self.__outputs.open_output(False)
             
 class HotWindow(gtk.Window):
     ascii_nums = [long(x+ord('0')) for x in xrange(10)]
@@ -675,28 +658,18 @@ class HotWindow(gtk.Window):
       <separator/>
       <menuitem action='Close'/>
     </menu>
+    <menu action='EditMenu'>
+    </menu>
     <menu action='ViewMenu'>
+    </menu>
+    <menu action='ControlMenu'>
     </menu>
     <menu action='HelpMenu'>
       <menuitem action='About'/>
     </menu>
   </menubar>
 </ui>
-"""
-        self.__hotwire_ui_string = """
-<ui>
-  <menubar name='Menubar'>
-    <menu action='ViewMenu'>
-      <menuitem action='ScrollHome'/>
-      <menuitem action='ScrollEnd'/>
-      <menuitem action='ScrollPgUp'/>
-      <menuitem action='ScrollPgDown'/>
-      <separator/>
-      <menuitem action='PreviousCommand'/>
-      <menuitem action='NextCommand'/>
-    </menu>
-  </menubar>
-</ui>"""        
+"""       
         self.__create_ui()
         vbox.pack_start(self.__ui.get_widget('/Menubar'), expand=False)
 
@@ -734,6 +707,9 @@ class HotWindow(gtk.Window):
 
         self.new_tab_hotwire(initcwd=initcwd)
 
+    def get_ui(self):
+        return self.__ui
+
     def __create_ui(self):
         self.__ag = ag = gtk.ActionGroup('WindowActions')
         actions = [
@@ -742,7 +718,9 @@ class HotWindow(gtk.Window):
              'Open a new terminal tab', self.__new_term_tab_cb),
             ('Close', gtk.STOCK_CLOSE, '_Close', '<control><shift>W',
              'Close the current tab', self.__close_cb),
-            ('ViewMenu', None, 'View'),             
+            ('EditMenu', None, 'Edit'),                
+            ('ViewMenu', None, 'View'),       
+            ('ControlMenu', None, 'Control'),              
             ('HelpMenu', None, 'Help'),
             ('About', gtk.STOCK_ABOUT, '_About', None, 'About Hotwire', self.__help_about_cb),
             ]
@@ -752,21 +730,11 @@ class HotWindow(gtk.Window):
             ('NewTab', gtk.STOCK_NEW, 'New _Tab', '<control>t',
              'Open a new tab', self.__new_tab_cb)]
         ag.add_actions(actions)
-        ag.add_actions(self.__nonterm_actions)      
-        self.__hotwire_actions = [
-            ('ScrollHome', None, 'Output _Top', 'Home', 'Scroll to output top', self.__view_home_cb),
-            ('ScrollEnd', None, 'Output _Bottom', 'End', 'Scroll to output bottom', self.__view_end_cb), 
-            ('ScrollPgUp', None, 'Output Page _Up', 'Page_Up', 'Scroll output up', self.__view_up_cb),
-            ('ScrollPgDown', None, 'Output Page _Down', 'Page_Down', 'Scroll output down', self.__view_down_cb),             
-            ('PreviousCommand', gtk.STOCK_GO_UP, '_Previous', '<control>Up', 'View previous command', self.__view_previous_cb),
-            ('NextCommand', gtk.STOCK_GO_DOWN, '_Next', '<control>Down', 'View next command', self.__view_next_cb),
-        ]
-        self.__hotwire_ag = gtk.ActionGroup('HotwireActions')
-        self.__hotwire_ag.add_actions(self.__hotwire_actions)       
+        ag.add_actions(self.__nonterm_actions)
         self.__ui = gtk.UIManager()
         self.__ui.insert_action_group(ag, 0)
-        self.__ui.insert_action_group(self.__hotwire_ag, 1)         
         self.__ui.add_ui_from_string(self.__ui_string)
+        self.__tab_ui_merge_id = None
         self.__nonterm_accels_installed = True
         self.add_accel_group(self.__ui.get_accel_group())
         self.__hotwire_ui_mergeid = None        
@@ -785,30 +753,6 @@ class HotWindow(gtk.Window):
             if widget.on_mouse_press(e):
                 return True
         return False
-    
-    def __view_previous_cb(self, a):
-        widget = self.__notebook.get_nth_page(self.__notebook.get_current_page())        
-        widget.do_previous()
-        
-    def __view_next_cb(self, a):
-        widget = self.__notebook.get_nth_page(self.__notebook.get_current_page())        
-        widget.do_next()
-        
-    def __view_home_cb(self, a):
-        widget = self.__notebook.get_nth_page(self.__notebook.get_current_page())        
-        widget.do_scroll(True, True)
-        
-    def __view_end_cb(self, a):
-        widget = self.__notebook.get_nth_page(self.__notebook.get_current_page())        
-        widget.do_scroll(False, True)    
-        
-    def __view_up_cb(self, a):
-        widget = self.__notebook.get_nth_page(self.__notebook.get_current_page())        
-        widget.do_scroll(True, False)
-        
-    def __view_down_cb(self, a):
-        widget = self.__notebook.get_nth_page(self.__notebook.get_current_page())        
-        widget.do_scroll(False, False)   
     
     def __new_window_cb(self, action):
         self.new_win_hotwire()
@@ -879,16 +823,6 @@ along with Hotwire; if not, write to the Free Software Foundation, Inc.,
              e.state & gtk.gdk.MOD1_MASK:
             self.__notebook.set_current_page(e.keyval-ord('0')-1) #extra -1 because tabs are 0-indexed
             return True
-        elif e.keyval in (gtk.gdk.keyval_from_name('C'),
-                          gtk.gdk.keyval_from_name('V')) and e.state & gtk.gdk.CONTROL_MASK:
-            copy = (e.keyval == gtk.gdk.keyval_from_name('C'))
-            widget = self.__notebook.get_nth_page(self.__notebook.get_current_page())
-            if not widget.controls_copypaste():
-                if copy:
-                    widget.copy()
-                else:
-                    widget.paste()
-                return True
         return False
 
     @log_except(_logger)
@@ -919,11 +853,16 @@ along with Hotwire; if not, write to the Free Software Foundation, Inc.,
                 self.__old_char_height = ch
                 self.__old_geom_widget = widget
 
-        if is_hw and (self.__hotwire_ui_mergeid is None):
-             self.__hotwire_ui_mergeid = self.__ui.add_ui_from_string(self.__hotwire_ui_string)
-        elif (not is_hw) and (self.__hotwire_ui_mergeid is not None):
-            self.__ui.remove_ui(self.__hotwire_ui_mergeid)
-            self.__hotwire_ui_mergeid = None            
+        if self.__tab_ui_merge_id is not None:
+            self.__ui.remove_ui(self.__tab_ui_merge_id)
+            self.__tab_ui_merge_id = None
+            self.__ui.remove_action_group(self.__tab_action_group)
+            self.__tab_action_group = None
+        if hasattr(widget, 'get_ui'):
+            (uistr, actiongroup) = widget.get_ui()
+            self.__tab_ui_merge_id = self.__ui.add_ui_from_string(uistr)
+            self.__tab_action_group = actiongroup
+            self.__ui.insert_action_group(actiongroup, -1)         
 
         install_accels = is_hw
         _logger.debug("current accel install: %s new: %s", self.__nonterm_accels_installed, install_accels)
@@ -940,7 +879,6 @@ along with Hotwire; if not, write to the Free Software Foundation, Inc.,
                     actionitem.disconnect_accelerator()
             self.__nonterm_accels_installed = install_accels
             
-
     def new_tab_hotwire(self, initcwd=None):
         hw = Hotwire(initcwd=initcwd, window=self, ui=self.__ui)
         hw.set_data('hotwire-is-hotwire', True)
@@ -1054,5 +992,3 @@ class HotWindowFactory(Singleton):
         self.__windows.remove(win)
         if len(self.__windows) == 0:
             gtk.main_quit()
-
-    

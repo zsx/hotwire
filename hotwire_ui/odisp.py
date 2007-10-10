@@ -102,7 +102,7 @@ class ObjectsDisplay(gtk.VBox):
         vadjust = self.__scroll.get_vadjustment()
         upper = vadjust.upper - vadjust.page_size
         if vadjust.value >= upper:
-            self.__user_scrolled = False
+            self.__user_scrolled = False     
         
     def do_copy(self):
         if self.__display:
@@ -164,6 +164,7 @@ class MultiObjectsDisplay(gtk.Notebook):
             odisp = ObjectsDisplay(otype, self.__context) 
             if name is None:
                 self.__default_odisp = odisp
+                self.__default_odisp
                 self.insert_page(odisp, position=0)
                 self.set_tab_label_text(odisp, name or 'Default')
                 odisp.show_all()

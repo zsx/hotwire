@@ -48,12 +48,13 @@ class VteTerminalWidget(TerminalWidget):
         self._pack_terminal(screen)
 
         # Various defaults
-	self.__term.set_emulation('xterm')
-	self.__term.set_allow_bold(True)
+        self.__term.set_emulation('xterm')
+        self.__term.set_allow_bold(True)
         self.__term.set_size(80, 24)
         self.__term.set_mouse_autohide(True)
 
         self.__term.connect('popup_menu', self.__on_popup_menu)
+        self.__term.connect('selection-changed', self.__on_selection_changed)
 
         # Use Gnome font 
         gconf_client = gconf.client_get_default() 
@@ -70,6 +71,8 @@ class VteTerminalWidget(TerminalWidget):
         self.__term.set_color_foreground(fg)
         self.__term.set_color_bold(fg)
         self.__term.set_color_dim(fg)
+
+        self._selection_changed(False)
 
         if self._stream:
             master, slave = pty.openpty()
@@ -130,6 +133,9 @@ class VteTerminalWidget(TerminalWidget):
         menu.append(mi)
         menu.show_all()
         menu.popup(None, None, None, 0, gtk.get_current_event_time())
+        
+    def __on_selection_changed(self, *args):
+        self._selection_changed(self.__term.get_has_selection())
 
     def copy(self, *args):
         _logger.debug("got copy")
