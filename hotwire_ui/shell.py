@@ -735,6 +735,7 @@ class HotWindow(gtk.Window):
         self.__ui.insert_action_group(ag, 0)
         self.__ui.add_ui_from_string(self.__ui_string)
         self.__tab_ui_merge_id = None
+        self.__tab_action_group = None
         self.__nonterm_accels_installed = True
         self.add_accel_group(self.__ui.get_accel_group())
         self.__hotwire_ui_mergeid = None        
@@ -853,16 +854,21 @@ along with Hotwire; if not, write to the Free Software Foundation, Inc.,
                 self.__old_char_height = ch
                 self.__old_geom_widget = widget
 
-        if self.__tab_ui_merge_id is not None:
-            self.__ui.remove_ui(self.__tab_ui_merge_id)
-            self.__tab_ui_merge_id = None
-            self.__ui.remove_action_group(self.__tab_action_group)
-            self.__tab_action_group = None
         if hasattr(widget, 'get_ui'):
             (uistr, actiongroup) = widget.get_ui()
-            self.__tab_ui_merge_id = self.__ui.add_ui_from_string(uistr)
-            self.__tab_action_group = actiongroup
-            self.__ui.insert_action_group(actiongroup, -1)         
+        else:
+            (uistr, actiongroup) = (None, None)
+        if actiongroup != self.__tab_action_group:    
+            if (self.__tab_ui_merge_id is not None):
+                self.__ui.remove_ui(self.__tab_ui_merge_id)
+                self.__tab_ui_merge_id = None
+                self.__ui.remove_action_group(self.__tab_action_group)
+                self.__tab_action_group = None
+                self.__ui.ensure_update()
+            if hasattr(widget, 'get_ui'):
+                self.__tab_ui_merge_id = self.__ui.add_ui_from_string(uistr)
+                self.__tab_action_group = actiongroup
+                self.__ui.insert_action_group(actiongroup, -1)         
 
         install_accels = is_hw
         _logger.debug("current accel install: %s new: %s", self.__nonterm_accels_installed, install_accels)

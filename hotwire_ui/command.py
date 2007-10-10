@@ -284,10 +284,6 @@ class CommandExecutionControl(gtk.VBox):
         super(CommandExecutionControl, self).__init__()
         self.__ui_string = """
 <ui>
-  <accelerator action='ScrollHome'/>
-  <accelerator action='ScrollEnd'/>
-  <accelerator action='ScrollPgUp'/>
-  <accelerator action='ScrollPgDown'/>
   <menubar name='Menubar'>
     <menu action='EditMenu'>
       <menuitem action='Copy'/>
@@ -302,6 +298,10 @@ class CommandExecutionControl(gtk.VBox):
       <menuitem action='Cancel'/>      
     </menu>    
   </menubar>
+  <accelerator action='ScrollHome'/>
+  <accelerator action='ScrollEnd'/>
+  <accelerator action='ScrollPgUp'/>
+  <accelerator action='ScrollPgDown'/>  
 </ui>"""         
         self.__actions = [
             ('Copy', None, '_Copy', '<control>c', 'Copy output', self.__copy_cb),                          
