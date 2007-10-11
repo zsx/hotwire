@@ -344,11 +344,27 @@ class Pipeline(gobject.GObject):
         last.execute(force_sync)
         self.__set_state('executing')
         
+    def validate_state_transition(self, state):
+        if self.__state == 'waiting':
+            return state in ('executing', 'exception')
+        elif self.__state == 'executing':
+            return state in ('complete', 'cancelled', 'exception')
+        elif self.__state in ('cancelled', 'exception', 'undone'):
+            return None
+        elif self.__state == 'complete':
+            return state in ('undone',) and self.get_undoable()
+        assert(False)
+        
     def __set_state(self, state):
-        if self.__state in ('complete', 'cancelled'):
+        trans = self.validate_state_transition(state)
+        if trans is None:
+            _logger.debug("ignoring transition from state %s to %s", self.__state, state)
             return
+        elif not trans:
+            raise ValueError("Invalid state transition %s to %s", self.__state, state)
+        
         if state in ('complete', 'cancelled'):
-            self.__completion_time = time.time()
+            self.__completion_time = time.time() 
         self.__state = state
         self.emit('state-changed')
 
@@ -367,6 +383,7 @@ class Pipeline(gobject.GObject):
     def undo(self):
         for fn in self.__undo:
             fn()
+        self.__set_state('undone')
 
     def get_completion_time(self):
         return self.__completion_time

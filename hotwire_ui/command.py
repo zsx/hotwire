@@ -31,6 +31,7 @@ class CommandStatusDisplay(gtk.HBox):
 
 class CommandExecutionHeader(gtk.VBox):
     __gsignals__ = {
+        "action" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, []),                    
         "setvisible" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, []),
         "complete" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, ()),
     }
@@ -130,12 +131,10 @@ class CommandExecutionHeader(gtk.VBox):
             queue.put(obj)
         queue.put(None)
 
-    def __on_action(self, w):
-        if self.get_state() == 'executing':
-            self.__do_cancel()
-        elif self.get_state() == 'complete' and (self.__pipeline.get_undoable()):
-            self.__pipeline.undo()
-        self.__update_titlebox()
+    @log_except(_logger)
+    def __on_action(self, *args):
+        _logger.debug("emitting action")
+        self.emit('action')
 
     def get_objects_widget(self):
         return self.__objects
@@ -165,28 +164,21 @@ class CommandExecutionHeader(gtk.VBox):
             status_right_end = self.__pipeline_status_visible and '; ' or ''
             self.__status_right.set_text(status_right_start + (", %d objects" % (ocount,)) + status_right_end)
             
+        def _color(str, color):
+            return '<span foreground="%s">%s</span>' % (color,gobject.markup_escape_text(str))            
         state = self.get_state()
         if state == 'waiting':
             set_status_action('Waiting...')
         elif state == 'cancelled':
-            set_status_action('Cancelled')
+            set_status_action(_color('Cancelled', "red"), '', status_markup=True)
+        elif state == 'undone':
+            set_status_action(_color('Undone', "red"), '', status_markup=True)
+        elif state == 'exception':
+            set_status_action(_color('Exception', "red"), '', status_markup=True) 
         elif state == 'executing':
             set_status_action('Executing', 'Cancel')
         elif state == 'complete':
-            def _color(str, color):
-                return '<span foreground="%s">%s</span>' % (color,gobject.markup_escape_text(str))
-            if self.__undoable and (not (self.__cancelled or self.__undone)):
-                action = 'Undo'
-            else:
-                action = ''
-            if self.__exception:
-                set_status_action(_color("Exception", "red"), action, status_markup=True)
-            elif self.__cancelled:
-                set_status_action(_color('Cancelled', "red"), action, status_markup=True)
-            elif self.__undone:
-                set_status_action(_color('Undone', "red"), action, status_markup=True)
-            else:
-                set_status_action('Complete', action)
+            set_status_action('Complete', self.__pipeline.get_undoable() and 'Undo' or '')
 
     def __on_pipeline_status(self, pipeline, cmdidx, cmd, *args):
         _logger.debug("got pipeline status idx=%d", cmdidx)
@@ -196,12 +188,12 @@ class CommandExecutionHeader(gtk.VBox):
         self.__update_titlebox()
 
     def __on_pipeline_state_change(self, pipeline):
-        _logger.debug("state change for pipeline %s", self.__pipeline_str)
-        state = self.__pipeline.get_state()
+        state = self.__pipeline.get_state()        
+        _logger.debug("state change to %s for pipeline %s", state, self.__pipeline_str)
         self.__update_titlebox()         
         if state == 'executing':
             return
-        elif state in ('cancelled', 'complete'):
+        elif state in ('cancelled', 'complete', 'undone'):
             pass
         elif state == 'exception':
             self.__exception_text.show()
@@ -211,15 +203,18 @@ class CommandExecutionHeader(gtk.VBox):
             raise Exception("Unknown state %s" % (state,)) 
         self.emit("complete")
 
+    @log_except(_logger)
     def __on_button_press(self, e):
         if e.button == 1:
             self.emit('setvisible')
             return True
         return False
 
+    @log_except(_logger)
     def __on_enter(self, w, c):
         self.__talk_to_the_hand(True)
 
+    @log_except(_logger)
     def __on_leave(self, w, c):
         self.__talk_to_the_hand(False)
 
@@ -243,10 +238,14 @@ class CommandExecutionDisplay(gtk.VBox):
     def cancel(self):
         self.odisp.cancel()
         self.cmd_header.get_pipeline().cancel()
+        
+    def undo(self):
+        self.cmd_header.get_pipeline().undo()        
     
 class CommandExecutionHistory(gtk.VBox):
     __gsignals__ = {
         "show-command" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (gobject.TYPE_PYOBJECT,)),
+        "command-action" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (gobject.TYPE_PYOBJECT,)),        
     }    
     def __init__(self, context):
         super(CommandExecutionHistory, self).__init__()
@@ -259,9 +258,14 @@ class CommandExecutionHistory(gtk.VBox):
 
     def add_pipeline(self, pipeline, odisp):
         cmd = CommandExecutionHeader(self.__context, pipeline, odisp)
+        cmd.connect('action', self.__handle_cmd_action)        
         cmd.show_all()
         cmd.connect("setvisible", self.__handle_cmd_show)        
         self.__cmd_overview.pack_start(cmd, expand=False)
+        
+    @log_except(_logger)
+    def __handle_cmd_action(self, cmd):
+        self.emit('command-action', cmd)        
         
     def get_overview_list(self):
         return self.__cmd_overview.get_children()
@@ -295,7 +299,8 @@ class CommandExecutionControl(gtk.VBox):
       <menuitem action='NextCommand'/>
     </menu>
     <menu action='ControlMenu'>
-      <menuitem action='Cancel'/>      
+      <menuitem action='Cancel'/>
+      <menuitem action='Undo'/>
     </menu>    
   </menubar>
   <accelerator action='ScrollHome'/>
@@ -306,6 +311,7 @@ class CommandExecutionControl(gtk.VBox):
         self.__actions = [
             ('Copy', None, '_Copy', '<control>c', 'Copy output', self.__copy_cb),                          
             ('Cancel', None, '_Cancel', '<control><shift>c', 'Cancel current command', self.__cancel_cb),
+            ('Undo', None, '_Undo', None, 'Undo current command', self.__undo_cb),            
             ('Search', None, '_Search', '<control>s', 'Search output', self.__search_cb),
             ('ScrollHome', None, 'Output _Top', 'Home', 'Scroll to output top', self.__view_home_cb),
             ('ScrollEnd', None, 'Output _Bottom', 'End', 'Scroll to output bottom', self.__view_end_cb), 
@@ -329,6 +335,7 @@ class CommandExecutionControl(gtk.VBox):
         self.pack_start(self.__cmd_notebook, expand=True)        
         self.__cmd_overview = CommandExecutionHistory(self.__context)
         self.__cmd_overview.connect('show-command', self.__on_show_command)
+        self.__cmd_overview.connect('command-action', self.__handle_cmd_overview_action)        
         self.pack_start(self.__cmd_overview, expand=True)
         self.__footer = gtk.HBox()
         self.__footer.pack_start(gtk.Arrow(gtk.ARROW_DOWN, gtk.SHADOW_IN), expand=False)           
@@ -355,15 +362,16 @@ class CommandExecutionControl(gtk.VBox):
         
     def add_pipeline(self, pipeline):
         _logger.debug("adding child %s", pipeline)
+        pipeline.connect('state-changed', self.__on_pipeline_state_change)
         odisp = MultiObjectsDisplay(self.__context, pipeline) 
         cmd = CommandExecutionDisplay(self.__context, pipeline, odisp)
-        cmd.cmd_header.connect('complete', self.__handle_cmd_complete)
+        cmd.cmd_header.connect('action', self.__handle_cmd_action)
         cmd.show_all()
         pgnum = self.__cmd_notebook.append_page(cmd)
         self.__cmd_notebook.set_current_page(pgnum)
         self.__cmd_overview.add_pipeline(pipeline, odisp)
         self.__sync_visible()
-        self.__sync_display()
+        self.__sync_display(pgnum)
         curtime = time.time()
         for cmd in self.__iter_cmds():
             pipeline = cmd.get_pipeline()
@@ -388,6 +396,23 @@ class CommandExecutionControl(gtk.VBox):
     @log_except(_logger)
     def __handle_cmd_complete(self, *args):
         self.__sync_cmd_sensitivity()
+        
+    @log_except(_logger)
+    def __handle_cmd_overview_action(self, oview, cmd):
+        self.__handle_cmd_action(cmd)
+        
+    @log_except(_logger)
+    def __handle_cmd_action(self, cmd):
+        pipeline = cmd.get_pipeline()
+        _logger.debug("handling action for %s", pipeline)        
+        if pipeline.validate_state_transition('cancelled'):
+            _logger.debug("doing cancel")
+            pipeline.cancel()
+        elif pipeline.validate_state_transition('undone'):
+            _logger.debug("doing undo")            
+            pipeline.undo()                    
+        else:
+            raise ValueError("Couldn't do action %s from state %s" % (action,cmd.cmd_header.get_pipeline().get_state()))        
       
     @log_except(_logger)        
     def __on_show_command(self, overview, cmd):
@@ -420,6 +445,11 @@ class CommandExecutionControl(gtk.VBox):
         _logger.debug("doing cancel cmd")
         cmd = self.get_current_cmd(full=True)
         cmd.cancel()
+        
+    def __undo_cb(self, a):
+        _logger.debug("doing undo cmd")
+        cmd = self.get_current_cmd(full=True)
+        cmd.undo()        
         
     def __search_cb(self,a ):
         cmd = self.get_current_cmd(full=True)
@@ -471,20 +501,31 @@ class CommandExecutionControl(gtk.VBox):
             self.__header.show()
             self.__footer.show()
             
+    @log_except(_logger)
+    def __on_pipeline_state_change(self, pipeline):
+        _logger.debug("handling state change to %s", pipeline.get_state())
+        self.__sync_cmd_sensitivity()
+            
     def __sync_cmd_sensitivity(self, curpage=None):
-        actions = map(self.__action_group.get_action, ['Copy', 'Cancel', 'PreviousCommand', 'NextCommand'])
+        actions = map(self.__action_group.get_action, ['Copy', 'Cancel', 'PreviousCommand', 'NextCommand', 'Undo'])
         if self.__history_visible:
             for action in actions:
-                action.set_sensitive(False)          
+                action.set_sensitive(False)
+            cmd = None    
         else:            
             cmd = self.get_current_cmd(full=True)
             if not cmd:
                 for action in actions:
                     action.set_sensitive(False)
-                    return                
-            actions[1].set_sensitive(not not (cmd and cmd.cmd_header.get_pipeline().get_state() in ('waiting', 'executing')))
+                    return
+            _logger.debug("sync sensitivity page %s pipeline: %s", curpage, cmd.cmd_header.get_pipeline().get_state())                
+            cancellable = not not (cmd and cmd.cmd_header.get_pipeline().validate_state_transition('cancelled'))
+            undoable = not not (cmd and cmd.cmd_header.get_pipeline().validate_state_transition('undone'))
+            _logger.debug("cancellable: %s undoable: %s", cancellable, undoable)
+            actions[1].set_sensitive(cancellable)
+            actions[4].set_sensitive(undoable)
         actions[2].set_sensitive(self.__get_prevcmd_count(curpage) > 0)
-        actions[3].set_sensitive(self.__get_nextcmd_count(curpage) > 0)        
+        actions[3].set_sensitive(self.__get_nextcmd_count(curpage) > 0)
         
     def __sync_display(self, nth=None):
         def set_label(container, label, n):
