@@ -363,7 +363,7 @@ class CommandExecutionControl(gtk.VBox):
         self.__cmd_notebook.set_current_page(pgnum)
         self.__cmd_overview.add_pipeline(pipeline, odisp)
         self.__sync_visible()
-        self.__sync_cmd_sensitivity()
+        self.__sync_display()
         curtime = time.time()
         for cmd in self.__iter_cmds():
             pipeline = cmd.get_pipeline()
@@ -374,7 +374,7 @@ class CommandExecutionControl(gtk.VBox):
                 self.remove_pipeline(pipeline)
         
     def remove_pipeline(self, pipeline):
-        pipeline.disconnect()        
+        pipeline.disconnect()
         for child in self.__cmd_notebook.get_children():
             if not child.cmd_header.get_pipeline() == pipeline:
                 continue
@@ -383,6 +383,7 @@ class CommandExecutionControl(gtk.VBox):
             if not child.get_pipeline() == pipeline:
                 continue
             self.__cmd_overview.remove_overview(child)
+        self.__sync_display()
     
     @log_except(_logger)
     def __handle_cmd_complete(self, *args):
@@ -482,8 +483,19 @@ class CommandExecutionControl(gtk.VBox):
                     action.set_sensitive(False)
                     return                
             actions[1].set_sensitive(not not (cmd and cmd.cmd_header.get_pipeline().get_state() in ('waiting', 'executing')))
-        actions[2] .set_sensitive(self.__get_prevcmd_count(curpage) > 0)
+        actions[2].set_sensitive(self.__get_prevcmd_count(curpage) > 0)
         actions[3].set_sensitive(self.__get_nextcmd_count(curpage) > 0)        
+        
+    def __sync_display(self, nth=None):
+        def set_label(container, label, n):
+            if n == 0:
+                container.hide_all()
+                return
+            container.show_all()
+            label.set_text(' %d commands' % (n,))
+        set_label(self.__header, self.__header_label, self.__get_prevcmd_count(nth))
+        set_label(self.__footer, self.__footer_label, self.__get_nextcmd_count(nth))
+        self.__sync_cmd_sensitivity(curpage=nth)        
         
     def __get_prevcmd_count(self, cur=None):
         if cur is not None:
@@ -499,15 +511,7 @@ class CommandExecutionControl(gtk.VBox):
         return (n_pages-1) - nth        
  
     def __on_page_switch(self, notebook, page, nth):
-        def set_label(container, label, n):
-            if n == 0:
-                container.hide_all()
-                return
-            container.show_all()
-            label.set_text(' %d commands' % (n,))
-        set_label(self.__header, self.__header_label, self.__get_prevcmd_count(nth))
-        set_label(self.__footer, self.__footer_label, self.__get_nextcmd_count(nth))
-        self.__sync_cmd_sensitivity(curpage=nth)
+        self.__sync_display(nth=nth)
  
     def open_output(self, do_prev=False, dry_run=False):
         nth = self.__cmd_notebook.get_current_page()
