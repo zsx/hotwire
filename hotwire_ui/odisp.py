@@ -18,11 +18,14 @@ class ObjectsDisplay(gtk.VBox):
         self.__ebox.add(self.__box)
         self.__scroll = gtk.ScrolledWindow()
         self.__scroll.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
+        vadjust = self.__scroll.get_vadjustment()
+        vadjust.connect('value-changed', self.__on_scroll_value_changed)        
         self.__search = None
         self.__old_focus = None
         self.__box.pack_start(self.__scroll, expand=True)
         self.__display = None
         self.__add_display(output_spec)
+        self.__doing_autoscroll = False
         self.__user_scrolled = False
         self.__autoscroll_id = 0
 
@@ -90,19 +93,27 @@ class ObjectsDisplay(gtk.VBox):
             else:
                 newval = adjustment.lower
         newval = max(min(newval, adjustment.upper-adjustment.page_size), adjustment.lower)
-        adjustment.value = newval
+        try:
+            self.__doing_autoscroll = True
+            adjustment.value = newval
+        finally:
+            self.__doing_autoscroll = False
         self.__user_scrolled = True
+
+    def __on_scroll_value_changed(self, vadjust):
+        if self.__doing_autoscroll:
+            return
+        upper = vadjust.upper - vadjust.page_size
+        if vadjust.value >= upper:
+            self.__user_scrolled = False
+        else:
+            self.__user_scrolled = True         
 
     def scroll_up(self, full):
         self.__vadjust(False, full)
         
     def scroll_down(self, full):
         self.__vadjust(True, full)
-        # Unpin if we're close to the bottom
-        vadjust = self.__scroll.get_vadjustment()
-        upper = vadjust.upper - vadjust.page_size
-        if vadjust.value >= upper:
-            self.__user_scrolled = False     
         
     def do_copy(self):
         if self.__display:
