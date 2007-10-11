@@ -333,10 +333,14 @@ class Hotwire(gtk.VBox):
             verb = cmd[0]
             if not verb.resolved:
                 vc.set_search(verb.text, hotwire=self)
-                matches = vc.search().__iter__()
-                try: 
-                    resolutions.append((cmd, verb.text, matches.next().get_matchdata()[0]))
-                except StopIteration, e:
+                resolution_match = None
+                for match in vc.search():
+                    if match.exact:
+                        resolution_match = match
+                    break
+                if resolution_match:
+                    resolutions.append((cmd, verb.text, resolution_match.get_matchdata()[0]))
+                else:
                     self.push_msg('No matches for <b>%s</b>' %(gobject.markup_escape_text(verb.text),), markup=True)
                     return
         for cmd,verbtext,matchtext in resolutions:
@@ -833,10 +837,13 @@ along with Hotwire; if not, write to the Free Software Foundation, Inc.,
         self.__preautoswitch_index = -1
         widget = self.__notebook.get_nth_page(pn)
         is_hw = widget.get_data('hotwire-is-hotwire')
+        old_widget = self.__notebook.get_nth_page(self.__notebook.get_current_page())
+        old_is_hw = widget.get_data('hotwire-is-hotwire')
         if is_hw:
             gobject.idle_add(self.set_focus, widget.get_entry())
             #self.__old_geom_widget = widget
-            self.set_geometry_hints(widget, **self.__geom_hints)       
+            if not old_is_hw:
+                self.set_geometry_hints(widget, **self.__geom_hints)       
         elif hasattr(widget, 'get_term_geometry'):
             (cw, ch, (xp, yp)) = widget.get_term_geometry()
             if not (cw == self.__old_char_width and ch == self.__old_char_height): #and widget == self.__old_geom_widget):
@@ -854,6 +861,7 @@ along with Hotwire; if not, write to the Free Software Foundation, Inc.,
                 self.__old_char_height = ch
                 self.__old_geom_widget = widget
 
+        ## Attempt to change our UI merge; this code is a bit wonky.
         if hasattr(widget, 'get_ui'):
             (uistr, actiongroup) = widget.get_ui()
         else:
@@ -864,8 +872,11 @@ along with Hotwire; if not, write to the Free Software Foundation, Inc.,
                 self.__tab_ui_merge_id = None
                 self.__ui.remove_action_group(self.__tab_action_group)
                 self.__tab_action_group = None
+                ## Need to call ensure_update here because otherwise accelerators
+                ## from the new UI will not be installed (I believe this is due
+                ## to the way X keyboard grabs work)
                 self.__ui.ensure_update()
-            if hasattr(widget, 'get_ui'):
+            if uistr is not None:
                 self.__tab_ui_merge_id = self.__ui.add_ui_from_string(uistr)
                 self.__tab_action_group = actiongroup
                 self.__ui.insert_action_group(actiongroup, -1)         
