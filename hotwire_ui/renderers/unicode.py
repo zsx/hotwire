@@ -282,7 +282,25 @@ class UnicodeRenderer(ObjectsRenderer):
                prev_tagend = real_end
             self._buf.insert(self._buf.get_end_iter(), obj[prev_tagend:])
         else:
-            self._buf.insert(self._buf.get_end_iter(), obj)
+            ## Initial support for terminal codes.  Only 08 is handled now.
+            start = 0
+            olen = len(obj)
+            buf = self._buf
+            ## This algorithm groups consecutive 8 bytes together to do the delete in one pass. 
+            while True:
+                idx = obj.find('\x08', start)
+                if idx < 0:
+                    break
+                tbuf = obj[start:idx]
+                self._buf.insert(buf.get_end_iter(), tbuf)
+                previdx = idx
+                while idx < olen and obj[idx] == '\x08':
+                    idx += 1
+                end = buf.get_end_iter().copy()
+                end.backward_chars(idx-previdx)
+                buf.delete(end, buf.get_end_iter())
+                start = idx
+            self._buf.insert(buf.get_end_iter(), start and obj[start:] or obj)
         self._buf.insert(self._buf.get_end_iter(), '\n')
 
     def get_autoscroll(self):
