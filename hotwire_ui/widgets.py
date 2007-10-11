@@ -184,10 +184,10 @@ class CellRendererLink(CellRendererText):
         "clicked" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, ()),
     }
     
-    def __init__(self, underline=pango.UNDERLINE_SINGLE):
+    def __init__(self, underline=pango.UNDERLINE_SINGLE, **kwargs):
         super(CellRendererLink, self).__init__(mode=gtk.CELL_RENDERER_MODE_ACTIVATABLE,
                                                foreground_gdk=gtk.gdk.color_parse("blue"),
-                                               underline=underline) 
+                                               underline=underline, **kwargs) 
     def set_text(self, text):
         self.set_property('text', text)
 
