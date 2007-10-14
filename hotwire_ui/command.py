@@ -295,6 +295,8 @@ class CommandExecutionControl(gtk.VBox):
       <menuitem action='Search'/>      
     </menu>
     <menu action='ViewMenu'>
+      <menuitem action='Overview'/>
+      <separator/>
       <menuitem action='PreviousCommand'/>
       <menuitem action='NextCommand'/>
     </menu>
@@ -312,29 +314,34 @@ class CommandExecutionControl(gtk.VBox):
             ('Copy', None, '_Copy', '<control>c', 'Copy output', self.__copy_cb),                          
             ('Cancel', None, '_Cancel', '<control><shift>c', 'Cancel current command', self.__cancel_cb),
             ('Undo', None, '_Undo', None, 'Undo current command', self.__undo_cb),            
-            ('Search', None, '_Search', '<control>s', 'Search output', self.__search_cb),
+            ('Search', None, '_Search', '<control>s', 'Search output', self.__search_cb),          
             ('ScrollHome', None, 'Output _Top', 'Home', 'Scroll to output top', self.__view_home_cb),
             ('ScrollEnd', None, 'Output _Bottom', 'End', 'Scroll to output bottom', self.__view_end_cb), 
             ('ScrollPgUp', None, 'Output Page _Up', 'Page_Up', 'Scroll output up', self.__view_up_cb),
             ('ScrollPgDown', None, 'Output Page _Down', 'Page_Down', 'Scroll output down', self.__view_down_cb),             
             ('PreviousCommand', gtk.STOCK_GO_UP, '_Previous', '<control>Up', 'View previous command', self.__view_previous_cb),
             ('NextCommand', gtk.STOCK_GO_DOWN, '_Next', '<control>Down', 'View next command', self.__view_next_cb),
-        ]        
+        ]
+        self.__toggle_actions = [
+            ('Overview', None, '_Overview', '<control><shift>o', 'Toggle overview', self.__overview_cb),                                   
+        ]
         self.__action_group = gtk.ActionGroup('HotwireActions')
-        self.__action_group.add_actions(self.__actions)        
+        self.__action_group.add_actions(self.__actions) 
+        self.__action_group.add_toggle_actions(self.__toggle_actions)
+        self.__action_group.get_action('Overview').set_active(False)       
         self.__context = context
         self.__header = gtk.HBox()
-        def mkarrow_box(direction):
-            hbox = gtk.HBox()
-            arrow = gtk.Arrow(direction, gtk.SHADOW_IN)
-            arrow.set_alignment(1.0, 0.5)
-            label = gtk.Label()
-            label.set_alignment(0.0, 0.5)
-            hbox.pack_start(arrow, expand=True)
-            hbox.pack_start(label, expand=True)
-            return (hbox, label)
-        (hbox, self.__header_label) = mkarrow_box(gtk.ARROW_UP)
-        self.__header.pack_start(hbox, expand=True)
+        def create_arrow_button(action_name):
+            action = self.__action_group.get_action(action_name)
+            icon = action.create_icon(gtk.ICON_SIZE_MENU)
+            button = gtk.Button(label='x')
+            button.connect('clicked', lambda *args: action.activate())
+            action.connect("notify::sensitive", lambda *args: button.set_sensitive(action.get_sensitive()))
+            button.set_focus_on_click(False)
+            button.set_property('image', icon)
+            return button
+        self.__header_label = create_arrow_button('PreviousCommand')
+        self.__header.pack_start(self.__header_label, expand=False)
         self.pack_start(self.__header, expand=False)
         self.__cmd_notebook = gtk.Notebook()
         self.__cmd_notebook.connect('switch-page', self.__on_page_switch)
@@ -346,8 +353,8 @@ class CommandExecutionControl(gtk.VBox):
         self.__cmd_overview.connect('command-action', self.__handle_cmd_overview_action)        
         self.pack_start(self.__cmd_overview, expand=True)
         self.__footer = gtk.HBox()
-        (hbox, self.__footer_label) = mkarrow_box(gtk.ARROW_DOWN)
-        self.__footer.pack_start(hbox, expand=True) 
+        self.__footer_label = create_arrow_button('NextCommand')     
+        self.__footer.pack_start(self.__footer_label, expand=False) 
         self.pack_start(self.__footer, expand=False)        
         self.__history_visible = False
         self.__cached_executing_count = 0
@@ -424,7 +431,6 @@ class CommandExecutionControl(gtk.VBox):
     @log_except(_logger)        
     def __on_show_command(self, overview, cmd):
         _logger.debug("showing command %s", cmd)
-        self.__toggle_history_expanded()
         target = None
         for child in self.__cmd_notebook.get_children():
             if child.cmd_header.get_pipeline() == cmd.get_pipeline():
@@ -433,6 +439,7 @@ class CommandExecutionControl(gtk.VBox):
         if target:
             pgnum = self.__cmd_notebook.page_num(target)
             self.__cmd_notebook.set_current_page(pgnum)
+            self.__action_group.get_action("Overview").activate()            
  
     def get_current_cmd(self, full=False, curpage=None):
         if curpage is not None:
@@ -483,7 +490,10 @@ class CommandExecutionControl(gtk.VBox):
         self.__do_scroll(True, False)
         
     def __view_down_cb(self, a):
-        self.__do_scroll(False, False)       
+        self.__do_scroll(False, False)
+    
+    def __overview_cb(self, a): 
+        self.__toggle_history_expanded()
     
     def __do_scroll(self, prev, full):
         cmd = self.get_current_cmd()
@@ -494,8 +504,10 @@ class CommandExecutionControl(gtk.VBox):
         
     def __toggle_history_expanded(self):
         self.__history_visible = not self.__history_visible
+        _logger.debug("history visible: %s", self.__history_visible)
         self.__sync_visible()
         self.__sync_cmd_sensitivity()
+        self.__sync_display()
         if self.__history_visible:
             self.__cmd_overview.scroll_to_bottom()            
         
@@ -521,7 +533,8 @@ class CommandExecutionControl(gtk.VBox):
         if self.__history_visible:
             for action in actions:
                 action.set_sensitive(False)
-            cmd = None    
+            cmd = None
+            return
         else:            
             cmd = self.get_current_cmd(full=True, curpage=curpage)
             if not cmd:
@@ -539,11 +552,11 @@ class CommandExecutionControl(gtk.VBox):
         
     def __sync_display(self, nth=None):
         def set_label(container, label, n):
-            if n == 0:
+            if n == 0 or self.__history_visible:
                 container.hide_all()
                 return
             container.show_all()
-            label.set_text(' %d commands' % (n,))
+            label.set_label(' %d commands' % (n,))
         set_label(self.__header, self.__header_label, self.__get_prevcmd_count(nth))
         set_label(self.__footer, self.__footer_label, self.__get_nextcmd_count(nth))
         self.__sync_cmd_sensitivity(curpage=nth)        
@@ -568,16 +581,6 @@ class CommandExecutionControl(gtk.VBox):
         nth = self.__cmd_notebook.get_current_page()
         n_pages = self.__cmd_notebook.get_n_pages()
         _logger.debug("histmode: %s do_prev: %s nth: %s n_pages: %s", self.__history_visible, do_prev, nth, n_pages)
-        if nth == (n_pages-1):             
-            if self.__history_visible and do_prev:
-                if dry_run:
-                    return True
-                self.__toggle_history_expanded()
-            elif (self.__history_visible and not do_prev) or (not self.__history_visible and do_prev):
-                if dry_run:
-                    return True
-                self.__toggle_history_expanded()
-                return
         if do_prev and nth > 0:
             target_nth = nth - 1
         elif (not do_prev) and nth < n_pages-1:
