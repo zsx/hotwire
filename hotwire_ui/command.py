@@ -427,8 +427,11 @@ class CommandExecutionControl(gtk.VBox):
             pgnum = self.__cmd_notebook.page_num(target)
             self.__cmd_notebook.set_current_page(pgnum)
  
-    def get_current_cmd(self, full=False):
-        page = self.__cmd_notebook.get_current_page()
+    def get_current_cmd(self, full=False, curpage=None):
+        if curpage is not None:
+            page = curpage
+        else:
+            page = self.__cmd_notebook.get_current_page()
         if page < 0:
             return None
         cmd = self.__cmd_notebook.get_nth_page(page)
@@ -513,7 +516,7 @@ class CommandExecutionControl(gtk.VBox):
                 action.set_sensitive(False)
             cmd = None    
         else:            
-            cmd = self.get_current_cmd(full=True)
+            cmd = self.get_current_cmd(full=True, curpage=curpage)
             if not cmd:
                 for action in actions:
                     action.set_sensitive(False)
