@@ -160,24 +160,6 @@ class BuiltinRegistry(Singleton):
 
     def register(self, builtin):
         self.__builtins.add(builtin)
-        
-    def load_user_builtins(self):
-        custom_path = os.path.expanduser("~/.hotwire/custom")
-        if not os.path.isdir(custom_path):
-            return
-        for f in DirectoryGenerator(custom_path):
-            if f.endswith('.py'):
-                fname = os.path.basename(f[:-3])
-                try:
-                    _logger.debug("Attempting to load user custom file: %s", f)
-                    (stream, path, desc) = imp.find_module(fname, [custom_path])
-                    try:
-                        imp.load_module(fname, stream, f, desc)
-                    finally:
-                        stream.close()
-                except:
-                    _logger.warn("Failed to load custom file: %s", f, exc_info=True)
-                
 
 import hotwire.builtins.cat
 import hotwire.builtins.cd
@@ -196,5 +178,3 @@ import hotwire.builtins.proc
 import hotwire.builtins.rm
 import hotwire.builtins.sh
 import hotwire.builtins.term
-#moddir = hotwire.ModuleDir(os.path.join(os.path.dirname(hotwire.__file__), 'builtins'))
-#moddir.do_import()

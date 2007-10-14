@@ -21,7 +21,7 @@ if __name__ == '__main__' and hasattr(sys.modules['__main__'], '__file__'):
 import hotwire
 import hotwire.sysdep
 import hotwire.config
-from hotwire.builtin import BuiltinRegistry
+import hotwire.pluginsystem
 import hotwire.logutil
 import hotwire.util
 from hotwire_ui.shell import HotWindowFactory
@@ -127,7 +127,7 @@ def main():
     if no_persist:
         Persister.getInstance().disable()
         
-    BuiltinRegistry.getInstance().load_user_builtins()
+    hotwire.pluginsystem.load_user_plugins()
 
     w = HotWindowFactory.getInstance().create_initial_window(subtitle=(no_persist and ' (Unpersisted)' or ''))
     w.show()
