@@ -1,6 +1,6 @@
 import os, sys, stat
 
-from hotwire.builtin import Builtin, BuiltinRegistry, OutputStreamSchema
+from hotwire.builtin import Builtin, BuiltinRegistry
 from hotwire.fs import FilePath, DirectoryGenerator
 from hotwire.completion import CdCompleter 
 
@@ -8,7 +8,7 @@ class CdBuiltin(Builtin):
     """Change working directory and list its contents."""
     def __init__(self):
         super(CdBuiltin, self).__init__('cd',
-                                        output=OutputStreamSchema(FilePath),
+                                        output=FilePath,
                                         parseargs='str',
                                         idempotent=True,
                                         threaded=True)

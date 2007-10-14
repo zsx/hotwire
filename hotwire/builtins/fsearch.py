@@ -4,7 +4,7 @@ import hotwire
 import hotwire.fs
 from hotwire.fs import FilePath, file_is_valid_utf8
 
-from hotwire.builtin import Builtin, BuiltinRegistry, OutputStreamSchema
+from hotwire.builtin import Builtin, BuiltinRegistry
 from hotwire.builtins.fileop import FileOpBuiltin
 from hotwire.sysdep.fs import Filesystem
 
@@ -21,7 +21,7 @@ class FSearchBuiltin(FileOpBuiltin):
     """Search directory tree for files matching a regular expression."""
     def __init__(self):
         super(FSearchBuiltin, self).__init__('fsearch',
-                                             output=OutputStreamSchema(FileStringMatch),
+                                             output=FileStringMatch,
                                              threaded=True)
 
     def execute(self, context, regexp, path=None):

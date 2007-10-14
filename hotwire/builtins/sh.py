@@ -9,7 +9,7 @@ except:
 import hotwire
 from hotwire.text import MarkupText
 from hotwire.async import MiniThreadPool
-from hotwire.builtin import Builtin, BuiltinRegistry, InputStreamSchema, OutputStreamSchema
+from hotwire.builtin import Builtin, BuiltinRegistry, InputStreamSchema
 from hotwire.sysdep.proc import ProcessManager
 
 _logger = logging.getLogger("hotwire.builtin.Sh")
@@ -19,7 +19,7 @@ class ShBuiltin(Builtin):
     def __init__(self):
         super(ShBuiltin, self).__init__('sh',
                                         input=InputStreamSchema(str, optional=True),
-                                        outputs=[OutputStreamSchema(str)],
+                                        output=str,
                                         parseargs='str-shquoted',
                                         hasstatus=True,
                                         threaded=True)

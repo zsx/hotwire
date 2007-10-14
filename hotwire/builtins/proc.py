@@ -1,13 +1,13 @@
 import hotwire
 
 from hotwire.sysdep.proc import ProcessManager, Process
-from hotwire.builtin import Builtin, BuiltinRegistry, OutputStreamSchema
+from hotwire.builtin import Builtin, BuiltinRegistry
 
 class PsBuiltin(Builtin):
     """List all processes."""
     def __init__(self):
         super(PsBuiltin, self).__init__('proc',
-                                        output=OutputStreamSchema(Process),
+                                        output=Process,
                                         idempotent=True,
                                         threaded=True)
 

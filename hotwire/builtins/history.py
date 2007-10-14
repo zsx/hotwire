@@ -5,7 +5,7 @@ from hotwire.builtin import Builtin, BuiltinRegistry, OutputStreamSchema
 class HistoryBuiltin(Builtin):
     def __init__(self):
         super(HistoryBuiltin, self).__init__('history',
-                                             output=OutputStreamSchema(str))
+                                             output=str)
 
     def execute(self, context):
         return context.hotwire.get_history()

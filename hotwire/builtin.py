@@ -49,7 +49,7 @@ class Builtin(object):
                  locality='local',
                  api_version=0):
         self.input=input
-        self.outputs = output and [output] or outputs
+        self.outputs = [isinstance(o, OutputStreamSchema) and o or OutputStreamSchema(o) for o in (output and [output] or outputs)]
         self.options = options
         self.name = name
         self.aliases = aliases 

@@ -1,4 +1,4 @@
-from hotwire.builtin import Builtin, BuiltinRegistry, OutputStreamSchema
+from hotwire.builtin import Builtin, BuiltinRegistry
 
 class HelpItem(object):
     pass
@@ -7,7 +7,7 @@ class HelpBuiltin(Builtin):
     """Display help."""
     def __init__(self):
         super(HelpBuiltin, self).__init__('help',
-                                          output=OutputStreamSchema(HelpItem),
+                                          output=HelpItem,
                                           idempotent=True)
 
     def execute(self, context):

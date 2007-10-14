@@ -155,8 +155,10 @@ class Command(gobject.GObject):
 
     def execute(self, force_sync, **kwargs):
         if force_sync or not self.builtin.get_threaded():
+            _logger.debug("executing sync: %s", self)
             self.__run(**kwargs)
-        else:            
+        else:         
+            _logger.debug("executing async: %s", self)               
             MiniThreadPool.getInstance().run(lambda: self.__run(**kwargs))
 
     def set_output_queue(self, queue, map_fn):

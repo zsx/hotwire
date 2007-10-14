@@ -2,7 +2,7 @@ import os, os.path, stat, logging, locale
 
 from hotwire.iterdir import iterdir
 
-from hotwire.builtin import Builtin, BuiltinRegistry, InputStreamSchema, OutputStreamSchema
+from hotwire.builtin import Builtin, BuiltinRegistry, InputStreamSchema
 from hotwire.fs import FilePath,DirectoryGenerator
 from hotwire.sysdep.fs import Filesystem
 from hotwire.util import xmap
@@ -14,7 +14,7 @@ class LsBuiltin(Builtin):
     def __init__(self):
         super(LsBuiltin, self).__init__('ls', aliases=['dir'],
                                         input=InputStreamSchema(str, optional=True),
-                                        output=OutputStreamSchema(FilePath),
+                                        output=FilePath,
                                         parseargs='shglob',
                                         idempotent=True,
                                         threaded=True,
