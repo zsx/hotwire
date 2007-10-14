@@ -324,10 +324,18 @@ class CommandExecutionControl(gtk.VBox):
         self.__action_group.add_actions(self.__actions)        
         self.__context = context
         self.__header = gtk.HBox()
-        self.__header.pack_start(gtk.Arrow(gtk.ARROW_UP, gtk.SHADOW_IN), expand=False)   
-        self.__header_label = gtk.Label()
-        self.__header.pack_start(hotwidgets.Align(self.__header_label), expand=False)
-        self.pack_start(hotwidgets.Align(self.__header, xalign=0.0), expand=False)
+        def mkarrow_box(direction):
+            hbox = gtk.HBox()
+            arrow = gtk.Arrow(direction, gtk.SHADOW_IN)
+            arrow.set_alignment(1.0, 0.5)
+            label = gtk.Label()
+            label.set_alignment(0.0, 0.5)
+            hbox.pack_start(arrow, expand=True)
+            hbox.pack_start(label, expand=True)
+            return (hbox, label)
+        (hbox, self.__header_label) = mkarrow_box(gtk.ARROW_UP)
+        self.__header.pack_start(hbox, expand=True)
+        self.pack_start(self.__header, expand=False)
         self.__cmd_notebook = gtk.Notebook()
         self.__cmd_notebook.connect('switch-page', self.__on_page_switch)
         self.__cmd_notebook.set_show_tabs(False)
@@ -338,10 +346,9 @@ class CommandExecutionControl(gtk.VBox):
         self.__cmd_overview.connect('command-action', self.__handle_cmd_overview_action)        
         self.pack_start(self.__cmd_overview, expand=True)
         self.__footer = gtk.HBox()
-        self.__footer.pack_start(gtk.Arrow(gtk.ARROW_DOWN, gtk.SHADOW_IN), expand=False)           
-        self.__footer_label = gtk.Label()
-        self.__footer.pack_start(hotwidgets.Align(self.__footer_label), expand=False)        
-        self.pack_start(hotwidgets.Align(self.__footer, xalign=0.0), expand=False)        
+        (hbox, self.__footer_label) = mkarrow_box(gtk.ARROW_DOWN)
+        self.__footer.pack_start(hbox, expand=True) 
+        self.pack_start(self.__footer, expand=False)        
         self.__history_visible = False
         self.__cached_executing_count = 0
         self.__cached_total_count = 0
