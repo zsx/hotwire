@@ -125,7 +125,7 @@ class Command(gobject.GObject):
         self.output = CommandQueue()
         self.map_fn = lambda x: x
         self.args = args
-
+        self.__executing_sync = None
         self._cancelled = False
 
     def set_pipeline(self, pipeline):
@@ -156,9 +156,11 @@ class Command(gobject.GObject):
     def execute(self, force_sync, **kwargs):
         if force_sync or not self.builtin.get_threaded():
             _logger.debug("executing sync: %s", self)
+            self.__executing_sync = True
             self.__run(**kwargs)
         else:         
-            _logger.debug("executing async: %s", self)               
+            _logger.debug("executing async: %s", self)              
+            self.__executing_sync = False             
             MiniThreadPool.getInstance().run(lambda: self.__run(**kwargs))
 
     def set_output_queue(self, queue, map_fn):
@@ -242,7 +244,10 @@ class Command(gobject.GObject):
             _logger.exception("Caught exception: %s", e)
             self.emit("exception", e)
         self.output.put(self.map_fn(None))
-        self.emit("complete")        
+        self.emit("complete")  
+        
+    def get_executing_sync(self):
+        return self.__executing_sync      
 
     def __str__(self):
         return self.builtin.name + " " + string.join(map(unicode, self.args), " ")
@@ -332,6 +337,7 @@ class Pipeline(gobject.GObject):
     
     def __execute_internal(self, force_sync, opt_formats=[]):
         _logger.debug("Executing %s", self)
+        self.__set_state('executing')        
         for cmd in self.__components:
             cmd.connect("complete", self.__on_cmd_complete)            
             cmd.connect("exception", self.__on_cmd_exception)
@@ -344,7 +350,6 @@ class Pipeline(gobject.GObject):
         last = self.__components[-1] 
         last.output.negotiate(prev_opt_formats, opt_formats)
         last.execute(force_sync)
-        self.__set_state('executing')
         
     def validate_state_transition(self, state):
         if self.__state == 'waiting':
@@ -420,8 +425,11 @@ class Pipeline(gobject.GObject):
         self.emit("status", cmd_idx, cmd, text, progress)
 
     def __on_cmd_complete(self, cmd):
-        _logger.debug("command complete: %s", cmd)        
-        gobject.idle_add(lambda: self.__idle_handle_cmd_complete(cmd))
+        _logger.debug("command complete: %s", cmd)
+        if cmd.get_executing_sync():
+            self.__idle_handle_cmd_complete(cmd)
+        else:  
+            gobject.idle_add(lambda: self.__idle_handle_cmd_complete(cmd))
         
     def __idle_handle_cmd_complete(self, cmd):
         self.__cmd_complete_count += 1
