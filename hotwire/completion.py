@@ -15,6 +15,7 @@ from hotwire.singletonmixin import Singleton
 from hotwire.util import quote_arg, tracefn
 from hotwire.usagerecord import UsageRecord
 from hotwire.sysdep.fs import Filesystem
+from hotwire.state import VerbCompletionData
 
 _logger = logging.getLogger("hotwire.Completion")
 
@@ -364,18 +365,6 @@ class AliasCompleter(Singleton, BaseCompleter):
             return (True, AliasCompletion(aliasval, 0, len(input), exact=exact, matchtarget=alias))
         return (False, None)
 
-class VerbCompletionData(Singleton):
-    def __init__(self):
-        self.autoterm = Persister.getInstance().load('autoterm', default=set()) 
-
-    def note_autoterm(self, cmdname, is_autoterm):
-        autoterm = self.autoterm.get(lock=True)
-        if is_autoterm:
-            autoterm.add(cmdname)
-        elif (not is_autoterm) and (cmdname in autoterm):
-            autoterm.remove(cmdname)
-        self.autoterm.save()
-
 class VerbCompleter(object):
     def __init__(self, cwd):
         super(VerbCompleter, self).__init__()
@@ -520,32 +509,3 @@ class CdCompleter(Singleton, BaseCompleter):
         history = CwdHistoryCompleter.getInstance()
         for result in history.search(text, **kwargs):
             yield result
-
-class CompletionRecord(Singleton):
-    def __init__(self):
-        super(CompletionRecord, self).__init__()
-        self.__token_history = Persister.getInstance().load('token_history', default=UsageRecord())
-        self.__cwd_history = Persister.getInstance().load('cwd_history', default=UsageRecord())
-        
-    def record(self, cwd, pipeline_tree):
-		vd = VerbCompletionData.getInstance()
-        self.__cwd_history.get(lock=True).record(cwd)
-        self.__cwd_history.save()
-        for cmd in pipeline_tree:
-            verb = cmd[0]
-            if verb.text in ('term', 'sh') and len(cmd) > 1:
-                vd.note_autoterm(os.path.basename(cmd[1].text), verb.text == 'term')
-
-            token_appended = False
-            tokenhist = self.__token_history.get(lock=True)
-            for arg in cmd[1:]:
-                tokenhist.record(arg.text)
-                token_appended = True
-            if token_appended:
-                self.__token_history.save()
-            else:
-                self.__token_history.unlock()
-
-        
-        
-        

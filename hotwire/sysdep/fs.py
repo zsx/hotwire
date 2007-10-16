@@ -43,6 +43,10 @@ class BaseFilesystem(object):
     def get_conf_dir(self):
         raise NotImplementedError()
     
+    def make_conf_subdir(self, *args):
+        path = os.path.join(self.get_conf_dir(), *args)
+        return self.makedirs_p(path)
+    
     def get_path_generator(self):
         raise NotImplementedError()
 

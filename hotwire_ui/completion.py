@@ -6,6 +6,7 @@ import hotwire_ui.widgets as hotwidgets
 from hotwire.completion import Completion
 from hotwire.util import markup_for_match
 from hotwire_ui.pixbufcache import PixbufCache
+from hotwire.state import History
 
 _logger = logging.getLogger("hotwire.ui.Completion")
 
@@ -419,7 +420,7 @@ class PopupDisplay(hotwidgets.TransientPopup):
     def __idle_do_history_search(self):
         self.__idle_history_search_id = 0
         if self.__search:
-            histsrc = self.__context.history.get()
+            histsrc = self.__context.history.search_commands(self.__search)
         else:
             histsrc = self.__tabhistory
         self.history.set_generator(self.__generate_history(histsrc))

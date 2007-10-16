@@ -5,7 +5,7 @@ import gtk, gobject, pango
 
 from hotwire.command import Pipeline,MinionPipeline,Command,HotwireContext
 from hotwire.persist import Persister
-from hotwire.completion import Completion, VerbCompleter, TokenCompleter, CompletionRecord, CompletionContext, CompletionPrefixStripProxy
+from hotwire.completion import Completion, VerbCompleter, TokenCompleter, CompletionContext, CompletionPrefixStripProxy
 import hotwire.command
 import hotwire.version
 import hotwire_ui.widgets as hotwidgets
@@ -20,6 +20,7 @@ try:
     minion_available = True
 except:
     minion_available = False
+from hotwire.state import CompletionRecord, History
 from hotwire_ui.command import CommandExecutionDisplay,CommandExecutionControl
 from hotwire_ui.completion import PopupDisplay
 from hotwire.logutil import log_except
@@ -45,7 +46,8 @@ class HotwireClientContext(hotwire.command.HotwireContext):
         return self.__hotwire.get_last_output()
 
     def get_history(self):
-        return self.history.get()
+        # FIXME arbitrary limit
+        return self.history.search_commands(None, limit=250)
 
     def ssh(self, host):
         self.__hotwire.ssh(host)
@@ -117,6 +119,7 @@ class Hotwire(gtk.VBox):
         "title" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (gobject.TYPE_STRING,)),
         "new-tab-widget" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (gobject.TYPE_PYOBJECT, gobject.TYPE_STRING))
     }
+    MAX_TABHISTORY = 30
     def __init__(self, initcwd=None, window=None, ui=None):
         super(Hotwire, self).__init__()
 
@@ -125,7 +128,7 @@ class Hotwire(gtk.VBox):
         self.__ui = ui
 
         self.context = HotwireClientContext(self, initcwd=initcwd)
-        self.context.history = Persister.getInstance().load('history', default=[])
+        self.context.history = History.getInstance()
         self.__tabhistory = []
         self.context.connect("cwd", self.__on_cwd)
 
@@ -287,9 +290,10 @@ class Hotwire(gtk.VBox):
 
         if add_history:
             text = self.__input.get_property("text").strip()
-            self.context.history.get(lock=True).insert(0, text)
-            self.context.history.save()
+            self.context.history.append_command(text, self.context.get_cwd())
             self.__tabhistory.insert(0, text)
+            if len(self.__tabhistory) >= self.MAX_TABHISTORY:
+                self.__tabhistory.pop(-1)
         if reset_input:
             self.__input.set_text("")
             self.__completion_token = None
