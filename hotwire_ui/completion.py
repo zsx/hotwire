@@ -400,7 +400,9 @@ class PopupDisplay(hotwidgets.TransientPopup):
         _logger.debug("new history search: %s", search)
         if not now:
             self.history.set_compact(not self.__search)
-            if search and self.__idle_history_search_id == 0:
+            # Be sure we suppress one-character searches here; they aren't going
+            # to be useful.
+            if search and (len(search) > 1) and self.__idle_history_search_id == 0:
                 _logger.debug("queuing idle history search for '%s'", search)
                 self.__idle_history_search_id = gobject.timeout_add(300, self.__idle_do_history_search)
             elif not search:

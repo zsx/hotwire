@@ -1,4 +1,7 @@
-import os,sys,logging,sqlite3,time,datetime
+import os,sys,logging,time,datetime
+import sqlite3
+
+import gobject
 
 from hotwire.singletonmixin import Singleton
 from hotwire.sysdep.fs import Filesystem
@@ -19,26 +22,37 @@ class History(Singleton):
         _logger.debug("opening connection to history db: %s", path)
         self.__conn = sqlite3.connect(path, isolation_level=None)
         cursor = self.__conn.cursor()
-        cursor.execute('''CREATE TABLE IF NOT EXISTS Commands (cmd text, exectime datetime, dirpath text)''')
+        cursor.execute('''CREATE TABLE IF NOT EXISTS Commands (dbid INTEGER PRIMARY KEY AUTOINCREMENT, cmd TEXT, exectime DATETIME, dirpath TEXT)''')
         cursor.execute('''CREATE INDEX IF NOT EXISTS CommandsIndex on Commands (cmd)''')
-        cursor.execute('''CREATE TABLE IF NOT EXISTS Meta (keyName text, keyValue)''')
-        cursor.execute('''CREATE UNIQUE INDEX IF NOT EXISTS MetaKeyIndex on Meta (keyName)''')
-        self.__convert_from_persist()              
+        cursor.execute('''CREATE TABLE IF NOT EXISTS Autoterm (dbid INTEGER PRIMARY KEY AUTOINCREMENT, cmd TEXT UNIQUE, modtime DATETIME)''')
+        cursor.execute('''CREATE TABLE IF NOT EXISTS Directories (dbid INTEGER PRIMARY KEY AUTOINCREMENT, path TEXT UNIQUE, count INTEGER, modtime DATETIME)''')  
+        cursor.execute('''CREATE TABLE IF NOT EXISTS Tokens (dbid INTEGER PRIMARY KEY AUTOINCREMENT, token TEXT UNIQUE, count INTEGER, modtime DATETIME)''')
+        cursor.execute('''CREATE TABLE IF NOT EXISTS Meta (keyName TEXT UNIQUE, keyValue)''')
+        self.__convert_from_persist('history', 'Commands', '(NULL, ?, 0, NULL)')
+        self.__convert_from_persist('autoterm', 'Autoterm', '(NULL, ?, 0)')
+        freqconvert = lambda x: (x[0], x[1].freq, x[1].usetime)
+        self.__convert_from_persist('cwd_history', 'Directories', '(NULL, ?, ?, ?)', freqconvert)
+        self.__convert_from_persist('token_history', 'Tokens', '(NULL, ?, ?, ?)', freqconvert)        
         
-    def __convert_from_persist(self):
+    def __convert_from_persist(self, persistkey, tablename, valuefmt, mapfunc=lambda x: (x,)):
         cursor = self.__conn.cursor()
-        conversion_key = 'persistHistoryConverted'
+        conversion_key = 'persist%sConverted' % (persistkey,)
         cursor.execute('''BEGIN TRANSACTION''')
         result = cursor.execute('''SELECT keyValue FROM Meta WHERE keyName=?''', [conversion_key]).fetchone()
         if not result:
             cursor.execute('''INSERT INTO Meta VALUES (?, ?)''', [conversion_key, datetime.datetime.now()])
         else:
-            _logger.debug("persist conversion already complete")        
+            _logger.debug("conversion already complete for key %s", conversion_key)        
+            cursor.execute('''COMMIT''')
             return 
-        oldhistory = Persister.getInstance().load('history', default=[]).get()
-        _logger.debug("performing conversion on old persisted history: %d entries", len(oldhistory))
-        for item in oldhistory:
-            cursor.execute('''INSERT INTO Commands VALUES (?, 0, NULL)''', (item,))
+        oldhistory = Persister.getInstance().load(persistkey, default=None).get()
+        if oldhistory:
+            _logger.debug("performing conversion on persisted state %s: %s", conversion_key, oldhistory)
+            query = '''INSERT INTO %s VALUES %s''' % (tablename, valuefmt,)
+            for item in oldhistory:
+                cursor.execute(query, mapfunc(item))
+        else:
+            _logger.debug("no previous data to convert")
         cursor.execute('''COMMIT''')
         _logger.debug("conversion successful")        
 
@@ -47,57 +61,94 @@ class History(Singleton):
         cursor.execute('''BEGIN TRANSACTION''')
         vals = (cmd, datetime.datetime.now(), cwd)
         _logger.debug("doing insert of %s", vals)
-        cursor.execute('''INSERT INTO Commands VALUES (?, ?, ?)''', vals)
-        cursor.execute('''COMMIT''')  
-
+        cursor.execute('''INSERT INTO Commands VALUES (NULL, ?, ?, ?)''', vals)
+        cursor.execute('''COMMIT''')
+        
+    def __search_limit_query(self, tablename, column, orderval, searchterm, limit, countmin=0):
+        queryclauses = []
+        args = []        
+        if searchterm:
+            queryclauses.append(column + " LIKE ? ESCAPE '%'")
+            args.append('%' + searchterm.replace('%', '%%') + '%')            
+        if countmin > 0:
+            queryclauses.append("count > %d " % (countmin,))
+        if queryclauses:
+            queryclause = ' WHERE ' + ' AND '.join(queryclauses)
+        else:
+            queryclause = ''
+        sql = ((('SELECT * FROM %s' % (tablename,)) + queryclause + 
+                  (' ORDER BY %s DESC LIMIT %d' % (orderval, limit,))),
+                args)
+        _logger.debug("generated search query: %s", sql)
+        return sql
+        
     def search_commands(self, searchterm, limit=20):
         cursor = self.__conn.cursor()
-        queryclause = ''' WHERE cmd LIKE ? ESCAPE '%' '''
-        args = []
-        if searchterm: args.append('%' + searchterm.replace('%', '%%') + '%')
-        sql = ('''SELECT cmd FROM Commands''' +
-                               (searchterm and queryclause or '') + 
-                                '''ORDER BY exectime LIMIT %d''' % (limit,))
+        (sql, args) = self.__search_limit_query('Commands', 'cmd', 'exectime', searchterm, limit)         
         _logger.debug("execute using args %s: %s", args, sql)
         for v in cursor.execute(sql, args):
-            yield v[0]
-    
-
-class VerbCompletionData(Singleton):
-    def __init__(self):
-        self.autoterm = Persister.getInstance().load('autoterm', default=set()) 
-
-    def note_autoterm(self, cmdname, is_autoterm):
-        autoterm = self.autoterm.get(lock=True)
-        if is_autoterm:
-            autoterm.add(cmdname)
-        elif (not is_autoterm) and (cmdname in autoterm):
-            autoterm.remove(cmdname)
-        self.autoterm.save()    
-    
-class CompletionRecord(Singleton):
-    def __init__(self):
-        super(CompletionRecord, self).__init__()
-        self.__token_history = Persister.getInstance().load('token_history', default=UsageRecord())
-        self.__cwd_history = Persister.getInstance().load('cwd_history', default=UsageRecord())
+            yield v[1]  
         
-    def record(self, cwd, pipeline_tree):
-        vd = VerbCompletionData.getInstance()
-        self.__cwd_history.get(lock=True).record(cwd)
-        self.__cwd_history.save()
+    def set_autoterm(self, cmdname, is_autoterm):
+        cursor = self.__conn.cursor()
+        cursor.execute('''BEGIN TRANSACTION''')
+        if is_autoterm:
+            cursor.execute('''INSERT OR REPLACE INTO Autoterm VALUES (NULL, ?, ?)''', [cmdname, datetime.datetime.now()])
+        else:
+            cursor.execute('''DELETE FROM Autoterm WHERE cmd = ?''', [cmdname])
+        cursor.execute('''COMMIT''')
+        
+    def get_autoterm_cmds(self):
+        cursor = self.__conn.cursor()        
+        for v in cursor.execute('''SELECT cmd from Autoterm'''):
+            yield v[0]
+        
+    def __append_countitem(self, tablename, colname, value):
+        cursor = self.__conn.cursor()
+        cursor.execute('''BEGIN TRANSACTION''')
+        cursor.execute('''SELECT * FROM %s WHERE %s = ?''' % (tablename, colname), (value,))
+        result = cursor.fetchone()
+        if not result:
+            current_count = 0
+        else:
+            current_count = result[1]
+        vals = (value, current_count, datetime.datetime.now())
+        _logger.debug("doing insert of %s", vals)
+        cursor.execute('''INSERT OR REPLACE INTO %s VALUES (NULL, ?, ?, ?)''' % (tablename,), vals)
+        cursor.execute('''COMMIT''')
+        
+    def append_dir_usage(self, path):
+        self.__append_countitem('Directories', 'path', path)
+        
+    def search_dir_usage(self, searchterm, limit=20):
+        cursor = self.__conn.cursor()
+        (sql, args) = self.__search_limit_query('Directories', 'path', 'count', searchterm, limit, countmin=4)
+        for v in cursor.execute(sql, args):
+            yield v[1:]
+        
+    def append_token_usage(self, text):
+        self.__append_countitem('Tokens', 'token', text)        
+
+    def search_token_usage(self, searchterm, limit=20):
+        cursor = self.__conn.cursor()
+        (sql, args) = self.__search_limit_query('Tokens', 'token', 'count', searchterm, limit, countmin=2)
+        for v in cursor.execute(sql, args):
+            yield v[1:]
+        
+    def append_usage(self, colkey, *args, **kwargs):
+        getattr(self, 'append_%s_usage' % (colkey,))(*args, **kwargs)
+        
+    def search_usage(self, colkey, *args, **kwargs):
+        return getattr(self, 'search_%s_usage' % (colkey,))(*args, **kwargs)        
+        
+    def record_pipeline(self, cwd, pipeline_tree):
+        self.append_dir_usage(cwd)
         for cmd in pipeline_tree:
             verb = cmd[0]
             if verb.text in ('term', 'sh') and len(cmd) > 1:
-                vd.note_autoterm(os.path.basename(cmd[1].text), verb.text == 'term')
+                self.set_autoterm(os.path.basename(cmd[1].text), verb.text == 'term')
 
-            token_appended = False
-            tokenhist = self.__token_history.get(lock=True)
             for arg in cmd[1:]:
-                tokenhist.record(arg.text)
-                token_appended = True
-            if token_appended:
-                self.__token_history.save()
-            else:
-                self.__token_history.unlock()
+                self.append_token_usage(arg.text)
     
-__all__ = ['History', 'CompletionRecord']      
+__all__ = ['History',]      

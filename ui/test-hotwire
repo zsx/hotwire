@@ -2,6 +2,7 @@
 # -*- mode: python; tab-width: 4; indent-tabs-mode: nil -*-
 
 import os, sys, unittest, logging, platform, getopt
+import tempfile, shutil
 
 if os.path.basename(os.path.dirname(__file__)) == 'ui':
     sys.path.insert(0, '.')
@@ -20,6 +21,8 @@ import hotwire.sysdep.fs
 import hotwire.sysdep.proc_impl
 import hotwire.version
 from hotwire.version import __version__, svn_version_str
+
+_logger = logging.getLogger("hotwire.TestMain")
 
 def usage():
     sys.stdout.write('Hotwire %s %s\n' % (__version__, svn_version_str()))
@@ -49,7 +52,9 @@ def main():
     hotwire.logutil.init(default_log_level, debug_modules, 'hotwire.')
     print "Running tests on %s %s" % (hotwire.version.__version__, hotwire.version.svn_version_str())
     sys.stdout.flush()
-    hotwire.persist.Persister.getInstance().disable() 
+	tmpd = tempfile.mkdtemp(prefix='hotwiretest_state')
+	_logger.info("Created temporary state dir: %s", tmpd) 
+	hotwire.sysdep.fs.Filesystem.getInstance().set_override_conf_dir(tmpd) 
     suite = unittest.TestLoader().loadTestsFromModule(hotwire.test_command)
     unittest.TextTestRunner().run(suite)
     suite = unittest.TestLoader().loadTestsFromModule(hotwire.test_completion)
@@ -57,6 +62,8 @@ def main():
     if unix_avail:
         suite = unittest.TestLoader().loadTestsFromModule(hotwire.test_command_unix)
         unittest.TextTestRunner().run(suite)
+	_logger.info("Removing temporary state dir: %s", tmpd)         
+    shutil.rmtree(tmpd, ignore_errors=True)
 
 if __name__ == '__main__':
     main()

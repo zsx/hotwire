@@ -13,9 +13,8 @@ from hotwire.fs import FilePath,DirectoryGenerator
 from hotwire.sysdep.fs import Filesystem
 from hotwire.singletonmixin import Singleton
 from hotwire.util import quote_arg, tracefn
-from hotwire.usagerecord import UsageRecord
+from hotwire.state import UsageRecord, History
 from hotwire.sysdep.fs import Filesystem
-from hotwire.state import VerbCompletionData
 
 _logger = logging.getLogger("hotwire.Completion")
 
@@ -130,7 +129,7 @@ class BaseCompleter(object):
     def _set_generator(self, generator):
         self._generator = generator
 
-    def _get_generator(self):
+    def _get_generator(self, search=None):
         return self._generator
 
     def _match_substr(self):
@@ -165,7 +164,9 @@ class BaseCompleter(object):
         return True
 
     def search(self, text, hotwire=None):
-        for item in self._get_generator():
+        gen = self._get_generator(search=text)
+        _logger.debug("using generator: %s", gen)
+        for item in gen:
             if not self._ext_filter(item):
                 continue
             (is_match, result) = self._filter_item(item, text)
@@ -368,7 +369,7 @@ class AliasCompleter(Singleton, BaseCompleter):
 class VerbCompleter(object):
     def __init__(self, cwd):
         super(VerbCompleter, self).__init__()
-		self._autoterm = VerbCompletionData.getInstance().autoterm
+        self._history = History.getInstance()
         self.__cwd = cwd
 		self._cwd_completer = CwdExecutableCompleter(cwd)
 
@@ -380,8 +381,8 @@ class VerbCompleter(object):
             token = _path_from_shterm(token)
             PathExecutableCompleter.getInstance().mark_chosen(token)
 
-    def __prefix_completion(self, item):
-        if os.path.basename(item.mstr) in self._autoterm.get():
+    def __prefix_completion(self, item): 
+        if os.path.basename(item.mstr) in self._history.get_autoterm_cmds():
             item.set_prefix('term ')
         else:
             item.set_prefix('sh ')
@@ -443,28 +444,21 @@ class HistoryCompletion(Completion):
 class HistoryCompleter(BaseCompleter):
     def __init__(self, name, **kwargs):
         super(HistoryCompleter, self).__init__(**kwargs)
-        self.__history = Persister.getInstance().load(name, default=UsageRecord())
+        self._history = History.getInstance()
+        self._name = name
 
-    def _get_generator(self):
-        return self.__history.get()
+    def _get_generator(self, search=None):
+        return self._history.search_usage(self._name, search)
 
     def _make_compl(self, item, mstart, mlen, exact):
-        return HistoryCompletion(item[0], mstart, mlen, exact=exact, freq=item[1].freq)
+        return HistoryCompletion(item[0], mstart, mlen, exact=exact, freq=item[1])
 
     def _item_text(self, item):
         return item[0]
 
-    def search(self, text, **kwargs):
-        if not text:
-            for freqitem in self.__history.get().frequent():
-                yield HistoryCompletion(freqitem.value, 0, 0, freq=(freqitem.usage.freq))
-        else:
-            for item in super(HistoryCompleter, self).search(text, **kwargs):
-                yield item
-
 class TokenHistoryCompleter(HistoryCompleter):
     def __init__(self):
-        super(TokenHistoryCompleter, self).__init__('token_history')
+        super(TokenHistoryCompleter, self).__init__('token')
 
     def _match_substr(self):
         return True
@@ -486,7 +480,7 @@ class TokenCompleter(Singleton, BaseCompleter):
 
 class CwdHistoryCompleter(Singleton, HistoryCompleter):
     def __init__(self):
-        super(CwdHistoryCompleter, self).__init__('cwd_history')
+        super(CwdHistoryCompleter, self).__init__('dir')
 
     def _match_substr(self):
         return True

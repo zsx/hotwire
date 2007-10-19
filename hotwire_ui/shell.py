@@ -20,7 +20,7 @@ try:
     minion_available = True
 except:
     minion_available = False
-from hotwire.state import CompletionRecord, History
+from hotwire.state import History
 from hotwire_ui.command import CommandExecutionDisplay,CommandExecutionControl
 from hotwire_ui.completion import PopupDisplay
 from hotwire.logutil import log_except
@@ -364,7 +364,7 @@ class Hotwire(gtk.VBox):
             self.push_msg('Failed to parse pipeline: %s' % (e.args[0],))
             return
 
-        CompletionRecord.getInstance().record(self.__cwd, self.__pipeline_tree)
+        History.getInstance().record_pipeline(self.__cwd, self.__pipeline_tree)
 
         text = self.__input.get_property("text")
         if self.__minion and pipeline.get_locality() != 'local':
@@ -554,6 +554,7 @@ class Hotwire(gtk.VBox):
         self.__requeue_parse()
 
     def __idle_do_parse_and_complete(self):
+        ### TODO: move more of this stuff into hotwire_ui/completion.py
         self.__completion_token = None
         self.__idle_parse_id = 0
         if not self.__do_parse():
@@ -570,7 +571,7 @@ class Hotwire(gtk.VBox):
             return
         for cmd in self.__pipeline_tree:
             verb = cmd[0]
-            if pos >= verb.start and pos <= verb.end:
+            if pos >= verb.start and pos <= verb.end :
                 _logger.debug("generating verb completions for '%s'", verb.text)
                 completer = VerbCompleter(self.__cwd)
                 self.__completion_token = verb
