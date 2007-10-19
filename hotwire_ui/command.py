@@ -78,7 +78,7 @@ class CommandExecutionHeader(gtk.VBox):
         status_cmds = list(pipeline.get_status_commands())
         self.__pipeline_status_visible = False
         if status_cmds:
-            self.__cmd_statuses = gtk.HBox()
+            self.__cmd_statuses = gtk.HBox(spacing=8)
             show_cmd_name = len(status_cmds) > 1
             for cmdname in status_cmds:
                 self.__cmd_statuses.pack_start(CommandStatusDisplay(show_cmd_name and cmdname or None), expand=True)
