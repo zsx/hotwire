@@ -13,6 +13,7 @@ _logger = logging.getLogger("hotwire.sysdep.Filesystem")
 
 class BaseFilesystem(object):
     def __init__(self):
+        self._override_conf_dir = None
         self._trashdir = os.path.expanduser('~/.Trash')
         self.makedirs_p(self._trashdir)
 
@@ -41,7 +42,17 @@ class BaseFilesystem(object):
         return []
 
     def get_conf_dir(self):
+        if self._override_conf_dir:
+            target = self._override_conf_dir
+        else:
+            target = self._get_conf_dir_path()
+        return self.makedirs_p(target)
+    
+    def _get_conf_dir_path(self):
         raise NotImplementedError()
+    
+    def set_override_conf_dir(self, path):
+        self._override_conf_dir = path
     
     def make_conf_subdir(self, *args):
         path = os.path.join(self.get_conf_dir(), *args)

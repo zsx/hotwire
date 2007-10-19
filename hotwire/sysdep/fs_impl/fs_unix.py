@@ -4,8 +4,11 @@ import pwd,grp
 from hotwire.sysdep.fs import BaseFilesystem, File
 
 class UnixFilesystem(BaseFilesystem):
-    def get_conf_dir(self):
-        return self.makedirs_p(os.path.expanduser('~/.hotwire'))
+    def __init__(self):
+        super(UnixFilesystem, self).__init__()
+        
+    def _get_conf_dir_path(self):
+        return os.path.expanduser('~/.hotwire')
 
     def get_path_generator(self):
         for d in os.environ['PATH'].split(':'):
