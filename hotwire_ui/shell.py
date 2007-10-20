@@ -673,6 +673,8 @@ class HotWindow(gtk.Window):
     </menu>
     <menu action='ControlMenu'>
     </menu>
+    <menu action='PrefsMenu'>
+    </menu>    
     <menu action='HelpMenu'>
       <menuitem action='About'/>
     </menu>
@@ -729,7 +731,8 @@ class HotWindow(gtk.Window):
              'Close the current tab', self.__close_cb),
             ('EditMenu', None, 'Edit'),                
             ('ViewMenu', None, 'View'),       
-            ('ControlMenu', None, 'Control'),              
+            ('ControlMenu', None, 'Control'),
+            ('PrefsMenu', None, 'Preferences'),                            
             ('HelpMenu', None, 'Help'),
             ('About', gtk.STOCK_ABOUT, '_About', None, 'About Hotwire', self.__help_about_cb),
             ]
