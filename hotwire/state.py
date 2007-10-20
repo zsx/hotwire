@@ -151,4 +151,40 @@ class History(Singleton):
             for arg in cmd[1:]:
                 self.append_token_usage(arg.text)
     
-__all__ = ['History',]      
+_prefinstance = None
+class Preferences(gobject.GObject):
+    __gsignals__ = {
+        "tree-changed" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (gobject.TYPE_PYOBJECT,)),
+    }    
+    def __init__(self):
+        super(Preferences, self).__init__()
+        path = _get_state_path('prefs.sqlite')
+        _logger.debug("opening connection to prefs db: %s", path)
+        self.__conn = sqlite3.connect(path, isolation_level=None)
+        
+        cursor = self.__conn.cursor()
+        cursor.execute('''CREATE TABLE IF NOT EXISTS Prefs (dbid INTEGER PRIMARY KEY AUTOINCREMENT, keyName TEXT UNIQUE, keyValue, modtime DATETIME)''')
+ 
+    def get_pref(self, key, default=None):
+        cursor = self.__conn.cursor()        
+        result = cursor.execute('''SELECT keyValue from Prefs where keyName = ?''', (key,)).fetchone()
+        if result is None:
+            return default
+        return result[0]
+ 
+    def set_pref(self, key, value):
+        (root, other) = key.split('.', 1)
+        cursor = self.__conn.cursor()
+        cursor.execute('''BEGIN TRANSACTION''')
+        cursor.execute('''INSERT OR REPLACE INTO Prefs VALUES (NULL, ?, ?, ?)''', [key, value, datetime.datetime.now()])
+        cursor.execute('''COMMIT''')
+        self.emit('tree-changed', root)
+    
+    @staticmethod
+    def getInstance():
+        global _prefinstance
+        if _prefinstance is None:
+            _prefinstance = Preferences()
+        return _prefinstance
+    
+__all__ = ['History','Preferences']      
