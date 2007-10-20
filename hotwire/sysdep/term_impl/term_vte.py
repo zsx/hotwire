@@ -40,10 +40,10 @@ gobject.type_register(VteTerminalScreen)
 
 class VteTerminalWidget(TerminalWidget):
     def __init__(self, cwd=None, cmd=None, **kwargs):
-        super(VteTerminalWidget, self).__init__(**kwargs)
-
         self.__screen = screen = VteTerminalScreen()
-        self.__term = screen.term
+        self.__term = screen.term        
+        
+        super(VteTerminalWidget, self).__init__(**kwargs)
 
         self._pack_terminal(screen)
 
@@ -73,6 +73,8 @@ class VteTerminalWidget(TerminalWidget):
         self.__term.set_color_dim(fg)
 
         self._selection_changed(False)
+
+        self._sync_prefs()
 
         if self._stream:
             master, slave = pty.openpty()
@@ -144,6 +146,12 @@ class VteTerminalWidget(TerminalWidget):
     def paste(self, *args):
         _logger.debug("got paste")
         self.__term.paste_clipboard()
+        
+    def set_color(self, is_foreground, color):
+        if is_foreground:
+            self.__term.set_color_foreground(color)
+        else:
+            self.__term.set_color_background(color)        
 
 def getInstance():
     return VteTerminal()
