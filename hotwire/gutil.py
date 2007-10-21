@@ -1,4 +1,4 @@
-import os, sys, logging, weakref, functools
+import os, sys, logging, weakref
 
 import gobject
 
@@ -15,7 +15,7 @@ def call_timeout(timeout, func, *args, **kwargs):
         del kwargs['logger']
     else:
         logger = logging
-    return gobject.timeout_add(timeout, functools.partial(_run_logging, func, logger, *args), **kwargs)
+    return gobject.timeout_add(timeout, lambda: _run_logging(func, logger, *args), **kwargs)
 
 def call_idle(func, *args, **kwargs):
     return call_timeout(0, func, *args, **kwargs)
@@ -42,7 +42,7 @@ def call_idle_once(func, **kwargs):
 
 def defer_idle_func(timeout=100, **kwargs):
     def wrapped(f):
-        return lambda *margs: call_timeout_once(timeout, functools.partial(f, *margs), **kwargs)
+        return lambda *margs: call_timeout_once(timeout, lambda: f(*margs), **kwargs)
     return wrapped
 
 __all__ = ['call_timeout', 'call_idle', 'call_timeout_once', 'call_idle_once', 'defer_idle_func']
