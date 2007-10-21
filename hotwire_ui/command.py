@@ -284,6 +284,9 @@ class CommandExecutionHistory(gtk.VBox):
 class CommandExecutionControl(gtk.VBox):
     # This may be a sucky policy, but it's less sucky than what came before.
     COMPLETE_CMD_EXPIRATION_SECS = 5 * 60
+    __gsignals__ = {
+        "new-window" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (gobject.TYPE_PYOBJECT,)),
+    }        
     def __init__(self, context):
         super(CommandExecutionControl, self).__init__()
         self.__ui_string = """
@@ -297,6 +300,8 @@ class CommandExecutionControl(gtk.VBox):
     <menu action='ViewMenu'>
       <menuitem action='Overview'/>
       <separator/>
+      <menuitem action='ToWindow'/>      
+      <separator/>      
       <menuitem action='PreviousCommand'/>
       <menuitem action='NextCommand'/>
     </menu>
@@ -318,7 +323,8 @@ class CommandExecutionControl(gtk.VBox):
             ('ScrollHome', None, 'Output _Top', 'Home', 'Scroll to output top', self.__view_home_cb),
             ('ScrollEnd', None, 'Output _Bottom', 'End', 'Scroll to output bottom', self.__view_end_cb), 
             ('ScrollPgUp', None, 'Output Page _Up', 'Page_Up', 'Scroll output up', self.__view_up_cb),
-            ('ScrollPgDown', None, 'Output Page _Down', 'Page_Down', 'Scroll output down', self.__view_down_cb),             
+            ('ScrollPgDown', None, 'Output Page _Down', 'Page_Down', 'Scroll output down', self.__view_down_cb),
+            ('ToWindow', None, '_To Window', None, 'Create window from output', self.__to_window_cb),                         
             ('PreviousCommand', gtk.STOCK_GO_UP, '_Previous', '<control>Up', 'View previous command', self.__view_previous_cb),
             ('NextCommand', gtk.STOCK_GO_DOWN, '_Next', '<control>Down', 'View next command', self.__view_next_cb),
         ]
@@ -330,7 +336,7 @@ class CommandExecutionControl(gtk.VBox):
         self.__action_group.add_toggle_actions(self.__toggle_actions)
         self.__action_group.get_action('Overview').set_active(False)       
         self.__context = context
-        self.__header = gtk.HBox()
+        self.__header = gtk.HBox()    
         def create_arrow_button(action_name):
             action = self.__action_group.get_action(action_name)
             icon = action.create_icon(gtk.ICON_SIZE_MENU)
@@ -349,11 +355,13 @@ class CommandExecutionControl(gtk.VBox):
         self.__cmd_notebook.set_show_border(False)
         self.pack_start(self.__cmd_notebook, expand=True)        
         self.__cmd_overview = CommandExecutionHistory(self.__context)
+        self.__cmd_overview.show_all()
+        self.__cmd_overview.set_no_show_all(True)
         self.__cmd_overview.connect('show-command', self.__on_show_command)
-        self.__cmd_overview.connect('command-action', self.__handle_cmd_overview_action)        
+        self.__cmd_overview.connect('command-action', self.__handle_cmd_overview_action) 
         self.pack_start(self.__cmd_overview, expand=True)
-        self.__footer = gtk.HBox()
-        self.__footer_label = create_arrow_button('NextCommand')     
+        self.__footer = gtk.HBox()    
+        self.__footer_label = create_arrow_button('NextCommand')         
         self.__footer.pack_start(self.__footer_label, expand=False) 
         self.pack_start(self.__footer, expand=False)        
         self.__history_visible = False
@@ -373,6 +381,16 @@ class CommandExecutionControl(gtk.VBox):
     def __iter_cmds(self):
         for child in self.__cmd_notebook.get_children():
             yield child.cmd_header            
+     
+    def add_cmd_widget(self, cmd):
+        pipeline = cmd.cmd_header.get_pipeline()
+        pipeline.connect('state-changed', self.__on_pipeline_state_change)        
+        self.__cmd_overview.add_pipeline(pipeline, cmd.odisp)
+        pgnum = self.__cmd_notebook.append_page(cmd)
+        self.__cmd_notebook.set_current_page(pgnum)
+        self.__sync_visible()
+        self.__sync_display()
+        gobject.idle_add(lambda: self.__sync_display())
         
     def add_pipeline(self, pipeline):
         _logger.debug("adding child %s", pipeline)
@@ -384,8 +402,6 @@ class CommandExecutionControl(gtk.VBox):
         pgnum = self.__cmd_notebook.append_page(cmd)
         self.__cmd_notebook.set_current_page(pgnum)
         self.__cmd_overview.add_pipeline(pipeline, odisp)
-        self.__sync_visible()
-        self.__sync_display(pgnum)
         curtime = time.time()
         for cmd in self.__iter_cmds():
             pipeline = cmd.get_pipeline()
@@ -394,18 +410,23 @@ class CommandExecutionControl(gtk.VBox):
                 continue
             if curtime - compl_time > self.COMPLETE_CMD_EXPIRATION_SECS:
                 self.remove_pipeline(pipeline)
+        self.__sync_visible()                
+        self.__sync_display(pgnum)                
         
-    def remove_pipeline(self, pipeline):
-        pipeline.disconnect()
+    def remove_pipeline(self, pipeline, disconnect=True):
+        if disconnect:
+            pipeline.disconnect()
+        cmdview = None
         for child in self.__cmd_notebook.get_children():
             if not child.cmd_header.get_pipeline() == pipeline:
                 continue
+            cmdview = child
             self.__cmd_notebook.remove(child)
         for child in self.__cmd_overview.get_overview_list():
             if not child.get_pipeline() == pipeline:
                 continue
             self.__cmd_overview.remove_overview(child)
-        self.__sync_display()
+        return cmdview
     
     @log_except(_logger)
     def __handle_cmd_complete(self, *args):
@@ -492,6 +513,14 @@ class CommandExecutionControl(gtk.VBox):
     def __view_down_cb(self, a):
         self.__do_scroll(False, False)
     
+    def __to_window_cb(self, a):
+        cmd = self.get_current_cmd(full=True)
+        pipeline = cmd.cmd_header.get_pipeline()
+        #pipeline.disconnect('state-changed', self.__on_pipeline_state_change)                 
+        cmdview = self.remove_pipeline(pipeline, disconnect=False)
+        self.emit('new-window', cmdview)
+        self.__sync_display()
+
     def __overview_cb(self, a): 
         self.__toggle_history_expanded()
     

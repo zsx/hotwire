@@ -129,7 +129,7 @@ def main():
         
     hotwire.pluginsystem.load_user_plugins()
 
-    w = HotWindowFactory.getInstance().create_initial_window(subtitle=(no_persist and ' (Unpersisted)' or ''))
+    w = HotWindowFactory.getInstance().create_initial_window(subtitle=(no_persist and ' (Unshared)' or ''))
     w.show()
     if ipc_avail and (not no_persist):
         ipc.register_window(w)

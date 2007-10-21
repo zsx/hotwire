@@ -117,10 +117,11 @@ class Downloads(gtk.VBox):
 class Hotwire(gtk.VBox):
     __gsignals__ = {
         "title" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (gobject.TYPE_STRING,)),
-        "new-tab-widget" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (gobject.TYPE_PYOBJECT, gobject.TYPE_STRING))
+        "new-tab-widget" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (gobject.TYPE_PYOBJECT, gobject.TYPE_STRING)),
+        "new-window-cmd" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (gobject.TYPE_PYOBJECT,))        
     }
     MAX_TABHISTORY = 30
-    def __init__(self, initcwd=None, window=None, ui=None):
+    def __init__(self, initcwd=None, window=None, ui=None, initcmd=None):
         super(Hotwire, self).__init__()
 
         _logger.debug("Creating Hotwire instance, initcwd=%s", initcwd)
@@ -145,6 +146,7 @@ class Hotwire(gtk.VBox):
         self.pack_start(self.__paned, expand=True)
 
         self.__outputs = CommandExecutionControl(self.context)
+        self.__outputs.connect("new-window", self.__on_commands_new_window)        
         self.__topbox.pack_start(self.__outputs, expand=True)
 
         self.__downloads = Downloads()
@@ -195,7 +197,11 @@ class Hotwire(gtk.VBox):
         self.__sync_cwd()
         self.__update_status()
 
-        gobject.idle_add(lambda: self.execute_pipeline(Pipeline.parse('help', self.context), add_history=False, reset_input=False))
+        if initcmd:
+            self.__unset_welcome()            
+            self.__outputs.add_cmd_widget(initcmd)
+        else:
+            gobject.idle_add(lambda: self.execute_pipeline(Pipeline.parse('help', self.context), add_history=False, reset_input=False))
 
     def get_global_ui(self):
         return self.__ui
@@ -233,6 +239,10 @@ class Hotwire(gtk.VBox):
         self.__doing_recentdir_sync = True
         self.__recentdirs.set_active(0)
         self.__doing_recentdir_sync = False
+
+    def __on_commands_new_window(self, outputs, cmdview):
+        _logger.debug("got new window request for %s", cmdview)
+        self.emit('new-window-cmd', cmdview)
 
     @defer_idle_func(timeout=0) # commands can invoke the cwd signal from a thread context
     def __on_cwd(self, ctx, cwd):
@@ -305,15 +315,19 @@ class Hotwire(gtk.VBox):
         if pipeline.is_nostatus():
             return
 
-        if self.__welcome:
-            self.__paned.remove(self.__welcome_align)
-            self.__paned.pack_end(self.__topbox, expand=True)
-            self.__topbox.show_all()
-            self.__welcome = None
-            self.__welcome_align = None
+        self.__unset_welcome()
 
         self.__outputs.add_pipeline(pipeline)
         pipeline.execute()
+        
+    def __unset_welcome(self):
+        if not self.__welcome:
+            return
+        self.__paned.remove(self.__welcome_align)
+        self.__paned.pack_end(self.__topbox, expand=True)
+        self.__topbox.show_all()
+        self.__welcome = None
+        self.__welcome_align = None        
 
     def __execute(self):
         self.__completions.hide()
@@ -652,7 +666,7 @@ class Hotwire(gtk.VBox):
 class HotWindow(gtk.Window):
     ascii_nums = [long(x+ord('0')) for x in xrange(10)]
 
-    def __init__(self, factory=None, subtitle='', initcwd=None):
+    def __init__(self, factory=None, subtitle='', **kwargs):
         super(HotWindow, self).__init__()
 
         vbox = gtk.VBox()
@@ -716,7 +730,7 @@ class HotWindow(gtk.Window):
         vbox.add(self.__notebook)
         vbox.show()
 
-        self.new_tab_hotwire(initcwd=initcwd)
+        self.new_tab_hotwire(**kwargs)
 
     def get_ui(self):
         return self.__ui
@@ -904,8 +918,8 @@ along with Hotwire; if not, write to the Free Software Foundation, Inc.,
                     actionitem.disconnect_accelerator()
             self.__nonterm_accels_installed = install_accels
             
-    def new_tab_hotwire(self, initcwd=None):
-        hw = Hotwire(initcwd=initcwd, window=self, ui=self.__ui)
+    def new_tab_hotwire(self, **kwargs):
+        hw = Hotwire(window=self, ui=self.__ui, **kwargs)
         hw.set_data('hotwire-is-hotwire', True)
 
         idx = self.__notebook.append_page(hw)
@@ -917,6 +931,7 @@ along with Hotwire; if not, write to the Free Software Foundation, Inc.,
         label.set_text(hw.get_title())
 
         hw.connect('new-tab-widget', lambda h, *args: self.new_tab_widget(*args))
+        hw.connect('new-window-cmd', lambda h, cmd: self.new_win_hotwire(initcmd=cmd))        
         hw.show_all()
         self.__notebook.set_current_page(idx)
         self.set_focus(hw.get_entry())
@@ -979,13 +994,11 @@ along with Hotwire; if not, write to the Free Software Foundation, Inc.,
         _logger.debug("preautoswitch idx: %d", savedidx)
         self.__preautoswitch_index = savedidx
 
-    def new_win_hotwire(self):
+    def new_win_hotwire(self, **kwargs):
         widget = self.__notebook.get_nth_page(self.__notebook.get_current_page())
         is_hw = widget.get_data('hotwire-is-hotwire')
         if is_hw:
-            kwargs = {'initcwd': widget.context.get_cwd()}
-        else:
-            kwargs = {}
+            kwargs['initcwd'] = widget.context.get_cwd()
         win = HotWindowFactory.getInstance().create_window(**kwargs)
         win.show()
 
