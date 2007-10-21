@@ -324,7 +324,7 @@ class CommandExecutionControl(gtk.VBox):
             ('ScrollEnd', None, 'Output _Bottom', 'End', 'Scroll to output bottom', self.__view_end_cb), 
             ('ScrollPgUp', None, 'Output Page _Up', 'Page_Up', 'Scroll output up', self.__view_up_cb),
             ('ScrollPgDown', None, 'Output Page _Down', 'Page_Down', 'Scroll output down', self.__view_down_cb),
-            ('ToWindow', None, '_To Window', None, 'Create window from output', self.__to_window_cb),                         
+            ('ToWindow', None, '_To Window', '<control><shift>N', 'Create window from output', self.__to_window_cb),                         
             ('PreviousCommand', gtk.STOCK_GO_UP, '_Previous', '<control>Up', 'View previous command', self.__view_previous_cb),
             ('NextCommand', gtk.STOCK_GO_DOWN, '_Next', '<control>Down', 'View next command', self.__view_next_cb),
         ]
@@ -581,7 +581,7 @@ class CommandExecutionControl(gtk.VBox):
         
     def __sync_display(self, nth=None):
         def set_label(container, label, n):
-            if n == 0 or self.__history_visible:
+            if n <= 0 or self.__history_visible:
                 container.hide_all()
                 return
             container.show_all()
