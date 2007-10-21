@@ -49,3 +49,6 @@ class UnixProcessManager(object):
 
     def get_extra_subproc_args(self):
         return {'close_fds': True, 'preexec_fn': lambda: os.setsid()}
+
+def getInstance():
+    return UnixProcessManager()
