@@ -7,6 +7,11 @@ class UnixFilesystem(BaseFilesystem):
     def __init__(self):
         super(UnixFilesystem, self).__init__()
         
+    def get_file(self, path):
+        fobj = UnixFile(path)
+        fobj.get_stat()
+        return fobj           
+        
     def _get_conf_dir_path(self):
         return os.path.expanduser('~/.hotwire')
 
@@ -50,7 +55,7 @@ class UnixFile(File):
         try:
             return grp.getgrgid(gid).gr_name
         except KeyError, e:
-            return str(gid)    
+            return str(gid)         
 
 def getInstance():
     return UnixFilesystem()
