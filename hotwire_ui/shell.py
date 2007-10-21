@@ -27,6 +27,12 @@ from hotwire.logutil import log_except
 
 _logger = logging.getLogger("hotwire.ui.Shell")
 
+def locate_current_shell(widget):
+    """A function which can be called from any internal widget to gain a reference
+    to the toplevel Hotwire instance."""
+    win = widget.get_toplevel()
+    return win.get_current_widget()
+
 class HotwireClientContext(hotwire.command.HotwireContext):
     def __init__(self, hotwire, **kwargs):
         super(HotwireClientContext, self).__init__(**kwargs)
@@ -1001,6 +1007,13 @@ along with Hotwire; if not, write to the Free Software Foundation, Inc.,
             kwargs['initcwd'] = widget.context.get_cwd()
         win = HotWindowFactory.getInstance().create_window(**kwargs)
         win.show()
+        
+    def get_current_widget(self):
+        widget = self.__notebook.get_nth_page(self.__notebook.get_current_page())
+        is_hw = widget.get_data('hotwire-is-hotwire')
+        if is_hw:
+            return widget
+        return None        
 
 class HotWindowFactory(Singleton):
     def __init__(self):
