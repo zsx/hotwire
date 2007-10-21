@@ -5,11 +5,12 @@ import gtk, gobject, pango
 
 import hotwire
 import hotwire_ui.widgets as hotwidgets
+from hotwire.command import Pipeline
 from hotwire.fs import FilePath, unix_basename
 from hotwire_ui.render import TreeObjectsRenderer, ClassRendererMapping, menuitem
 from hotwire.sysdep.fs import Filesystem
 from hotwire_ui.pixbufcache import PixbufCache
-from hotwire.util import format_file_size
+from hotwire.util import format_file_size, quote_arg
 
 _logger = logging.getLogger("hotwire.ui.render.File")
 
@@ -24,7 +25,10 @@ class FilePathRenderer(TreeObjectsRenderer):
         self._table.enable_model_drag_source(gtk.gdk.BUTTON1_MASK,
                                             [('text/uri-list', 0, 0)],
                                             gtk.gdk.ACTION_DEFAULT | gtk.gdk.ACTION_COPY)
+        self._table.enable_model_drag_dest([('text/uri-list', 0, 0)],
+                                            gtk.gdk.ACTION_DEFAULT | gtk.gdk.ACTION_COPY)        
         self._table.connect("drag-data-get", self.__on_drag_data_get)
+        self._table.connect("drag-data-received", self.__on_drag_data_received)
 
     def _setup_icon_path_columns(self):
         colidx = self._table.insert_column_with_data_func(-1, '',
@@ -176,5 +180,16 @@ class FilePathRenderer(TreeObjectsRenderer):
             obuf.write(fobj.path)
             obuf.write('\r\n')
         selection.set('text/uri-list', 8, obuf.getvalue())
+
+    def __on_drag_data_received(self, tv, context, x, y, selection, info, etime):
+        model = tv.get_model()
+        sel_data = selection.data
+        quoted_fpaths = map(quote_arg, sel_data.split('\r\n'))
+        _logger.debug("basedir is %s, got drop paths: %s", self.__basedir, quoted_fpaths)
+        quoted_fpaths.append(self.__basedir)
+        from hotwire_ui.shell import locate_current_shell
+        hw = locate_current_shell(self._table)
+        tree = Pipeline.parse('cp ' + ' '.join(quoted_fpaths), hw.context)
+        hw.execute_pipeline(tree, add_history=False, reset_input=False)
 
 ClassRendererMapping.getInstance().register(FilePath, FilePathRenderer)
