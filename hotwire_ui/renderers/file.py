@@ -1,4 +1,5 @@
-import os, stat, signal, datetime
+import os, stat, signal, datetime, logging
+from StringIO import StringIO
 
 import gtk, gobject, pango
 
@@ -10,6 +11,8 @@ from hotwire.sysdep.fs import Filesystem
 from hotwire_ui.pixbufcache import PixbufCache
 from hotwire.util import format_file_size
 
+_logger = logging.getLogger("hotwire.ui.render.File")
+
 class FilePathRenderer(TreeObjectsRenderer):
     def __init__(self, *args, **kwargs):
         if not 'column_types' in kwargs.iterkeys():
@@ -18,6 +21,10 @@ class FilePathRenderer(TreeObjectsRenderer):
         self.__basedir = None            
         super(FilePathRenderer, self).__init__(*args,
                                                **kwargs)
+        self._table.enable_model_drag_source(gtk.gdk.BUTTON1_MASK,
+                                            [('text/uri-list', 0, 0)],
+                                            gtk.gdk.ACTION_DEFAULT | gtk.gdk.ACTION_COPY)
+        self._table.connect("drag-data-get", self.__on_drag_data_get)
 
     def _setup_icon_path_columns(self):
         colidx = self._table.insert_column_with_data_func(-1, '',
@@ -157,5 +164,17 @@ class FilePathRenderer(TreeObjectsRenderer):
 
     def _get_menuitems(self, iter):
         return self.__fs.get_file_menuitems(self._file_for_iter(self._model, iter))
+
+    def __on_drag_data_get(self, tv, context, selection, info, timestamp):
+        sel = tv.get_selection()
+        model, paths = sel.get_selected_rows()
+        _logger.debug("got selection %s %s", model, paths)
+        obuf = StringIO()
+        for path in paths:
+            iter = model.get_iter(path)
+            fobj = self._file_for_iter(model, iter)
+            obuf.write(fobj.path)
+            obuf.write('\r\n')
+        selection.set('text/uri-list', 8, obuf.getvalue())
 
 ClassRendererMapping.getInstance().register(FilePath, FilePathRenderer)

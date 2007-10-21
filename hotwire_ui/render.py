@@ -70,13 +70,11 @@ class TreeObjectsRenderer(ObjectsRenderer):
         self.context = context
         self._model = self._create_model(ctypes)
         self._table = gtk.TreeView(self._model)
-        self._table.get_selection().set_mode(gtk.SELECTION_NONE)
-        self._table.add_events(gtk.gdk.BUTTON_PRESS_MASK
-                               & gtk.gdk.MOTION_NOTIFY
-                               & gtk.gdk.LEAVE_NOTIFY_MASK)
-        self._table.connect("button-press-event", self.__on_button_press)
-        self._table.connect("motion-notify-event", self.__on_motion_notify)
-        self._table.connect("leave_notify_event", self.__on_leave) 
+        #self._table.unset_flags(gtk.CAN_FOCUS)        
+        self._table.get_selection().set_mode(gtk.SELECTION_MULTIPLE)
+        self._table.add_events(gtk.gdk.BUTTON_PRESS_MASK)        
+        self._table.connect("button-press-event", self.__on_button_press)        
+        self._table.connect("row-activated", self.__on_row_activated)
         self._setup_view_columns()
         for col in self._table.get_columns():
             col.set_resizable(True)
@@ -247,28 +245,13 @@ class TreeObjectsRenderer(ObjectsRenderer):
                 menu.show_all()
                 menu.popup(None, None, None, e.button, e.time)
                 return True
-        elif self.__onclick(path, col, rel_x, rel_y):
-            return True
 
         return False
-
-    def __talk_to_the_hand(self, hand):
-        display = self._table.get_display()
-        cursor = None
-        if hand:
-            cursor = gtk.gdk.Cursor(display, gtk.gdk.HAND2)
-        self._table.window.set_cursor(cursor)
-
-    def __on_motion_notify(self, table, e):
-        potential_path = self._get_path_at_pos_no_headers(int(e.x), int(e.y))
-        if not potential_path:
-            return False
-        (path, col, rel_x, rel_y) = potential_path        
-        self.__talk_to_the_hand(col in self._linkcolumns)
-
-    def __on_leave(self, w, c):
-        self.__talk_to_the_hand(False)
-                
+    
+    def __on_row_activated(self, tv, path, vc):
+        iter = self._model.get_iter(path)        
+        self._onclick_iter(iter)
+        
 class DefaultObjectsRenderer(TreeObjectsRenderer):
     pass
 
