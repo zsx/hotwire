@@ -26,10 +26,16 @@ from hotwire.logutil import log_except
 
 _logger = logging.getLogger("hotwire.ui.Shell")
 
+def locate_current_window(widget):
+    """A function which can be called from any internal widget to gain a reference
+    to the toplevel Hotwire window container."""
+    win = widget.get_toplevel()
+    return win
+
 def locate_current_shell(widget):
     """A function which can be called from any internal widget to gain a reference
     to the toplevel Hotwire instance."""
-    win = widget.get_toplevel()
+    win = locate_current_window()
     return win.get_current_widget()
 
 class HotwireClientContext(hotwire.command.HotwireContext):
@@ -754,7 +760,10 @@ class HotWindow(gtk.Window):
         vbox.add(self.__notebook)
         vbox.show()
 
-        self.new_tab_hotwire(**kwargs)
+        if 'initwidget' in kwargs:
+            self.new_tab_widget(*kwargs['initwidget'])
+        else:
+            self.new_tab_hotwire(**kwargs)
 
     def get_ui(self):
         return self.__ui
@@ -1024,6 +1033,10 @@ along with Hotwire; if not, write to the Free Software Foundation, Inc.,
         if is_hw:
             kwargs['initcwd'] = widget.context.get_cwd()
         win = HotWindowFactory.getInstance().create_window(**kwargs)
+        win.show()
+        
+    def new_win_widget(self, widget, title):
+        win = HotWindowFactory.getInstance().create_window(initwidget=(widget, title))
         win.show()
         
     def get_current_widget(self):

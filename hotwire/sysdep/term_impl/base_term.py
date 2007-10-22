@@ -35,6 +35,9 @@ class TerminalWidget(gtk.VBox):
       <menuitem action='Copy'/>
       <menuitem action='Paste'/>
     </menu>
+    <menu action='ViewMenu'>
+      <menuitem action='ToWindow'/>
+    </menu>
     <menu action='PrefsMenu'>
       <menuitem action='SetForeground'/>
       <menuitem action='SetBackground'/>      
@@ -47,7 +50,7 @@ class TerminalWidget(gtk.VBox):
         self.__actions = [
             ('Copy', None, '_Copy', '<control><shift>c', 'Copy selected text', self.__copy_cb),
             ('Paste', None, '_Paste', '<control><shift>V', 'Paste text', self.__paste_cb),
-            ('SplitWindow', None, '_Split to window', None, 'Turn into toplevel window', self.__split_cb),
+            ('ToWindow', None, '_To window', None, 'Turn into new window', self.__split_cb),
             ('SetForeground', None, 'Set _Foreground', None, 'Change the foreground color', self.__set_foreground_cb),
             ('SetBackground', None, 'Set _Background', None, 'Change the background color', self.__set_background_cb),                        
         ]
@@ -139,11 +142,10 @@ class TerminalWidget(gtk.VBox):
         self.__msg.set_text('Running (pid %s)' % (pid,))
 
     def __split_cb(self, a):
+        from hotwire_ui.shell import locate_current_window
+        hwin = locate_current_window(self)        
         self.emit('closed')
-        w = gtk.Window(gtk.WINDOW_TOPLEVEL)
-        w.set_title(self.__title)
-        w.add(self)
-        w.show_all()
+        hwin.new_win_widget(self, self.__title)
 
     def _on_child_exited(self, term):
         _logger.debug("Caught child exited")
