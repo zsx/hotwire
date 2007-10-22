@@ -35,7 +35,7 @@ def locate_current_window(widget):
 def locate_current_shell(widget):
     """A function which can be called from any internal widget to gain a reference
     to the toplevel Hotwire instance."""
-    win = locate_current_window()
+    win = locate_current_window(widget)
     return win.get_current_widget()
 
 class HotwireClientContext(hotwire.command.HotwireContext):
