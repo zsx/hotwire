@@ -279,8 +279,7 @@ class Hotwire(gtk.VBox):
         quoted_fpaths = map(quote_arg, urls.split('\r\n'))
         _logger.debug("path is %s, got drop paths: %s", path, quoted_fpaths)
         quoted_fpaths.append(quote_arg(path))
-        tree = Pipeline.parse('cp ' + ' '.join(quoted_fpaths), self.context)
-        self.execute_pipeline(tree, add_history=False, reset_input=False) 
+        self.execute_internal_str('cp ' + ' '.join(quoted_fpaths))
     
     def __on_drag_data_received(self, tv, context, x, y, selection, info, etime):
         sel_data = selection.data
@@ -311,6 +310,10 @@ class Hotwire(gtk.VBox):
 
     def get_title(self):
         return '%s' % (os.path.basename(self.context.get_cwd()),)
+
+    def execute_internal_str(self, pipeline_str):
+        tree = Pipeline.parse(pipeline_str, self.context)
+        self.execute_pipeline(tree, add_history=False, reset_input=False)        
 
     def execute_pipeline(self, pipeline,
                          add_history=True,

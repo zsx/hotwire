@@ -124,7 +124,7 @@ class GnomeVFSFilesystem(UnixFilesystem):
         def add_menuitem(app):
             menuitem = gtk.MenuItem('Open with %s' % (app[1],))
             menuitem.connect("activate", self.__on_appmenu_activated, app, uri)
-            menuitems.append(menuitem)            
+            menuitems.append(menuitem) 
         for app in apps:
             add_menuitem(app)
         add_textapp = (not file_obj.is_directory(follow_link=True)) and (textapp not in apps)

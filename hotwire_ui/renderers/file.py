@@ -167,7 +167,20 @@ class FilePathRenderer(TreeObjectsRenderer):
             self.__fs.launch_open_file(obj.path)        
 
     def _get_menuitems(self, iter):
-        return self.__fs.get_file_menuitems(self._file_for_iter(self._model, iter))
+        fobj = self._file_for_iter(self._model, iter)
+        items = self.__fs.get_file_menuitems(fobj)
+        items.append(gtk.SeparatorMenuItem())
+        menuitem = gtk.MenuItem('Move to Trash')
+        menuitem.connect("activate", self.__on_remove_activated, fobj.path)
+        items.append(menuitem)
+        return items
+        
+    def __on_remove_activated(self, menu, path):
+        _logger.debug("got remove for %s", path)
+        from hotwire_ui.shell import locate_current_shell
+        hw = locate_current_shell(self._table)
+        qpath = quote_arg(path)     
+        hw.execute_internal_str('rm %s' % (qpath,))           
 
     def __on_drag_data_get(self, tv, context, selection, info, timestamp):
         sel = tv.get_selection()
