@@ -15,7 +15,7 @@ class HotwireContext(gobject.GObject):
     __gsignals__ = {
         "cwd" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (gobject.TYPE_STRING,)),
     }
-    """The interface to manipulating a Hotwire execution shell.  Items
+    """The interface to manipulating a Hotwire execution shell.  Item
     such as the current working diretory may be changed via this class,
     and subclasses define further extended commands."""
     def __init__(self, initcwd=None):
@@ -52,7 +52,7 @@ class CommandContext(object):
         self.last_output = hotwire.get_last_output()
         self.hotwire = hotwire
         self.__auxstreams = {}
-        self.__status_notify_handler = None
+        self.__metadata_handler = None
         # Private attributes to be used by the builtin
         self.attribs = {}
         self.cancelled = False
@@ -76,12 +76,15 @@ class CommandContext(object):
     def push_undo(self, fn):
         self.pipeline.push_undo(fn)
 
-    def set_status_notify(self, fn):
-        self.__status_notify_handler = fn
+    def set_metadata_handler(self, fn):
+        self.__metadata_handler = fn
 
     def status_notify(self, status, progress=-1):
-        if self.__status_notify_handler:
-            self.__status_notify_handler(status, progress)
+        self.metadata('hotwire.status', 0, (status, progress))
+            
+    def metadata(self, metatype, flags, value):
+        if self.__metadata_handler:
+            self.__metadata_handler(metatype, flags, value)
 
 class CommandQueue(IterableQueue):
     def __init__(self):
@@ -110,7 +113,7 @@ class Command(gobject.GObject):
 
     __gsignals__ = {
         "complete" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, []),                    
-        "status" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (gobject.TYPE_STRING, gobject.TYPE_INT)),
+        "metadata" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (gobject.TYPE_PYOBJECT, gobject.TYPE_STRING, gobject.TYPE_PYOBJECT)),
         "exception" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (gobject.TYPE_PYOBJECT,)),
     }
 
@@ -120,8 +123,8 @@ class Command(gobject.GObject):
         self.context = CommandContext(hotwire) 
         for schema in self.builtin.get_aux_outputs():
             self.context.attach_auxstream(CommandAuxStream(self, schema))
-        if self.builtin.get_hasstatus():
-            self.context.set_status_notify(lambda *args: self.emit("status", *args))
+        if self.builtin.get_hasmeta():
+            self.context.set_metadata_handler(lambda *args: self.emit("metadata", *args))
         self.output = CommandQueue()
         self.map_fn = lambda x: x
         self.args = args
@@ -299,8 +302,8 @@ class Pipeline(gobject.GObject):
     """A sequence of Commands."""
 
     __gsignals__ = {
-        "state-changed" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, []),        
-        "status" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (gobject.TYPE_UINT, gobject.TYPE_PYOBJECT, gobject.TYPE_STRING, gobject.TYPE_INT)),
+        "state-changed" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, []),
+        "metadata" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (gobject.TYPE_UINT, gobject.TYPE_PYOBJECT, gobject.TYPE_PYOBJECT, gobject.TYPE_PYOBJECT, gobject.TYPE_PYOBJECT)),        
         "exception" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (gobject.TYPE_PYOBJECT,gobject.TYPE_PYOBJECT)),        
     }
 
@@ -321,9 +324,9 @@ class Pipeline(gobject.GObject):
         self.__undoable = undoable
         self.__output_type = output_type
         self.__undo = []
-        self.__cmd_statuses_lock = threading.Lock()
-        self.__idle_emit_cmd_status_id = 0
-        self.__cmd_statuses = {}
+        self.__cmd_metadata_lock = threading.Lock()
+        self.__idle_emit_cmd_metadata_id = 0
+        self.__cmd_metadata = {}
         self.__cmd_complete_count = 0
         self.__state = 'waiting'
         self.__completion_time = None
@@ -341,7 +344,7 @@ class Pipeline(gobject.GObject):
         for cmd in self.__components:
             cmd.connect("complete", self.__on_cmd_complete)            
             cmd.connect("exception", self.__on_cmd_exception)
-            cmd.connect("status", self.__on_cmd_status)
+            cmd.connect("metadata", self.__on_cmd_metadata)
         prev_opt_formats = []
         for cmd in self.__components[:-1]:
             cmd.output.negotiate(prev_opt_formats, cmd.get_input_opt_formats())
@@ -403,26 +406,26 @@ class Pipeline(gobject.GObject):
             if cmd.builtin.get_hasstatus():
                 yield cmd.builtin.name
 
-    def __on_cmd_status(self, cmd, text, progress):
-        self.__cmd_statuses_lock.acquire()
-        if self.__idle_emit_cmd_status_id == 0:
-            self.__idle_emit_cmd_status_id = gobject.timeout_add(200, self.__idle_emit_cmd_status, cmd, priority=gobject.PRIORITY_LOW)
-        self.__cmd_statuses[cmd] = (text, progress)
-        self.__cmd_statuses_lock.release()
+    def __on_cmd_metadata(self, cmd, key, flags, meta):
+        self.__cmd_metadata_lock.acquire()
+        if self.__idle_emit_cmd_metadata_id == 0:
+            self.__idle_emit_cmd_metadata_id = gobject.timeout_add(200, self.__idle_emit_cmd_metadata, cmd, priority=gobject.PRIORITY_LOW)
+        self.__cmd_metadata[cmd] = (key, flags, meta)
+        self.__cmd_metadata_lock.release()
 
-    def __idle_emit_cmd_status(self, cmd):
-        _logger.debug("command status: %s", cmd)        
-        self.__cmd_statuses_lock.acquire()
-        self.__idle_emit_cmd_status_id = 0
-        text, progress = self.__cmd_statuses[cmd]
-        self.__cmd_statuses_lock.release()
+    def __idle_emit_cmd_metadata(self, cmd):
+        _logger.debug("command metadata: %s", cmd)        
+        self.__cmd_metadata_lock.acquire()
+        self.__idle_emit_cmd_metadata_id = 0
+        key, flags, meta = self.__cmd_metadata[cmd]
+        self.__cmd_metadata_lock.release()
         cmd_idx = 0 
         for i,c in enumerate(self.__components):
             if cmd == c:
                 break
-            if c.builtin.get_hasstatus():
+            if c.builtin.get_hasmeta():
                 cmd_idx += 1
-        self.emit("status", cmd_idx, cmd, text, progress)
+        self.emit("metadata", cmd_idx, cmd, key, flags, meta)
 
     def __on_cmd_complete(self, cmd):
         _logger.debug("command complete: %s", cmd)

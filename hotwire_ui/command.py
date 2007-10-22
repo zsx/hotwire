@@ -45,7 +45,7 @@ class CommandExecutionHeader(gtk.VBox):
         self.__mouse_hovering = False
 
         self.__pipeline.connect("state-changed", self.__on_pipeline_state_change)
-        self.__pipeline.connect("status", self.__on_pipeline_status)
+        self.__pipeline.connect("metadata", self.__on_pipeline_metadata)
         
         self.__titlebox_ebox = gtk.EventBox()
         self.__titlebox_ebox.add_events(gtk.gdk.BUTTON_PRESS_MASK
@@ -180,11 +180,13 @@ class CommandExecutionHeader(gtk.VBox):
         elif state == 'complete':
             set_status_action('Complete', self.__pipeline.get_undoable() and 'Undo' or '')
 
-    def __on_pipeline_status(self, pipeline, cmdidx, cmd, *args):
-        _logger.debug("got pipeline status idx=%d", cmdidx)
+    def __on_pipeline_metadata(self, pipeline, cmdidx, cmd, key, flags, meta):
+        _logger.debug("got pipeline metadata idx=%d key=%s flags=%s", cmdidx, key, flags)
+        if key != 'hotwire.status':
+            return
         self.__pipeline_status_visible = True
         statusdisp = self.__cmd_statuses.get_children()[cmdidx]
-        statusdisp.set_status(*args)
+        statusdisp.set_status(*meta)
         self.__update_titlebox()
 
     def __on_pipeline_state_change(self, pipeline):

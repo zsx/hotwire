@@ -45,6 +45,7 @@ class Builtin(object):
                  idempotent=False,
                  undoable=False,
                  hasstatus=False,
+                 hasmeta=False,
                  threaded=False,
                  locality='local',
                  api_version=0):
@@ -61,6 +62,7 @@ class Builtin(object):
         self.idempotent = idempotent
         self.undoable = undoable
         self.hasstatus = hasstatus
+        self.hasmeta = hasstatus or hasmeta
         self.threaded = threaded
         self.locality = locality
         self.api_version = api_version
@@ -140,6 +142,9 @@ class Builtin(object):
 
     def get_hasstatus(self):
         return self.hasstatus
+    
+    def get_hasmeta(self):
+        return self.hasmeta
     
     def get_api_version(self):
         return self.api_version

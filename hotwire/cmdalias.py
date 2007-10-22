@@ -1,7 +1,6 @@
 # -*- tab-width: 4 -*-
 import os,sys,re,stat,logging
 
-from hotwire.persist import Persister
 from hotwire.singletonmixin import Singleton
 
 _logger = logging.getLogger("hotwire.CmdAlias")
@@ -14,18 +13,19 @@ default_aliases = {'vi': 'term vi',
                    'nano': 'term nano',
                    'pico': 'term pico'}
 
+## TODO: Kill this class in favor of better autoterm integration.
+
 class AliasRegistry(Singleton):
     def __init__(self):
-        self.__aliases = Persister.getInstance().load('aliases', default=default_aliases) 
+        self.__aliases = default_aliases
 
     def remove(self, name):
-        del self.__aliases.get(lock=True)[name]
-        self.__aliases.save()
+        raise NotImplementedError()
 
     def __getitem__(self, item):
-        return self.__aliases.get()[item]
+        return self.__aliases[item]
 
     def __iter__(self):
-        for x in self.__aliases.get().iterkeys():
+        for x in self.__aliases.iterkeys():
             yield x
     
