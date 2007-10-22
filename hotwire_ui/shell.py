@@ -132,7 +132,7 @@ class Hotwire(gtk.VBox):
         "new-window-cmd" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (gobject.TYPE_PYOBJECT,))        
     }
     MAX_TABHISTORY = 30
-    def __init__(self, initcwd=None, window=None, ui=None, initcmd=None):
+    def __init__(self, initcwd=None, window=None, ui=None, initcmd_widget=None, initcmd=None):
         super(Hotwire, self).__init__()
 
         _logger.debug("Creating Hotwire instance, initcwd=%s", initcwd)
@@ -213,11 +213,11 @@ class Hotwire(gtk.VBox):
         self.__sync_cwd()
         self.__update_status()
 
-        if initcmd:
+        if initcmd_widget:
             self.__unset_welcome()            
-            self.__outputs.add_cmd_widget(initcmd)
-        else:
-            gobject.idle_add(lambda: self.execute_pipeline(Pipeline.parse('help', self.context), add_history=False, reset_input=False))
+            self.__outputs.add_cmd_widget(initcmd_widget)
+        elif initcmd:
+            gobject.idle_add(lambda: self.execute_pipeline(Pipeline.parse(initcmd, self.context), add_history=False, reset_input=False))
 
     def get_global_ui(self):
         return self.__ui
@@ -696,7 +696,7 @@ class Hotwire(gtk.VBox):
 class HotWindow(gtk.Window):
     ascii_nums = [long(x+ord('0')) for x in xrange(10)]
 
-    def __init__(self, factory=None, subtitle='', **kwargs):
+    def __init__(self, factory=None, is_initial=False, subtitle='', **kwargs):
         super(HotWindow, self).__init__()
 
         vbox = gtk.VBox()
@@ -814,19 +814,23 @@ class HotWindow(gtk.Window):
                 return True
         return False
     
-    def __new_window_cb(self, action):
-        self.new_win_hotwire()
-
-    def __new_tab_cb(self, action):
-        self.new_tab_hotwire()
-
-    def __new_term_tab_cb(self, action):
+    def __get_curtab_cwd(self):
         widget = self.__notebook.get_nth_page(self.__notebook.get_current_page())
         is_hw = widget.get_data('hotwire-is-hotwire')
         if is_hw:
             cwd = widget.context.get_cwd()
         else:
             cwd = os.path.expanduser('~')
+        return cwd        
+    
+    def __new_window_cb(self, action):
+        self.new_win_hotwire(initcwd=self.__get_curtab_cwd(), initcmd='ls')
+
+    def __new_tab_cb(self, action):
+        self.new_tab_hotwire(initcwd=self.__get_curtab_cwd(), initcmd='ls')
+
+    def __new_term_tab_cb(self, action):
+        cwd = self.__get_curtab_cwd()
         term = Terminal.getInstance().get_terminal_widget_cmd(cwd, None, '')
         self.new_tab_widget(term, 'term')
 
@@ -951,7 +955,7 @@ along with Hotwire; if not, write to the Free Software Foundation, Inc.,
                     actionitem.disconnect_accelerator()
             self.__nonterm_accels_installed = install_accels
             
-    def new_tab_hotwire(self, **kwargs):
+    def new_tab_hotwire(self, is_initial=False, **kwargs):
         hw = Hotwire(window=self, ui=self.__ui, **kwargs)
         hw.set_data('hotwire-is-hotwire', True)
 
@@ -964,7 +968,7 @@ along with Hotwire; if not, write to the Free Software Foundation, Inc.,
         label.set_text(hw.get_title())
 
         hw.connect('new-tab-widget', lambda h, *args: self.new_tab_widget(*args))
-        hw.connect('new-window-cmd', lambda h, cmd: self.new_win_hotwire(initcmd=cmd))        
+        hw.connect('new-window-cmd', lambda h, cmd: self.new_win_hotwire(initcmd_widget=cmd))        
         hw.show_all()
         self.__notebook.set_current_page(idx)
         self.set_focus(hw.get_entry())
@@ -1061,10 +1065,11 @@ class HotWindowFactory(Singleton):
             for k,v in kwargs.iteritems():
                 if self.__sticky_keywords.has_key(k):
                     self.__sticky_keywords[k] = v
+            kwargs['initcmd'] = 'help'
         for k,v in self.__sticky_keywords.iteritems():
             if not kwargs.has_key(k):
                 kwargs[k] = v
-        win = HotWindow(factory=self, **kwargs)
+        win = HotWindow(factory=self, is_initial=is_initial, **kwargs)
         win.connect('destroy', self.__on_win_destroy)
         self.__windows.add(win)
         return win
