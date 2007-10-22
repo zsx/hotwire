@@ -25,7 +25,9 @@ def path_unexpanduser(path):
 
 def copy_file_or_dir(src, dest, dest_is_dir):
     stbuf = os.stat(src) 
-    dest_target = dest_is_dir and os.path.join(dest, unix_basename(src)) or dest 
+    dest_target = dest_is_dir and os.path.join(dest, unix_basename(src)) or dest
+    if src == dest_target:
+        return
     if stat.S_ISDIR(stbuf.st_mode):
         shutil.copytree(src, dest_target)
     elif stat.S_ISLNK(stbuf.st_mode):
