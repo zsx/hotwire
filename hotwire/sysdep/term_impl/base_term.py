@@ -50,7 +50,7 @@ class TerminalWidget(gtk.VBox):
         self.__actions = [
             ('Copy', None, '_Copy', '<control><shift>c', 'Copy selected text', self.__copy_cb),
             ('Paste', None, '_Paste', '<control><shift>V', 'Paste text', self.__paste_cb),
-            ('ToWindow', None, '_To window', None, 'Turn into new window', self.__split_cb),
+            ('ToWindow', None, '_To window', '<control><shift>N', 'Turn into new window', self.__split_cb),
             ('SetForeground', None, 'Set _Foreground', None, 'Change the foreground color', self.__set_foreground_cb),
             ('SetBackground', None, 'Set _Background', None, 'Change the background color', self.__set_background_cb),                        
         ]
