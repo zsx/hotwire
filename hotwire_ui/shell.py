@@ -4,7 +4,6 @@ import os, sys, re, logging, string
 import gtk, gobject, pango
 
 from hotwire.command import Pipeline,MinionPipeline,Command,HotwireContext
-from hotwire.persist import Persister
 from hotwire.completion import Completion, VerbCompleter, TokenCompleter, CompletionContext, CompletionPrefixStripProxy
 import hotwire.command
 import hotwire.version

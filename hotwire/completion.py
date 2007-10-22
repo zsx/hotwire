@@ -7,7 +7,6 @@ import hotwire
 import hotwire.config
 from hotwire.builtin import BuiltinRegistry
 from hotwire.cmdalias import AliasRegistry
-from hotwire.persist import Persister
 from hotwire.generator import CompoundGenerator, GeneratorFilter, GeneratorPureFilter
 from hotwire.fs import FilePath,DirectoryGenerator
 from hotwire.sysdep.fs import Filesystem
