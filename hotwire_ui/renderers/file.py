@@ -25,10 +25,10 @@ class FilePathRenderer(TreeObjectsRenderer):
         self._table.enable_model_drag_source(gtk.gdk.BUTTON1_MASK,
                                             [('text/uri-list', 0, 0)],
                                             gtk.gdk.ACTION_DEFAULT | gtk.gdk.ACTION_COPY)
-        self._table.enable_model_drag_dest([('text/uri-list', 0, 0)],
-                                            gtk.gdk.ACTION_DEFAULT | gtk.gdk.ACTION_COPY)        
+        #self._table.enable_model_drag_dest([('text/uri-list', 0, 0)],
+        #                                    gtk.gdk.ACTION_DEFAULT | gtk.gdk.ACTION_COPY)        
         self._table.connect("drag-data-get", self.__on_drag_data_get)
-        self._table.connect("drag-data-received", self.__on_drag_data_received)
+        #self._table.connect("drag-data-received", self.__on_drag_data_received)
 
     def _setup_icon_path_columns(self):
         colidx = self._table.insert_column_with_data_func(-1, '',
@@ -184,12 +184,8 @@ class FilePathRenderer(TreeObjectsRenderer):
     def __on_drag_data_received(self, tv, context, x, y, selection, info, etime):
         model = tv.get_model()
         sel_data = selection.data
-        quoted_fpaths = map(quote_arg, sel_data.split('\r\n'))
-        _logger.debug("basedir is %s, got drop paths: %s", self.__basedir, quoted_fpaths)
-        quoted_fpaths.append(self.__basedir)
         from hotwire_ui.shell import locate_current_shell
         hw = locate_current_shell(self._table)
-        tree = Pipeline.parse('cp ' + ' '.join(quoted_fpaths), hw.context)
-        hw.execute_pipeline(tree, add_history=False, reset_input=False)
+        hw.do_copy_url_drag_to_dir(sel_data, self.context.get_cwd())
 
 ClassRendererMapping.getInstance().register(FilePath, FilePathRenderer)

@@ -144,6 +144,11 @@ class Hotwire(gtk.VBox):
         self.__minion = None
         self.__minion_cwd = None
 
+        self.drag_dest_set(gtk.DEST_DEFAULT_MOTION | gtk.DEST_DEFAULT_HIGHLIGHT | gtk.DEST_DEFAULT_DROP,
+                           [('text/uri-list', 0, 0)],
+                           gtk.gdk.ACTION_COPY) 
+        self.connect("drag-data-received", self.__on_drag_data_received)
+
         self.__paned = gtk.VBox()
         self.__topbox = gtk.VBox()
         self.__welcome = gtk.Label('Welcome to Hotwire.')
@@ -269,6 +274,17 @@ class Hotwire(gtk.VBox):
         if last:
             return (last.get_output_type(), last.get_output())
         return None
+    
+    def do_copy_url_drag_to_dir(self, urls, path):
+        quoted_fpaths = map(quote_arg, urls.split('\r\n'))
+        _logger.debug("path is %s, got drop paths: %s", path, quoted_fpaths)
+        quoted_fpaths.append(quote_arg(path))
+        tree = Pipeline.parse('cp ' + ' '.join(quoted_fpaths), self.context)
+        self.execute_pipeline(tree, add_history=False, reset_input=False) 
+    
+    def __on_drag_data_received(self, tv, context, x, y, selection, info, etime):
+        sel_data = selection.data
+        self.do_copy_url_drag_to_dir(sel_data, self.context.get_cwd())
         
     def __on_minion_cwd(self, minion, cwd):
         _logger.debug("minion cwd: '%s'", cwd)
