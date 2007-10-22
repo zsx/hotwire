@@ -2,73 +2,90 @@ import os, sys, logging, StringIO, traceback
 
 import cairo, gtk, gobject, pango
 
-try:
-    import gtksourceview
-    gtksourceview_avail = True
-except ImportError, e:
-    gtksourceview_avail = False
+from hotwire_ui.editor import HotEditorWindow
 
-class ReallyBasicShell(gtk.VBox):
-    def __init__(self, histpath=None, locals={}):
-        super(ReallyBasicShell, self).__init__()
+_logger = logging.getLogger("hotwire.PyShell")
 
-        self._locals = locals
-        
-        self._history_path = histpath
-                                          
-        self._save_text_id = 0        
-        
-        paned = gtk.VPaned()
+class OutputWindow(gtk.Window):
+    def __init__(self, content):
+        super(OutputWindow, self).__init__(gtk.WINDOW_TOPLEVEL)
+        vbox = gtk.VBox()
+        self.add(vbox)
+        self.__ui_string = """
+<ui>
+  <menubar name='Menubar'>
+    <menu action='FileMenu'>
+      <menuitem action='Close'/>
+    </menu>
+  </menubar>
+</ui>
+"""
+        self.__create_ui()
+        vbox.pack_start(self._ui.get_widget('/Menubar'), expand=False)        
         self.output = gtk.TextBuffer()
         self.output_view = gtk.TextView(self.output)
         self.output_view.set_wrap_mode(gtk.WRAP_WORD)
         self.output_view.set_property("editable", False)
+        self.output.set_property('text', content)
         scroll = gtk.ScrolledWindow()
         scroll.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_ALWAYS)
         scroll.add(self.output_view)
-        paned.pack1(scroll, True, True)
+        vbox.pack_start(scroll, True, True)
+        self.set_size_request(640, 480)        
+        
+    def __create_ui(self):
+        self.__actiongroup = ag = gtk.ActionGroup('OutputWindowActions')
+        actions = [
+            ('FileMenu', None, 'File'),
+            ('Close', gtk.STOCK_CLOSE, '_Close', 'Return', 'Close window', self.__close_cb),
+            ]
+        ag.add_actions(actions)
+        self._ui = gtk.UIManager()
+        self._ui.insert_action_group(ag, 0)
+        self._ui.add_ui_from_string(self.__ui_string)
+        self.add_accel_group(self._ui.get_accel_group()) 
+        
+    def __close_cb(self, action):
+        self.destroy()               
+        
+class CommandShell(HotEditorWindow):
+    DEFAULT_CONTENT = '''import os,sys,re
+import gtk, gobject
 
-        if gtksourceview_avail:
-            self.input = gtksourceview.SourceBuffer()
+outln('''
+    def __init__(self, locals={}, histpath=None):
+        super(CommandShell, self).__init__(content=self.DEFAULT_CONTENT)
+        self._locals = locals
+        self.__ui_string = """
+<ui>
+  <menubar name='Menubar'>
+    <menu action='ToolsMenu'>
+      <menuitem action='Eval'/>
+    </menu>
+  </menubar>
+</ui>        
+"""    
+        actions = [
+            ('ToolsMenu', None, 'Tools'),
+            ('Eval', None, '_Eval', '<control>e', 'Evaluate current input', self.__eval_cb),
+            ]
+        self.__actiongroup = ag = gtk.ActionGroup('ShellActions')        
+        ag.add_actions(actions)
+        self._ui.insert_action_group(ag, 0)
+        self._ui.add_ui_from_string(self.__ui_string)
+
+        if self.gtksourceview_mode:
+            import gtksourceview            
             pylang = gtksourceview.SourceLanguagesManager().get_language_from_mime_type("text/x-python")
             self.input.set_language(pylang)
             self.input.set_highlight(True)
-            self.input_view = gtksourceview.SourceView(self.input)
-        else:
-            self.input = gtk.TextBuffer()
-            self.input_view = gtk.TextView(self.input)
-        self.input_view.set_wrap_mode(gtk.WRAP_WORD)        
-        self.input.connect("changed", self._handle_text_changed)
-        scroll = gtk.ScrolledWindow()
-        scroll.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_ALWAYS)        
-        scroll.add(self.input_view)        
-        paned.pack2(scroll, True, True)
-        
-        self.pack_start(paned, True, True)
-        
-        eval_button = gtk.Button("Eval")
-        eval_button.connect("clicked", self.do_eval)
-        self.pack_start(eval_button, False)
+            
+        self.input.move_mark_by_name("insert", self.input.get_end_iter())
+        self.input.move_mark_by_name("selection_bound", self.input.get_end_iter())        
+            
+        self.set_title('Hotwire Command Shell')
 
-        try:
-            history = file(self._history_path).read()
-            self.input.set_property("text", history)
-        except IOError, e:
-            pass
-
-    def _idle_save_text(self):
-        history_file = file(self._history_path, 'w+')
-        text = self.input.get_property("text")
-        history_file.write(text)
-        history_file.close()
-        self._save_text_id = 0
-        return False
-    
-    def _handle_text_changed(self, text):
-        if self._save_text_id == 0:
-            self._save_text_id = gobject.timeout_add(3000, self._idle_save_text)
-    
-    def do_eval(self, entry):
+    def __eval_cb(self, a):
         try:
             output_stream = StringIO.StringIO()
             text = self.input.get_property("text")
@@ -77,18 +94,12 @@ class ReallyBasicShell(gtk.VBox):
             for k, v in self._locals.items():
                 locals[k] = v
             locals['output'] = output_stream
+            locals['outln'] = output_stream.write
             exec code_obj in locals
-            logging.debug("execution complete with %d output characters" % (len(output_stream.getvalue())),)
-            self.output.set_property("text", output_stream.getvalue())
+            _logger.debug("execution complete with %d output characters" % (len(output_stream.getvalue())),)
+            owin = OutputWindow(output_stream.getvalue())
+            owin.show_all()
         except:
-            logging.debug("caught exception executing")
-            self.output.set_property("text", traceback.format_exc())
-
-class CommandShell(gtk.Window):
-    """Every application needs a development shell."""
-    def __init__(self, locals={}, histpath=None):
-        gtk.Window.__init__(self, type=gtk.WINDOW_TOPLEVEL)
-        
-        self.add(ReallyBasicShell(locals=locals, histpath=histpath))
-        self.set_size_request(400, 600)
-    
+            _logger.debug("caught exception executing", exc_info=True)
+            owin = OutputWindow(traceback.format_exc())
+            owin.show_all()

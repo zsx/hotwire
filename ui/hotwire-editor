@@ -61,7 +61,7 @@ def main():
     _logger.debug('initializing threads')
     gobject.threads_init()
 
-    w = HotEditorWindow(target_filename)
+    w = HotEditorWindow(filename=target_filename)
     w.show_all()
     w.connect('destroy', lambda *args: gtk.main_quit())
     gtk.gdk.notify_startup_complete()

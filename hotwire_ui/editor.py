@@ -13,7 +13,7 @@ except ImportError, e:
     _logger.debug("gtksourceview not available")
 
 class HotEditorWindow(gtk.Window):
-    def __init__(self, filename):
+    def __init__(self, filename=None, content=None, title=None):
         gtk.Window.__init__(self, type=gtk.WINDOW_TOPLEVEL)
         vbox = gtk.VBox()
         self.add(vbox)
@@ -32,11 +32,13 @@ class HotEditorWindow(gtk.Window):
 </ui>
 """
         self.__create_ui()
-        vbox.pack_start(self.__ui.get_widget('/Menubar'), expand=False)
+        vbox.pack_start(self._ui.get_widget('/Menubar'), expand=False)
 
         self.__filename = filename
          
         self.__save_text_id = 0
+
+        self.gtksourceview_mode = gtksourceview_avail
 
         if gtksourceview_avail:
             self.input = gtksourceview.SourceBuffer()
@@ -53,17 +55,19 @@ class HotEditorWindow(gtk.Window):
         
         vbox.pack_start(scroll, True, True)
 
-        if os.path.isfile(self.__filename):
+        if filename and os.path.isfile(self.__filename):
             _logger.debug("reading %s", self.__filename)
             f = open(self.__filename, 'r')
             self.__original_text = f.read()
+        else:
+            self.__original_text = content
+            
+        if self.__original_text:
             if gtksourceview_avail:
                 self.input.begin_not_undoable_action()
             self.input.set_property('text', self.__original_text)
             if gtksourceview_avail:
-                self.input.end_not_undoable_action()
-        else:
-            self.__original_text = None
+                self.input.end_not_undoable_action()            
         
         self.input.move_mark_by_name('insert', self.input.get_start_iter())
         self.input.move_mark_by_name('selection_bound', self.input.get_start_iter())
@@ -74,10 +78,11 @@ class HotEditorWindow(gtk.Window):
         self.__sync_undoredo()
 
         # do this later to avoid autosaving initially
-        self.input.connect("changed", self.__handle_text_changed)
+        if filename:
+            self.input.connect("changed", self.__handle_text_changed)
 
         self.connect("delete-event", lambda w, e: False)
-        self.set_title(self.__filename)
+        self.set_title(title or (filename and self.__filename) or 'Untitled Editor')
         self.set_size_request(640, 480)
 
     def __idle_save_text(self):
@@ -133,7 +138,7 @@ class HotEditorWindow(gtk.Window):
             ('Redo', gtk.STOCK_REDO, '_Redo', '<control><shift>Z', 'Redo action', self.__redo_cb),
             ])
         ag.add_actions(actions)
-        self.__ui = gtk.UIManager()
-        self.__ui.insert_action_group(ag, 0)
-        self.__ui.add_ui_from_string(self.__ui_string)
-        self.add_accel_group(self.__ui.get_accel_group())
+        self._ui = gtk.UIManager()
+        self._ui.insert_action_group(ag, 0)
+        self._ui.add_ui_from_string(self.__ui_string)
+        self.add_accel_group(self._ui.get_accel_group())
