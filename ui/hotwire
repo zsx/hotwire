@@ -12,12 +12,18 @@ except:
     pass
 
 if __name__ == '__main__' and hasattr(sys.modules['__main__'], '__file__'):
-    if os.path.basename(os.path.dirname(__file__)) == 'ui':
+    basedir = os.path.dirname(os.path.abspath(__file__))
+    up_basedir = os.path.dirname(basedir)
+    if os.path.basename(basedir) == 'ui':
         def _pathext(path):
             if os.access(path, os.R_OK):
                 sys.path.insert(0, path)
         _pathext('externals/pygtk-shell')
-        sys.path.insert(0, '.')
+
+		print "Running uninstalled, extending PYTHONPATH with: %s" % (up_basedir,)
+        sys.path.insert(0, up_basedir)
+        # Extend PATH so hotwire-editor works correctly
+        os.environ['PATH'] = (basedir + os.pathsep + os.environ.get('PATH', ''))
 
 if sys.version_info[0] == 2 and sys.version_info[1] < 6:
     import hotwire.pycompat.webbrowser as webbrowser
