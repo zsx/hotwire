@@ -49,7 +49,11 @@ class OutputWindow(gtk.Window):
         self.destroy()               
         
 class CommandShell(HotEditorWindow):
-    DEFAULT_CONTENT = '''import os,sys,re
+    DEFAULT_CONTENT = '''## Hotwire Python Workpad
+## Global values:
+##   outln(value): (Function) Print a value and a newline to output stream
+##   hotwin: (Value) The global Hotwire window
+import os,sys,re
 import gtk, gobject
 
 outln('''
@@ -94,7 +98,7 @@ outln('''
             for k, v in self._locals.items():
                 locals[k] = v
             locals['output'] = output_stream
-            locals['outln'] = output_stream.write
+            locals['outln'] = lambda v: self.__outln(output_stream, v)
             exec code_obj in locals
             _logger.debug("execution complete with %d output characters" % (len(output_stream.getvalue())),)
             owin = OutputWindow(output_stream.getvalue())
@@ -103,3 +107,7 @@ outln('''
             _logger.debug("caught exception executing", exc_info=True)
             owin = OutputWindow(traceback.format_exc())
             owin.show_all()
+            
+    def __outln(self, stream, v):
+        stream.write(str(v))
+        stream.write('\n')
