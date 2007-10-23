@@ -127,10 +127,10 @@ class HotEditorWindow(gtk.Window):
     def __create_ui(self):
         self.__actiongroup = ag = gtk.ActionGroup('WindowActions')
         actions = [
-            ('FileMenu', None, 'File'),
+            ('FileMenu', None, '_File'),
             ('Revert', None, '_Revert', None, 'Revert to saved text', self.__revert_cb),
             ('Close', gtk.STOCK_CLOSE, '_Close', '<control>W', 'Save and close', self.__close_cb),
-            ('EditMenu', None, 'Edit')]
+            ('EditMenu', None, '_Edit')]
 
         if gtksourceview_avail:
             actions.extend([
