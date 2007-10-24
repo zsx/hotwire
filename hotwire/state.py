@@ -111,8 +111,9 @@ class History(Singleton):
         if not result:
             current_count = 0
         else:
-            current_count = result[1]
-        vals = (value, current_count, datetime.datetime.now())
+            current_count = result[2]
+        _logger.debug("incrementing count %s", current_count)
+        vals = (value, current_count+1, datetime.datetime.now())
         _logger.debug("doing insert of %s", vals)
         cursor.execute('''INSERT OR REPLACE INTO %s VALUES (NULL, ?, ?, ?)''' % (tablename,), vals)
         cursor.execute('''COMMIT''')
