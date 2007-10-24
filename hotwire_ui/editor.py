@@ -49,6 +49,8 @@ class HotEditorWindow(gtk.Window):
             self.input = gtk.TextBuffer()
             self.input_view = gtk.TextView(self.input)
         self.input_view.set_wrap_mode(gtk.WRAP_WORD)
+        self.input_view.connect("key-press-event", self.__handle_key_press_event)
+        
         scroll = gtk.ScrolledWindow()
         scroll.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_ALWAYS)        
         scroll.add(self.input_view)
@@ -96,6 +98,16 @@ class HotEditorWindow(gtk.Window):
         gobject.timeout_add(3000, lambda: self.__statusbar.remove(self.__statusbar_ctx, autosaved_id))
         _logger.debug("autosave complete")
         return False
+
+    def __handle_key_press_event(self, input_view, event):
+        # <Control>Return is the most natural keybinding for save-and-close, but support
+        # <Control>w for compat. This doesn't replicate all the complicated multiple-groups
+        # handling that would goes on inside GTK+, but that's OK for a compatibility crutch
+        if event.state & gtk.gdk.CONTROL_MASK != 0 and event.keyval in (gtk.keysyms.w, gtk.keysyms.W):
+            self.__handle_close()
+            return True
+
+        return False
     
     def __handle_text_changed(self, text):
         if self.__save_text_id == 0:
@@ -129,7 +141,7 @@ class HotEditorWindow(gtk.Window):
         actions = [
             ('FileMenu', None, '_File'),
             ('Revert', None, '_Revert', None, 'Revert to saved text', self.__revert_cb),
-            ('Close', gtk.STOCK_CLOSE, '_Close', '<control>W', 'Save and close', self.__close_cb),
+            ('Close', gtk.STOCK_CLOSE, '_Close', '<control>Return', 'Save and close', self.__close_cb),
             ('EditMenu', None, '_Edit')]
 
         if gtksourceview_avail:
