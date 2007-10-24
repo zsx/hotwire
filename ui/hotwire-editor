@@ -6,8 +6,10 @@ import sys, os, getopt, logging, re, string, Queue
 import gtk, gobject, pango
 
 if __name__ == '__main__' and hasattr(sys.modules['__main__'], '__file__'):
-    if os.path.basename(os.path.dirname(__file__)) == 'ui':
-        sys.path.insert(0, '.')
+    basedir = os.path.dirname(os.path.abspath(__file__))
+    up_basedir = os.path.dirname(basedir)
+    if os.path.basename(basedir) == 'ui':
+        sys.path.insert(0, up_basedir)
 import hotwire
 import hotwire.sysdep
 import hotwire.config

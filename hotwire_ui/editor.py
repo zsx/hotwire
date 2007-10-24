@@ -35,6 +35,7 @@ class HotEditorWindow(gtk.Window):
         vbox.pack_start(self._ui.get_widget('/Menubar'), expand=False)
 
         self.__filename = filename
+        self.__modified = False
          
         self.__save_text_id = 0
 
@@ -107,14 +108,34 @@ class HotEditorWindow(gtk.Window):
             self.__handle_close()
             return True
 
+        if event.keyval == gtk.keysyms.Escape:
+            if self.__modified:
+                dialog = gtk.MessageDialog(parent=self, buttons=gtk.BUTTONS_NONE,
+                                           type=gtk.MESSAGE_QUESTION,
+                                           message_format="Revert changes and quit?")
+                dialog.add_buttons("Cancel", gtk.RESPONSE_CANCEL,
+                                   "Revert", gtk.RESPONSE_OK)
+                dialog.set_default_response(gtk.RESPONSE_OK)
+                if dialog.run() == gtk.RESPONSE_OK:
+                    self.__handle_revert()
+                    self.__handle_close()
+            else:
+                self.__handle_close()
+                
+            return True
+
         return False
     
     def __handle_text_changed(self, text):
+        self.__modified = True
         if self.__save_text_id == 0:
             self.__save_text_id = gobject.timeout_add(800, self.__idle_save_text)
 
     def __revert_cb(self, action):
-        self.input.set_property('text', self.__original_text)
+        self.__handle_revert()
+
+    def __handle_revert(self):
+        self.input.set_property('text', self.__original_text)        
 
     def __close_cb(self, action):
         self.__handle_close()
