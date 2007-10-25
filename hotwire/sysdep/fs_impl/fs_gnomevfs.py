@@ -104,6 +104,9 @@ class GnomeVFSFilesystem(UnixFilesystem):
                     exec_components[i] = uri
                     replaced_f = True
             if not replaced_f:
+                # Many apps don't take URIs
+                if uri.startswith('file://'):
+                    uri = uri[7:]
                 exec_components.append(uri)
             subprocess.Popen(exec_components, stdout=sys.stdout, stderr=sys.stderr)        
 
