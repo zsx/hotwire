@@ -142,7 +142,8 @@ class HotEditorWindow(gtk.Window):
 
     def __handle_close(self):
         _logger.debug("got close")
-        self.__idle_save_text()
+        if self.__filename:
+            self.__idle_save_text()
         self.destroy()
 
     def __undo_cb(self, action):

@@ -71,7 +71,7 @@ outln('''
 """    
         actions = [
             ('ToolsMenu', None, 'Tools'),
-            ('Eval', None, '_Eval', '<control>e', 'Evaluate current input', self.__eval_cb),
+            ('Eval', None, '_Eval', '<control>Return', 'Evaluate current input', self.__eval_cb),
             ]
         self.__actiongroup = ag = gtk.ActionGroup('ShellActions')        
         ag.add_actions(actions)
@@ -101,8 +101,10 @@ outln('''
             locals['outln'] = lambda v: self.__outln(output_stream, v)
             exec code_obj in locals
             _logger.debug("execution complete with %d output characters" % (len(output_stream.getvalue())),)
-            owin = OutputWindow(output_stream.getvalue())
-            owin.show_all()
+            output_str = output_stream.getvalue()
+            if output_str:
+                owin = OutputWindow(output_str)
+                owin.show_all()
         except:
             _logger.debug("caught exception executing", exc_info=True)
             owin = OutputWindow(traceback.format_exc())
