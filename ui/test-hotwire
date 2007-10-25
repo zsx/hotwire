@@ -7,6 +7,7 @@ import tempfile, shutil
 basedir = os.path.dirname(os.path.abspath(__file__))
 up_basedir = os.path.dirname(basedir)
 if os.path.basename(basedir) == 'ui':
+    print "Running uninstalled, inserting into path: %s" % (up_basedir,)
     sys.path.insert(0, up_basedir)
 import hotwire
 import hotwire.logutil
@@ -14,6 +15,7 @@ import hotwire.persist
 import hotwire.test_command
 if platform.system() == 'Linux':
     import hotwire.test_command_unix
+    import hotwire.test_completion_unix
     unix_avail = True
 else:
     unix_avail = False
@@ -64,6 +66,8 @@ def main():
     if unix_avail:
         suite = unittest.TestLoader().loadTestsFromModule(hotwire.test_command_unix)
         unittest.TextTestRunner().run(suite)
+        suite = unittest.TestLoader().loadTestsFromModule(hotwire.test_completion_unix)
+        unittest.TextTestRunner().run(suite)        
 	_logger.info("Removing temporary state dir: %s", tmpd)         
     shutil.rmtree(tmpd, ignore_errors=True)
 

@@ -162,7 +162,7 @@ class BaseCompleter(object):
                 return False
         return True
 
-    def search(self, text, hotwire=None):
+    def search(self, text, context=None, hotwire=None):
         gen = self._get_generator(search=text)
         _logger.debug("using generator: %s", gen)
         for item in gen:
@@ -234,11 +234,12 @@ class PathCompleter(BaseCompleter):
     def __init__(self):
         super(PathCompleter, self).__init__(None)
 
-    def search(self, text, hotwire=None, cwd=None):
-        assert hotwire
+    def search(self, text, hotwire=None, context=None, cwd=None):
+        src_context = (hotwire and hotwire.context) or context
+        assert src_context
         text = os.path.expanduser(text)
         (input_dname, input_fname) = os.path.split(text)
-        input_dname = os.path.join(cwd or hotwire.context.get_cwd(), input_dname)
+        input_dname = os.path.join(cwd or src_context.get_cwd(), input_dname)
         input_dname = os.path.normpath(input_dname)
         generator = []
         try:
@@ -247,7 +248,7 @@ class PathCompleter(BaseCompleter):
                 generator = DirectoryGenerator(input_dname)
         except:
             _logger.debug("Failed to stat %s", input_dname)
-            generator = DirectoryGenerator(hotwire.context.get_cwd())
+            generator = DirectoryGenerator(src_context.get_cwd())
         have_fcompletions = False
         for path in generator:
             if not self._ext_filter(path):
@@ -306,7 +307,7 @@ class CwdExecutableCompleter(object):
         self.__cwd = cwd
 		self.__generator = DirExecutableGenerator(cwd, include_subdirs=True)
 
-    def search(self, text, hotwire=None):
+    def search(self, text, context=None, hotwire=None):
         was_cwd = False
         dotslash = '.' + os.sep 
         if text.startswith(dotslash):
@@ -395,7 +396,7 @@ class VerbCompleter(object):
         except OSError, e:
             return False
 
-    def search(self, text, hotwire=None):
+    def search(self, text, context=None, hotwire=None):
         found_noncwd = False
         for item in BuiltinCompleter.getInstance().search(text):
             found_noncwd = True
@@ -406,7 +407,7 @@ class VerbCompleter(object):
         if text.find(os.sep) >= 0 or text.startswith('.' + os.sep):
             pc = PathCompleter()
             pc.add_filter(self.__dir_or_x)
-            for item in pc.search(text, hotwire=hotwire):
+            for item in pc.search(text, context=context, hotwire=hotwire):
                 found_noncwd = True
                 self.__prefix_completion(item)
                 yield item
@@ -490,7 +491,7 @@ class CdCompleter(Singleton, BaseCompleter):
 	
 	def __dirfilter(self, path):
 		try:
-			return stat.S_ISDIR(os.lstat(path).st_mode)
+			return stat.S_ISDIR(os.stat(path).st_mode)
 		except OSError, e:
 			return False
 
