@@ -49,7 +49,7 @@ class OutputWindow(gtk.Window):
         self.destroy()               
         
 class CommandShell(HotEditorWindow):
-    DEFAULT_CONTENT = '''## Hotwire Python Workpad
+    DEFAULT_CONTENT = '''## Hotwire Python Pad
 ## Global values:
 ##   outln(value): (Function) Print a value and a newline to output stream
 ##   hotwin: (Value) The global Hotwire window
@@ -57,8 +57,8 @@ import os,sys,re
 import gtk, gobject
 
 outln('''
-    def __init__(self, locals={}, histpath=None):
-        super(CommandShell, self).__init__(content=self.DEFAULT_CONTENT)
+    def __init__(self, locals={}, savepath=None):
+        super(CommandShell, self).__init__(content=self.DEFAULT_CONTENT, filename=savepath)
         self._locals = locals
         self.__ui_string = """
 <ui>

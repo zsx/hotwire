@@ -14,6 +14,7 @@ from hotwire.sysdep.term import Terminal
 from hotwire.gutil import *
 from hotwire.util import markup_for_match, quote_arg
 from hotwire.fs import path_unexpanduser
+from hotwire.sysdep.fs import Filesystem
 try:
     from hotwire.minion import SshMinion
     minion_available = True
@@ -806,7 +807,7 @@ class HotWindow(gtk.Window):
         if self.__pyshell:
             self.__pyshell.destroy()
         self.__pyshell = hotwire_ui.pyshell.CommandShell({'hotwin': self},
-                                                         histpath=os.path.join(os.path.expanduser("~"), 'hotwire-cmdshell-history'))
+                                                         savepath=os.path.join(Filesystem.getInstance().get_conf_dir(), 'pypad.py'))
         self.__pyshell.set_title('Hotwire PyShell')
         self.__pyshell.show_all()
 
