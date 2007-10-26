@@ -309,6 +309,9 @@ class Hotwire(gtk.VBox):
 
     def get_entry(self):
         return self.__input
+    
+    def grab_focus(self):
+        self.__input.grab_focus()
 
     def __update_status(self):
         self.emit("title", self.get_title())

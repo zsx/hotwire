@@ -251,6 +251,9 @@ class TreeObjectsRenderer(ObjectsRenderer):
     def __on_row_activated(self, tv, path, vc):
         iter = self._model.get_iter(path)        
         self._onclick_iter(iter)
+        from hotwire_ui.shell import locate_current_shell
+        hw = locate_current_shell(self._table)
+        hw.grab_focus()        
         
 class DefaultObjectsRenderer(TreeObjectsRenderer):
     pass

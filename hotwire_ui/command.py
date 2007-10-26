@@ -462,7 +462,10 @@ class CommandExecutionControl(gtk.VBox):
         if target:
             pgnum = self.__cmd_notebook.page_num(target)
             self.__cmd_notebook.set_current_page(pgnum)
-            self.__action_group.get_action("Overview").activate()            
+            self.__action_group.get_action("Overview").activate()
+            from hotwire_ui.shell import locate_current_shell
+            hw = locate_current_shell(self)
+            hw.grab_focus()                        
  
     def get_current_cmd(self, full=False, curpage=None):
         if curpage is not None:
