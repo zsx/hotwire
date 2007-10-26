@@ -32,8 +32,8 @@ class FSearchBuiltin(FileOpBuiltin):
             for i,dir in enumerate(subdirs):
                 if fs.get_basename_is_ignored(dir):
                     filtered_dirs.append(i)
-            for i in filtered_dirs:
-                del subdirs[i]
+            for c,i in enumerate(filtered_dirs):
+                del subdirs[i-c]
             for f in files:
                 if fs.get_basename_is_ignored(f):
                     continue
