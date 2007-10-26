@@ -2,6 +2,7 @@
 import os,sys,platform,logging
 
 import hotwire
+from hotwire.sysdep import is_windows, is_unix
 
 _logger = logging.getLogger("hotwire.sysdep.Ipc")
 
@@ -16,7 +17,7 @@ class BaseIpc(object):
         raise NotImplementedError()
 
 _module = None
-if platform.system() == 'Linux':
+if is_unix():
     import hotwire.sysdep.ipc_impl.ipc_dbus
     _module = hotwire.sysdep.ipc_impl.ipc_dbus
 else:

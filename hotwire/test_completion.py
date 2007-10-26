@@ -3,6 +3,7 @@ import os, sys, unittest, tempfile, shutil, platform
 
 import hotwire
 from hotwire.completion import *
+from hotwire.sysdep import is_windows, is_unix
 
 class CompletionTests(unittest.TestCase):
     def setUp(self):
@@ -29,7 +30,7 @@ class CompletionTests(unittest.TestCase):
         open(os.path.join(self._tmpd, 'testdir2', 'blah'), 'w').close()
 
     def testCmdOrShell(self):
-        if platform.system() == 'Windows':
+        if is_windows():
             search='cmd'
         else:
             search='true'
@@ -37,7 +38,7 @@ class CompletionTests(unittest.TestCase):
             self.assertNotEqual(len(verbs), 0)					
 
     def testNoCompletion(self):
-        if platform.system() == 'Windows':
+        if is_windows():
             search='cmd'
         else:
             search='true'

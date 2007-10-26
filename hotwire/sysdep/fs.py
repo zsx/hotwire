@@ -7,6 +7,7 @@ import gobject
 import hotwire
 from hotwire.fs import unix_basename
 from hotwire.async import MiniThreadPool
+from hotwire.sysdep import is_windows, is_unix
 import hotwire.sysdep.fs_impl
 
 _logger = logging.getLogger("hotwire.sysdep.Filesystem")
@@ -213,14 +214,14 @@ class File(gobject.GObject):
         gobject.idle_add(lambda: self.emit("changed"), priority=gobject.PRIORITY_LOW)
 
 _module = None
-if platform.system() == 'Linux':
+if is_unix():
     try:
         import hotwire.sysdep.fs_impl.fs_gnomevfs
         _module = hotwire.sysdep.fs_impl.fs_gnomevfs
     except:
         import hotwire.sysdep.fs_impl.fs_unix
         _module = hotwire.sysdep.fs_impl.fs_unix
-elif platform.system() == 'Windows':
+elif is_windows():
     import hotwire.sysdep.fs_impl.fs_win32
     _module = hotwire.sysdep.fs_impl.fs_win32
 else:

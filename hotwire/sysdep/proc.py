@@ -1,6 +1,8 @@
 # -*- tab-width: 4 -*-
 import sys,os,logging,platform
 
+from hotwire.sysdep import is_windows, is_unix, is_linux
+
 class BaseProcessManager(object):
     def get_extra_subproc_args(self):
         return {}
@@ -27,10 +29,13 @@ class Process(object):
         return "Process '%s' (%s) of %s" % (self.cmd, self.pid, self.owner_name)
 
 _module = None
-if platform.system() == 'Linux':
+if is_linux():
     import hotwire.sysdep.proc_impl.proc_linux
     _module = hotwire.sysdep.proc_impl.proc_linux
-elif platform.system() == 'Windows':
+elif is_unix():
+    import hotwire.sysdep.proc_impl.proc_unix
+    _module = hotwire.sysdep.proc_impl.proc_unix
+elif is_windows():
     import hotwire.sysdep.proc_impl.proc_win32
     _module = hotwire.sysdep.proc_impl.proc_win32
 else:
