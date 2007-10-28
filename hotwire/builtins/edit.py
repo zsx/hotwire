@@ -3,6 +3,7 @@ import os, os.path, stat
 from hotwire.iterdir import iterdir
 
 from hotwire.builtin import Builtin, BuiltinRegistry
+from hotwire.fs import FilePath
 from hotwire.sysdep.fs import Filesystem
 
 class EditBuiltin(Builtin):
@@ -15,6 +16,6 @@ class EditBuiltin(Builtin):
     def execute(self, context, args):
         fs = Filesystem.getInstance()
         for arg in args:
-            fs.launch_edit_file(arg)
+            fs.launch_edit_file(FilePath(arg, context.cwd))
         return []
 BuiltinRegistry.getInstance().register(EditBuiltin())
