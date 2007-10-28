@@ -31,7 +31,8 @@ class Completion(object):
                  hint_no_space=False,
                  exact=False,
                  ctxhit=False,
-                 matchtarget=None):
+                 matchtarget=None,
+                 default_icon=None):
         self.mstr = mstr
         self.start = start
         self.prefix = ''
@@ -41,6 +42,7 @@ class Completion(object):
         self.ctxhit = ctxhit
         self.matchtarget = matchtarget
         self.typename = None
+        self.default_icon = default_icon
         self._icon_cb = None 
 
     def set_prefix(self, prefix):
@@ -89,7 +91,7 @@ class Completion(object):
                                                   self.ctxhit and 'ctxhit ' or '')
 
     def get_icon(self, context=None):
-        return None
+        return self.default_icon
 
     def set_icon_cb(self, cb):
         self._icon_cb = cb
