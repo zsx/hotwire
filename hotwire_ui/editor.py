@@ -116,7 +116,10 @@ class HotEditorWindow(gtk.Window):
                 dialog.add_buttons("Cancel", gtk.RESPONSE_CANCEL,
                                    "Revert", gtk.RESPONSE_OK)
                 dialog.set_default_response(gtk.RESPONSE_OK)
-                if dialog.run() == gtk.RESPONSE_OK:
+                response = dialog.run()
+                dialog.destroy()
+                
+                if response == gtk.RESPONSE_OK:
                     self.__handle_revert()
                     self.__handle_close()
             else:
