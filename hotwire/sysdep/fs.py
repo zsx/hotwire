@@ -72,6 +72,11 @@ class BaseFilesystem(object):
     def get_executable_filter(self):
         return self._default_x_filter
 
+    def path_inexact_executable_match(self, path):
+        """This function is a hack for Windows; essentially we
+        allow using "python" as an exact match for "python.exe"."""
+        return False
+
     def move_to_trash(self, path):
         bn = unix_basename(path)
         newf = os.path.join(self._trashdir, bn)
