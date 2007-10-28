@@ -749,6 +749,8 @@ class HotWindow(gtk.Window):
         self.__old_char_width = 0
         self.__old_char_height = 0
         self.__old_geom_widget = None
+        
+        self.__curtab_is_hotwire = False
 
         # Records the last tab index from which we created a new tab, so we 
         # can switch back when closed, unless the user manually switched tabs
@@ -918,12 +920,18 @@ along with Hotwire; if not, write to the Free Software Foundation, Inc.,
         self.__preautoswitch_index = -1
         widget = self.__notebook.get_nth_page(pn)
         is_hw = widget.get_data('hotwire-is-hotwire')
-        old_widget = self.__notebook.get_nth_page(self.__notebook.get_current_page())
-        old_is_hw = widget.get_data('hotwire-is-hotwire')
+        old_idx = self.__notebook.get_current_page()
+        if old_idx != pn:
+            old_widget = self.__notebook.get_nth_page(old_idx)
+            old_is_hw = widget.get_data('hotwire-is-hotwire')
+        else:
+            old_widget = None
+            old_is_hw = False
         if is_hw:
             gobject.idle_add(self.set_focus, widget.get_entry())
             #self.__old_geom_widget = widget
-            if not old_is_hw:
+            if len(self.__geom_hints) > 0 and not self.__curtab_is_hotwire:
+                _logger.debug("setting geom hints: %s", self.__geom_hints)                
                 self.set_geometry_hints(widget, **self.__geom_hints)       
         elif hasattr(widget, 'get_term_geometry'):
             (cw, ch, (xp, yp)) = widget.get_term_geometry()
@@ -942,6 +950,8 @@ along with Hotwire; if not, write to the Free Software Foundation, Inc.,
                 self.__old_char_height = ch
                 self.__old_geom_widget = widget
 
+        self.__curtab_is_hotwire = is_hw
+                
         ## Attempt to change our UI merge; this code is a bit wonky.
         if hasattr(widget, 'get_ui'):
             (uistr, actiongroup) = widget.get_ui()
@@ -1014,7 +1024,7 @@ along with Hotwire; if not, write to the Free Software Foundation, Inc.,
 
     def __add_widget_title(self, w):
         hbox = gtk.HBox()
-        label = gtk.Label()
+        label = gtk.Label('<notitle>')
         label.set_ellipsize(pango.ELLIPSIZE_END)
         hbox.pack_start(hotwidgets.Align(label, padding_right=4), expand=True)
 
