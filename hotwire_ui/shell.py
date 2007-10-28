@@ -728,6 +728,7 @@ class HotWindow(gtk.Window):
     <menu action='ToolsMenu'>
       <menuitem action='PythonWorkpad'/>
       <separator/>
+      <menuitem action='HelpCommand'/>      
       <menuitem action='About'/>
     </menu>
   </menubar>
@@ -789,7 +790,8 @@ class HotWindow(gtk.Window):
             ('ControlMenu', None, 'Control'),
             ('PrefsMenu', None, 'Preferences'),                            
             ('ToolsMenu', None, 'Tools'),
-            ('PythonWorkpad', 'gtk-execute', '_Python Workpad', '<control><alt>s', 'Launch Python evaluator', self.__python_workpad_cb),            
+            ('PythonWorkpad', 'gtk-execute', '_Python Workpad', '<control><alt>s', 'Launch Python evaluator', self.__python_workpad_cb),
+            ('HelpCommand', 'gtk-help', '_Help', '<control><alt>h', 'Display help command', self.__help_cb),                       
             ('About', gtk.STOCK_ABOUT, '_About', None, 'About Hotwire', self.__help_about_cb),
             ]
         self.__nonterm_actions = [
@@ -850,6 +852,14 @@ class HotWindow(gtk.Window):
 
     def __python_workpad_cb(self, action):
         self.__show_pyshell()
+        
+    def __help_cb(self, action):
+        widget = self.__notebook.get_nth_page(self.__notebook.get_current_page())
+        is_hw = widget.get_data('hotwire-is-hotwire')
+        if is_hw:
+            widget.execute_internal_str('help')
+        else:
+            self.new_tab_hotwire(initcmd='help')
 
     def __help_about_cb(self, action):
         dialog = gtk.AboutDialog()
