@@ -87,6 +87,7 @@ class VteTerminalWidget(TerminalWidget):
             MiniThreadPool.getInstance().run(self.__stream_to_fd, args=(self._stream, self.__slave))
         else:
             self._stream = None
+            # http://code.google.com/p/hotwire-shell/issues/detail?id=35
             # We do the command in an idle to hopefully have more state set up by then;
             # For example, "top" seems to be sized correctly on the first display
             # this way
