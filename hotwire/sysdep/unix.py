@@ -13,9 +13,3 @@ for path in standard_admin_paths:
 if path_fixed:
     os.environ['PATH'] = ':'.join(path_elts)
 
-# set up our editor as default if none set
-if 'EDITOR' not in os.environ:
-    os.environ['EDITOR'] = 'hotwire-editor'
-
-# Work around git bug
-os.environ['GIT_PAGER'] = 'cat'
