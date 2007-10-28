@@ -128,11 +128,11 @@ class File(gobject.GObject):
 
     def is_directory(self, follow_link=False):
         if not self.stat:
-			return False
-        if follow_link and self.stat.S_ISLNK(self.stat.st_mode):
-			stbuf = self.target_stat
+            return False
+        if follow_link and stat.S_ISLNK(self.stat.st_mode):
+            stbuf = self.target_stat
         else:
-			stbuf = self.stat
+            stbuf = self.stat
         return stbuf and stat.S_ISDIR(stbuf.st_mode)
 
     def get_size(self):
