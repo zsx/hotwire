@@ -1,9 +1,11 @@
 import os, sys, threading, Queue, logging, string, re, time, shlex
+import posixpath
 from StringIO import StringIO
 
 import gobject
 
 import hotwire.fs
+from hotwire.fs import path_normalize
 from hotwire.async import CancellableQueueIterator, IterableQueue, MiniThreadPool
 from hotwire.builtin import BuiltinRegistry
 import hotwire.util
@@ -25,8 +27,9 @@ class HotwireContext(gobject.GObject):
 
     def chdir(self, dir):
         dir = os.path.expanduser(dir)
-        newcwd = os.path.isabs(dir) and dir or os.path.join(self.__cwd, dir)
-        newcwd = os.path.normpath(newcwd)
+        newcwd = os.path.isabs(dir) and dir or posixpath.join(self.__cwd, dir)
+        newcwd = path_normalize(newcwd)
+        _logger.debug("chdir: %s    post-normalize: %s", dir, newcwd)
         os.stat(newcwd) # lose on nonexistent
         self.__cwd = newcwd
         self.emit("cwd", newcwd)
@@ -211,12 +214,13 @@ class Command(gobject.GObject):
                         continue
                     globarg = os.path.expanduser(globarg_in)
                     matched_files.extend(hotwire.fs.dirglob(self.context.cwd, globarg))
+                    _logger.debug("glob on %s matched is: %s", globarg_in, matched_files) 
                     newlen = len(matched_files)
                     if oldlen == newlen:
                         matched_files.append(globarg)
                         newlen += 1
                     oldlen = newlen    
-                target_args = [map(lambda arg: hotwire.fs.FilePath(arg, self.context.cwd), matched_files)]
+                target_args = [matched_files]
             else:
                 target_args = []
                 for arg in self.args:
