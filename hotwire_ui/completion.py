@@ -47,10 +47,16 @@ class GeneratorModelWindow(object):
         if not iter:
             return None
         return self.model.get_value(iter, 0)
+    
+    def get_current(self):
+        return self.__ret_selected()
 
     def get_selected_path(self):
         (model, iter) = self.selection.get_selected()
         return iter and model.get_path(iter)
+    
+    def select_iter(self, iter):
+        self.selection.select_iter(iter)
 
     def expand(self):
         if self.__expanded:
@@ -164,6 +170,9 @@ class GeneratorModelWindow(object):
         return (lastpath is not None) and selpath != lastpath
 
 class TextMatchDisplay(gtk.VBox):
+    __gsignals__ = {
+        "match-selected" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, []),
+    }     
     def __init__(self, title='', dispcount=5, context=None,
                  extended_title=None, init_dispsize=0):
         super(TextMatchDisplay, self).__init__()
@@ -175,6 +184,7 @@ class TextMatchDisplay(gtk.VBox):
         self.__extended_title = extended_title
         self.__view = gtk.TreeView()
         self.__view.get_selection().set_mode(gtk.SELECTION_SINGLE)
+        self.__view.connect("row-activated", self.__on_row_activated)      
         self.__view.set_headers_visible(False)
         colidx = self.__view.insert_column_with_data_func(-1, '',
                                                           gtk.CellRendererPixbuf(),
@@ -223,6 +233,12 @@ class TextMatchDisplay(gtk.VBox):
             if val is obj:
                 return iter
             iter = self.__model.iter_next(iter)
+            
+    def __on_row_activated(self, tv, path, vc):
+        _logger.debug("row activated: %s", path)
+        iter = self.__model.get_iter(path)        
+        self.__view.get_selection().select_iter(iter)
+        self.emit('match-selected')
 
     def __on_icon_changed(self, compl):
         if not self.__model:
@@ -331,8 +347,14 @@ class TextMatchDisplay(gtk.VBox):
         _logger.debug("selected prev item: %s", result)
         self.__sync_display()
         return result
+    
+    def get_current(self):
+        return self.__item_from_match(self.__gen_window.get_current())
 
 class PopupDisplay(hotwidgets.TransientPopup):
+    __gsignals__ = {
+        "completion-selected" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, []),
+    }    
     def __init__(self, entry, window, context=None, tabhistory=[], **kwargs):
         super(PopupDisplay, self).__init__(entry, window, **kwargs)
         self.__context = context
@@ -341,6 +363,7 @@ class PopupDisplay(hotwidgets.TransientPopup):
         self.tabcompletion = TextMatchDisplay(title=u'<b>Completion</b> - %s matches <b>(</b><tt>TAB</tt> next%s<b>)</b>',
                                               context=context,
                                               extended_title=', <tt>SHIFT</tt> choose')
+        self.tabcompletion.connect('match-selected', self.__on_completion_match_selected)
         self.get_box().pack_start(self.tabcompletion, expand=True)
         self.get_box().pack_start(gtk.HSeparator(), expand=False)
         self.history = TextMatchDisplay(title=u'<b>History</b> - %s matches <b>(</b><tt>\u2191</tt><b>)</b>',
@@ -350,6 +373,9 @@ class PopupDisplay(hotwidgets.TransientPopup):
         self.__search = None
         self.__saved_input = None
         self.__idle_reposition_id = 0
+        
+    def __on_completion_match_selected(self, tm):
+        self.emit('completion-selected')
 
     def __queue_reposition(self):
         if self.__idle_reposition_id > 0:
@@ -467,4 +493,7 @@ class PopupDisplay(hotwidgets.TransientPopup):
         res = self.tabcompletion.select_prev()
         self.__queue_reposition()
         return res
+    
+    def get_tab_current(self):
+        return self.tabcompletion.get_current()
 

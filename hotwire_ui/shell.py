@@ -208,6 +208,7 @@ class Hotwire(gtk.VBox):
         self.__completion_suppress = False
         self.__completions = PopupDisplay(self.__input, window, context=self.context,
                                           tabhistory=self.__tabhistory)
+        self.__completions.connect('completion-selected', self.__on_completion_selected)
         self.__completion_token = None
         self.__history_suppress = False
         self.__last_output = None
@@ -422,6 +423,12 @@ class Hotwire(gtk.VBox):
 
         self.execute_pipeline(pipeline)
 
+    @log_except(_logger)
+    def __on_completion_selected(self, popup):
+        _logger.debug("got completion selected")
+        completion = self.__completions.select_tab_next()        
+        self.__insert_completion(completion, False, True)
+
     def __do_completion(self, back):
         curtext = self.__input.get_property("text") 
         _logger.debug("doing completion, back=%s", back)
@@ -449,6 +456,10 @@ class Hotwire(gtk.VBox):
         if back and not self.__completion_active:
             _logger.debug("ignoring completion reverse when not in completion context")
             return True
+        self.__insert_completion(completion, back, completion_do_recomplete)
+        
+    def __insert_completion(self, completion, back, completion_do_recomplete):
+        curtext = self.__input.get_property("text")         
         pos = self.__input.get_position() 
         if not self.__completion_active:
             start = self.__completion_token.start
