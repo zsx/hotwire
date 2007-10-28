@@ -381,13 +381,14 @@ class Hotwire(gtk.VBox):
 
         resolutions = []
         vc = CompletionContext(VerbCompleter(self.__cwd))
+        fs = Filesystem.getInstance()
         for cmd in self.__pipeline_tree:
             verb = cmd[0]
             if not verb.resolved:
                 vc.set_search(verb.text, hotwire=self)
                 resolution_match = None
                 for match in vc.search():
-                    if match.exact:
+                    if match.exact or fs.path_inexact_executable_match(match.mstr):
                         resolution_match = match
                     break
                 if resolution_match:

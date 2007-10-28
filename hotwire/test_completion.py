@@ -2,6 +2,7 @@
 import os, sys, unittest, tempfile, shutil, platform
 
 import hotwire
+from hotwire.fs import path_join
 from hotwire.completion import *
 from hotwire.sysdep import is_windows, is_unix
 
@@ -15,19 +16,29 @@ class CompletionTests(unittest.TestCase):
 
     def _setupTree1(self):
         self._tmpd = tempfile.mkdtemp(prefix='hotwiretest')
-        os.mkdir(os.path.join(self._tmpd, 'testdir'))
-        open(os.path.join(self._tmpd, 'testf'), 'w').close()
-        os.mkdir(os.path.join(self._tmpd, 'dir with spaces'))
-        os.chmod(os.path.join(self._tmpd, 'testf'), 744)
+        os.mkdir(path_join(self._tmpd, 'testdir'))
+        if is_unix(): 
+            self._test_exe_path = path_join(self._tmpd, 'testf')
+            open(self._test_exe_path, 'w').close()
+            os.chmod(self._test_exe_path, 744)
+        elif is_windows():
+            self._test_exe_path = path_join(self._tmpd, 'testf.exe')
+            open(self._test_exe_path, 'w').close()
+        os.mkdir(path_join(self._tmpd, 'dir with spaces'))
 
     def _setupTree2(self):
         self._setupTree1()
-        open(os.path.join(self._tmpd, 'testf2'), 'w').close()
-        os.chmod(os.path.join(self._tmpd, 'testf2'), 744)
-        open(os.path.join(self._tmpd, 'f3test'), 'w').close()
-        open(os.path.join(self._tmpd, 'otherfile'), 'w').close()
-        os.mkdir(os.path.join(self._tmpd, 'testdir2'))
-        open(os.path.join(self._tmpd, 'testdir2', 'blah'), 'w').close()
+        if is_unix(): 
+            self._test_exe2_path = path_join(self._tmpd, 'testf2')
+            open(self._test_exe2_path, 'w').close()
+            os.chmod(self._test_exe2_path, 744)
+        elif is_windows():
+            self._test_exe2_path = path_join(self._tmpd, 'testf2.exe')
+            open(self._test_exe2_path, 'w').close()
+        open(path_join(self._tmpd, 'f3test'), 'w').close()
+        open(path_join(self._tmpd, 'otherfile'), 'w').close()
+        os.mkdir(path_join(self._tmpd, 'testdir2'))
+        open(path_join(self._tmpd, 'testdir2', 'blah'), 'w').close()
 
     def testCmdOrShell(self):
         if is_windows():
@@ -35,7 +46,7 @@ class CompletionTests(unittest.TestCase):
         else:
             search='true'
             verbs = list(VerbCompleter(".").search(search))
-            self.assertNotEqual(len(verbs), 0)					
+            self.assertNotEqual(len(verbs), 0)
 
     def testNoCompletion(self):
         if is_windows():
@@ -51,9 +62,10 @@ class CompletionTests(unittest.TestCase):
         results = list(cwd.search('testf'))
         self.assertEquals(len(results), 1)
         (mstr, start, mlen) = results[0].get_matchdata()
-        self.assertEquals(mstr, os.path.join(self._tmpd, 'testf'))
-        self.assertEquals(results[0].exact, True)
-        self.assertEquals(mlen, 5)
+        self.assertEquals(mstr, self._test_exe_path)
+        if is_unix():
+            self.assertEquals(results[0].exact, True)
+            self.assertEquals(mlen, 5)
         self.assertEquals(start, len(self._tmpd)+1)
 
     def testCwd2(self):
@@ -68,8 +80,8 @@ class CompletionTests(unittest.TestCase):
         results = list(cwd.search('test'))
         self.assertEquals(len(results), 2)
         (mstr, start, mlen) = results[0].get_matchdata()
-        self.assertEquals(mstr, os.path.join(self._tmpd, 'testdir'))
+        self.assertEquals(mstr, path_join(self._tmpd, 'testdir'))
         self.assertEquals(results[0].exact, False)
         (mstr, start, mlen) = results[1].get_matchdata()
-        self.assertEquals(mstr, os.path.join(self._tmpd, 'testf'))
+        self.assertEquals(mstr, self._test_exe_path)
         self.assertEquals(results[1].exact, False)

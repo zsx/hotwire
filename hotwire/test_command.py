@@ -3,7 +3,8 @@ import os, sys, unittest, tempfile, shutil
 
 import hotwire
 from hotwire.command import *
-from hotwire.fs import unix_basename
+from hotwire.sysdep import is_windows, is_unix
+from hotwire.fs import unix_basename, path_join, path_abs, path_dirname, path_fastnormalize
 
 class PipelineParserTests(unittest.TestCase):
     def setUp(self):
@@ -115,6 +116,7 @@ class PipelineRunTestFramework(unittest.TestCase):
     def setUp(self):
         self._context = HotwireContext()
         self._tmpd = tempfile.mkdtemp(prefix='hotwiretest')
+        self._tmpd = path_fastnormalize(self._tmpd)
         self._context.chdir(self._tmpd)
 
     def tearDown(self):
@@ -122,17 +124,17 @@ class PipelineRunTestFramework(unittest.TestCase):
         shutil.rmtree(self._tmpd)
 
     def _setupTree1(self):
-        os.mkdir(os.path.join(self._tmpd, 'testdir'))
-        open(os.path.join(self._tmpd, 'testf'), 'w').close()
-        os.mkdir(os.path.join(self._tmpd, 'dir with spaces'))
+        os.mkdir(path_join(self._tmpd, 'testdir'))
+        open(path_join(self._tmpd, 'testf'), 'w').close()
+        os.mkdir(path_join(self._tmpd, 'dir with spaces'))
 
     def _setupTree2(self):
         self._setupTree1()
-        open(os.path.join(self._tmpd, 'testf2'), 'w').close()
-        open(os.path.join(self._tmpd, 'f3test'), 'w').close()
-        open(os.path.join(self._tmpd, 'otherfile'), 'w').close()
-        os.mkdir(os.path.join(self._tmpd, 'testdir2'))
-        open(os.path.join(self._tmpd, 'testdir2', 'blah'), 'w').close()
+        open(path_join(self._tmpd, 'testf2'), 'w').close()
+        open(path_join(self._tmpd, 'f3test'), 'w').close()
+        open(path_join(self._tmpd, 'otherfile'), 'w').close()
+        os.mkdir(path_join(self._tmpd, 'testdir2'))
+        open(path_join(self._tmpd, 'testdir2', 'blah'), 'w').close()
 
 
 class PipelineRunTests(PipelineRunTestFramework):
@@ -160,7 +162,7 @@ class PipelineRunTests(PipelineRunTestFramework):
 
     def testRm(self):
         self._setupTree1()
-        testf_path = os.path.join(self._tmpd, 'testf') 
+        testf_path = path_join(self._tmpd, 'testf') 
         self.assertEquals(os.access(testf_path, os.R_OK), True)
         p = Pipeline.parse('rm testf', self._context)
         p.execute_sync()
@@ -168,7 +170,7 @@ class PipelineRunTests(PipelineRunTestFramework):
 
     def testRm2(self):
         self._setupTree1()
-        testf_path = os.path.join(self._tmpd, 'testf') 
+        testf_path = path_join(self._tmpd, 'testf') 
         self.assertEquals(os.access(testf_path, os.R_OK), True)
         p = Pipeline.parse('rm %s' % (testf_path,), self._context)
         p.execute_sync()
@@ -178,42 +180,42 @@ class PipelineRunTests(PipelineRunTestFramework):
         self._setupTree2()
         p = Pipeline.parse('rm test* f3test', self._context)
         p.execute_sync()
-        self.assertEquals(os.access(os.path.join(self._tmpd, 'testdir'), os.R_OK), False)
-        self.assertEquals(os.access(os.path.join(self._tmpd, 'testf'), os.R_OK), False)
-        self.assertEquals(os.access(os.path.join(self._tmpd, 'testf2'), os.R_OK), False)
-        self.assertEquals(os.access(os.path.join(self._tmpd, 'f3test'), os.R_OK), False)
-        self.assertEquals(os.access(os.path.join(self._tmpd, 'otherfile'), os.R_OK), True)
+        self.assertEquals(os.access(path_join(self._tmpd, 'testdir'), os.R_OK), False)
+        self.assertEquals(os.access(path_join(self._tmpd, 'testf'), os.R_OK), False)
+        self.assertEquals(os.access(path_join(self._tmpd, 'testf2'), os.R_OK), False)
+        self.assertEquals(os.access(path_join(self._tmpd, 'f3test'), os.R_OK), False)
+        self.assertEquals(os.access(path_join(self._tmpd, 'otherfile'), os.R_OK), True)
 
     def testRm4(self):
         self._setupTree2()
-        p = Pipeline.parse('rm %s %s' % (os.path.join(self._tmpd, 'f3test'), os.path.join(self._tmpd, 'otherfile')),
+        p = Pipeline.parse('rm %s %s' % (path_join(self._tmpd, 'f3test'), path_join(self._tmpd, 'otherfile')),
                            self._context)
         p.execute_sync()
-        self.assertEquals(os.access(os.path.join(self._tmpd, 'testf'), os.R_OK), True)
-        self.assertEquals(os.access(os.path.join(self._tmpd, 'f3test'), os.R_OK), False)
-        self.assertEquals(os.access(os.path.join(self._tmpd, 'otherfile'), os.R_OK), False)
+        self.assertEquals(os.access(path_join(self._tmpd, 'testf'), os.R_OK), True)
+        self.assertEquals(os.access(path_join(self._tmpd, 'f3test'), os.R_OK), False)
+        self.assertEquals(os.access(path_join(self._tmpd, 'otherfile'), os.R_OK), False)
 
     def testRm5(self):
         self._setupTree1()
         p = Pipeline.parse('rm testf', self._context)
         p.execute_sync()
-        self.assertEquals(os.access(os.path.join(self._tmpd, 'testf'), os.R_OK), False)
-        open(os.path.join(self._tmpd, 'testf'), 'w').close()
-        self.assertEquals(os.access(os.path.join(self._tmpd, 'testf'), os.R_OK), True)
+        self.assertEquals(os.access(path_join(self._tmpd, 'testf'), os.R_OK), False)
+        open(path_join(self._tmpd, 'testf'), 'w').close()
+        self.assertEquals(os.access(path_join(self._tmpd, 'testf'), os.R_OK), True)
         p = Pipeline.parse('rm testf', self._context)
         p.execute_sync()
-        self.assertEquals(os.access(os.path.join(self._tmpd, 'testf'), os.R_OK), False)
+        self.assertEquals(os.access(path_join(self._tmpd, 'testf'), os.R_OK), False)
 
     def testRm6(self):
         self._setupTree1()
-        self.assertEquals(os.access(os.path.join(self._tmpd, 'dir with spaces'), os.R_OK), True)
+        self.assertEquals(os.access(path_join(self._tmpd, 'dir with spaces'), os.R_OK), True)
         p = Pipeline.parse("rm 'dir with spaces'", self._context)
         p.execute_sync()
-        self.assertEquals(os.access(os.path.join(self._tmpd, 'dir with spaces'), os.R_OK), False)
+        self.assertEquals(os.access(path_join(self._tmpd, 'dir with spaces'), os.R_OK), False)
 
     def testRm7(self):
         self._setupTree1()
-        testf_path = os.path.join(self._tmpd, 'testf') 
+        testf_path = path_join(self._tmpd, 'testf') 
         self.assertEquals(os.access(testf_path, os.R_OK), True)
         p = Pipeline.parse('rm testf', self._context)
         p.execute_sync()
@@ -225,8 +227,8 @@ class PipelineRunTests(PipelineRunTestFramework):
         self._setupTree2()
         p = Pipeline.parse('mv testf testdir', self._context)
         p.execute_sync()
-        self.assertEquals(os.access(os.path.join(self._tmpd, 'testf'), os.R_OK), False)
-        self.assertEquals(os.access(os.path.join(self._tmpd, 'testdir', 'testf'), os.R_OK), True)
+        self.assertEquals(os.access(path_join(self._tmpd, 'testf'), os.R_OK), False)
+        self.assertEquals(os.access(path_join(self._tmpd, 'testdir', 'testf'), os.R_OK), True)
 
     def testMv2(self):
         self._setupTree2()
@@ -234,16 +236,16 @@ class PipelineRunTests(PipelineRunTestFramework):
         p.execute_sync()
         p = Pipeline.parse('mv testdir testdir2', self._context)
         p.execute_sync()
-        self.assertEquals(os.access(os.path.join(self._tmpd, 'testf'), os.R_OK), False)
-        self.assertEquals(os.access(os.path.join(self._tmpd, 'testdir'), os.R_OK), False)
-        self.assertEquals(os.access(os.path.join(self._tmpd, 'testdir2', 'testdir', 'testf'), os.R_OK), True)
+        self.assertEquals(os.access(path_join(self._tmpd, 'testf'), os.R_OK), False)
+        self.assertEquals(os.access(path_join(self._tmpd, 'testdir'), os.R_OK), False)
+        self.assertEquals(os.access(path_join(self._tmpd, 'testdir2', 'testdir', 'testf'), os.R_OK), True)
 
     def testCd(self):
         self._setupTree1()
         oldwd = self._context.get_cwd()
         p = Pipeline.parse('cd testdir', self._context)
         p.execute_sync()
-        self.assertEquals(self._context.get_cwd(), os.path.abspath(os.path.join(oldwd, 'testdir')))
+        self.assertEquals(self._context.get_cwd(), path_abs(path_join(oldwd, 'testdir')))
 
     def testLs(self):
         self._setupTree1()
@@ -279,7 +281,7 @@ class PipelineRunTests(PipelineRunTestFramework):
 
     def testLs5(self):
         self._setupTree1()
-        hidden = os.path.join(self._tmpd, '.nosee')
+        hidden = path_join(self._tmpd, '.nosee')
         open(hidden, 'w').close()
         p = Pipeline.parse("ls", self._context)
         p.execute_sync()
@@ -288,7 +290,7 @@ class PipelineRunTests(PipelineRunTestFramework):
 
     def testLs6(self):
         self._setupTree1()
-        hidden = os.path.join(self._tmpd, '.nosee')
+        hidden = path_join(self._tmpd, '.nosee')
         open(hidden, 'w').close()
         p = Pipeline.parse("ls -a", self._context)
         p.execute_sync()
@@ -304,7 +306,7 @@ class PipelineRunTests(PipelineRunTestFramework):
 
     def testLsQuoted(self):
         self._setupTree1()
-        hidden = os.path.join(self._tmpd, "foo'bar")
+        hidden = path_join(self._tmpd, "foo'bar")
         open(hidden, 'w').close()
         p = Pipeline.parse("ls \"foo'bar\"", self._context)
         p.execute_sync()
@@ -313,7 +315,7 @@ class PipelineRunTests(PipelineRunTestFramework):
 
     def testCdQuoted(self):
         self._setupTree1()
-        p = os.path.join(self._tmpd, "foo'bar")
+        p = path_join(self._tmpd, "foo'bar")
         os.mkdir(p)
         p = Pipeline.parse("cd \"foo'bar\"", self._context)
         p.execute_sync()
@@ -321,8 +323,12 @@ class PipelineRunTests(PipelineRunTestFramework):
         self.assertEquals(len(results), 0)
 
     def testCdQuoted2(self):
+        if is_windows():
+            # The double quote " apparently is not valid in file names on NTFS.  
+            # Just don't run this test then.
+            return
         self._setupTree1()
-        p = os.path.join(self._tmpd, "foo\"bar")
+        p = path_join(self._tmpd, "foo\"bar")
         os.mkdir(p)
         p = Pipeline.parse("cd 'foo\"bar'", self._context)
         p.execute_sync()
@@ -331,38 +337,38 @@ class PipelineRunTests(PipelineRunTestFramework):
 
     def testCp(self):
         self._setupTree2()
-        self.assertEquals(os.access(os.path.join(self._tmpd, 'testf3'), os.R_OK), False)
+        self.assertEquals(os.access(path_join(self._tmpd, 'testf3'), os.R_OK), False)
         p = Pipeline.parse('cp testf testf3', self._context)
         p.execute_sync()
-        self.assertEquals(os.access(os.path.join(self._tmpd, 'testf'), os.R_OK), True)
-        self.assertEquals(os.access(os.path.join(self._tmpd, 'testf3'), os.R_OK), True)
+        self.assertEquals(os.access(path_join(self._tmpd, 'testf'), os.R_OK), True)
+        self.assertEquals(os.access(path_join(self._tmpd, 'testf3'), os.R_OK), True)
         
     def testCp2(self):
         self._setupTree2()
-        self.assertEquals(os.access(os.path.join(self._tmpd, 'testdir', 'testf'), os.R_OK), False)
+        self.assertEquals(os.access(path_join(self._tmpd, 'testdir', 'testf'), os.R_OK), False)
         p = Pipeline.parse('cp testf testdir', self._context)
         p.execute_sync()
-        self.assertEquals(os.access(os.path.join(self._tmpd, 'testf'), os.R_OK), True)
-        self.assertEquals(os.access(os.path.join(self._tmpd, 'testdir', 'testf'), os.R_OK), True)
+        self.assertEquals(os.access(path_join(self._tmpd, 'testf'), os.R_OK), True)
+        self.assertEquals(os.access(path_join(self._tmpd, 'testdir', 'testf'), os.R_OK), True)
 
     def testCp3(self):
         self._setupTree2()
         p = Pipeline.parse('cp testf testdir2/blah', self._context)
         p.execute_sync()
-        self.assertEquals(os.access(os.path.join(self._tmpd, 'testdir2', 'blah'), os.R_OK), True)
+        self.assertEquals(os.access(path_join(self._tmpd, 'testdir2', 'blah'), os.R_OK), True)
 
     def testCp4(self):
         self._setupTree2()
         p = Pipeline.parse('cp testdir2 testdir3', self._context)
         p.execute_sync()
-        self.assertEquals(os.access(os.path.join(self._tmpd, 'testdir3', 'blah'), os.R_OK), True)
+        self.assertEquals(os.access(path_join(self._tmpd, 'testdir3', 'blah'), os.R_OK), True)
 
     def testCp5(self):
         self._setupTree2()
         p = Pipeline.parse('cp testf \'dir with spaces\' testdir2', self._context)
         p.execute_sync()
-        self.assertEquals(os.access(os.path.join(self._tmpd, 'testdir2', 'testf'), os.R_OK), True)
-        self.assertEquals(os.access(os.path.join(self._tmpd, 'testdir2', 'dir with spaces'), os.R_OK), True)
+        self.assertEquals(os.access(path_join(self._tmpd, 'testdir2', 'testf'), os.R_OK), True)
+        self.assertEquals(os.access(path_join(self._tmpd, 'testdir2', 'dir with spaces'), os.R_OK), True)
 
 def suite():
     loader = unittest.TestLoader()

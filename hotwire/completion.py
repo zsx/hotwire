@@ -1,5 +1,6 @@
 # -*- tab-width: 4 -*-
 import os,sys,re,stat,logging
+import posixpath
 
 import gobject
 
@@ -8,7 +9,7 @@ import hotwire.config
 from hotwire.builtin import BuiltinRegistry
 from hotwire.cmdalias import AliasRegistry
 from hotwire.generator import CompoundGenerator, GeneratorFilter, GeneratorPureFilter
-from hotwire.fs import FilePath,DirectoryGenerator
+from hotwire.fs import FilePath,DirectoryGenerator,path_normalize,path_expanduser
 from hotwire.sysdep.fs import Filesystem
 from hotwire.singletonmixin import Singleton
 from hotwire.util import quote_arg, tracefn
@@ -239,10 +240,10 @@ class PathCompleter(BaseCompleter):
     def search(self, text, hotwire=None, context=None, cwd=None):
         src_context = (hotwire and hotwire.context) or context
         assert src_context
-        text = os.path.expanduser(text)
+        text = path_expanduser(text)
         (input_dname, input_fname) = os.path.split(text)
         input_dname = os.path.join(cwd or src_context.get_cwd(), input_dname)
-        input_dname = os.path.normpath(input_dname)
+        input_dname = path_normalize(input_dname)
         generator = []
         try:
             if stat.S_ISDIR(os.stat(input_dname).st_mode):
@@ -255,6 +256,7 @@ class PathCompleter(BaseCompleter):
         for path in generator:
             if not self._ext_filter(path):
                 continue
+            _logger.debug("checking: %s", path)
             (dname, fname) = os.path.split(path)
             try:
                 is_dir = stat.S_ISDIR(os.stat(path).st_mode)
@@ -289,25 +291,25 @@ class DirExecutableGenerator(object):
                 except OSError, e:
                     continue
             elif self.__x_filter(fullpath):
-				yield fullpath
+                yield fullpath
 
 class PathExecutableCompleter(Singleton, BaseCompleter):
     def __init__(self):
         super(PathExecutableCompleter, self).__init__('exec')
-		gens = []
-		for dir in Filesystem.getInstance().get_path_generator():
-			if os.access(dir, os.R_OK):	 
-				gens.append(DirExecutableGenerator(dir))
-	    self._set_generator(CompoundGenerator(gens))
+        gens = []
+        for dir in Filesystem.getInstance().get_path_generator():
+            if os.access(dir, os.R_OK):
+                gens.append(DirExecutableGenerator(dir))
+        self._set_generator(CompoundGenerator(gens))
 
-	def _filter_item(self, path, input):
-		return path_filter_item(path, input)
+    def _filter_item(self, path, input):
+        return path_filter_item(path, input)
 
 class CwdExecutableCompleter(object):
-	def __init__(self, cwd):
-		super(CwdExecutableCompleter, self).__init__()
+    def __init__(self, cwd):
+        super(CwdExecutableCompleter, self).__init__()
         self.__cwd = cwd
-		self.__generator = DirExecutableGenerator(cwd, include_subdirs=True)
+        self.__generator = DirExecutableGenerator(cwd, include_subdirs=True)
 
     def search(self, text, context=None, hotwire=None):
         was_cwd = False
@@ -315,13 +317,13 @@ class CwdExecutableCompleter(object):
         if text.startswith(dotslash):
             text = text[2:]
             was_cwd = True
-		for item in self.__generator:
+        for item in self.__generator:
             (is_match, result) = self._filter_item(item, text)
             if is_match:
                 yield result
 
-	def _filter_item(self, path, input):
-		return path_filter_item(path, input)
+    def _filter_item(self, path, input):
+        return path_filter_item(path, input)
 
 class BuiltinCompletion(Completion):
     def __init__(self, *args, **kwargs):
@@ -373,7 +375,7 @@ class VerbCompleter(object):
         super(VerbCompleter, self).__init__()
         self._history = History.getInstance()
         self.__cwd = cwd
-		self._cwd_completer = CwdExecutableCompleter(cwd)
+        self._cwd_completer = CwdExecutableCompleter(cwd)
 
     def mark_chosen(self, token):
         # FIXME gross hack, need infrastructure for compound completers 

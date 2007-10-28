@@ -20,6 +20,7 @@ if platform.system() == 'Linux':
 else:
     unix_avail = False
 import hotwire.test_completion
+from hotwire.fs import path_normalize
 import hotwire.sysdep
 import hotwire.sysdep.fs
 import hotwire.sysdep.proc_impl
@@ -56,9 +57,9 @@ def main():
     hotwire.logutil.init(default_log_level, debug_modules, 'hotwire.')
     print "Running tests on %s %s" % (hotwire.version.__version__, hotwire.version.svn_version_str())
     sys.stdout.flush()
-	tmpd = tempfile.mkdtemp(prefix='hotwiretest_state')
-	_logger.info("Created temporary state dir: %s", tmpd) 
-	hotwire.sysdep.fs.Filesystem.getInstance().set_override_conf_dir(tmpd) 
+    tmpd = path_normalize(tempfile.mkdtemp(prefix='hotwiretest_state'))
+    _logger.info("Created temporary state dir: %s", tmpd)
+    hotwire.sysdep.fs.Filesystem.getInstance().set_override_conf_dir(tmpd) 
     suite = unittest.TestLoader().loadTestsFromModule(hotwire.test_command)
     unittest.TextTestRunner().run(suite)
     suite = unittest.TestLoader().loadTestsFromModule(hotwire.test_completion)
@@ -68,7 +69,7 @@ def main():
         unittest.TextTestRunner().run(suite)
         suite = unittest.TestLoader().loadTestsFromModule(hotwire.test_completion_unix)
         unittest.TextTestRunner().run(suite)        
-	_logger.info("Removing temporary state dir: %s", tmpd)         
+    _logger.info("Removing temporary state dir: %s", tmpd)
     shutil.rmtree(tmpd, ignore_errors=True)
 
 if __name__ == '__main__':

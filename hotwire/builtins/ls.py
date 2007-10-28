@@ -36,13 +36,15 @@ class LsBuiltin(Builtin):
             
         if len(args) in (0, 1):
             if len(args) == 1:
-                stbuf = os.stat(args[0]) 
+                arg0_path = FilePath(args[0], context.cwd)
+                stbuf = os.stat(arg0_path)
             else:
                 stbuf = None
+                arg0_path = None
             if stbuf and stat.S_ISDIR(stbuf.st_mode):
-                dir = args[0]
+                dir = arg0_path
             elif stbuf:
-                yield FilePath(args[0], context.cwd)
+                yield arg0_path
                 return
             else:
                 dir = context.cwd
