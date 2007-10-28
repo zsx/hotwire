@@ -175,6 +175,7 @@ class Hotwire(gtk.VBox):
         self.__msgline = gtk.Label('')
         self.__msgline.set_selectable(True)
         self.__msgline.set_ellipsize(True)
+        self.__msgline.unset_flags(gtk.CAN_FOCUS)
         self.__bottom.pack_start(hotwidgets.Align(self.__msgline), expand=False)
 
         self.__active_input_completers = []
@@ -724,7 +725,9 @@ class HotWindow(gtk.Window):
     </menu>
     <menu action='PrefsMenu'>
     </menu>    
-    <menu action='HelpMenu'>
+    <menu action='ToolsMenu'>
+      <menuitem action='PythonWorkpad'/>
+      <separator/>
       <menuitem action='About'/>
     </menu>
   </menubar>
@@ -785,7 +788,8 @@ class HotWindow(gtk.Window):
             ('ViewMenu', None, 'View'),       
             ('ControlMenu', None, 'Control'),
             ('PrefsMenu', None, 'Preferences'),                            
-            ('HelpMenu', None, 'Help'),
+            ('ToolsMenu', None, 'Tools'),
+            ('PythonWorkpad', 'gtk-execute', '_Python Workpad', '<control><alt>s', 'Launch Python evaluator', self.__python_workpad_cb),            
             ('About', gtk.STOCK_ABOUT, '_About', None, 'About Hotwire', self.__help_about_cb),
             ]
         self.__nonterm_actions = [
@@ -843,6 +847,9 @@ class HotWindow(gtk.Window):
         self.__remove_page_widget(self.__notebook.get_nth_page(self.__notebook.get_current_page()))
         if self.__notebook.get_n_pages() == 0:
             self.destroy()          
+
+    def __python_workpad_cb(self, action):
+        self.__show_pyshell()
 
     def __help_about_cb(self, action):
         dialog = gtk.AboutDialog()

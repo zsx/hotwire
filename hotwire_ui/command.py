@@ -61,6 +61,7 @@ class CommandExecutionHeader(gtk.VBox):
         self.__pipeline_str = self.__pipeline.__str__()
         self.__title = gtk.Label()
         self.__title.set_alignment(0, 0.5)
+        #self.__title.set_selectable(True)        
         self.__title.set_ellipsize(True)
         self.__titlebox.pack_start(hotwidgets.Align(self.__title, padding_left=4), expand=True)
         self.__statusbox = gtk.HBox()
