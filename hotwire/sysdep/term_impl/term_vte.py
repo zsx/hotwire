@@ -90,7 +90,7 @@ class VteTerminalWidget(TerminalWidget):
             # We do the command in an idle to hopefully have more state set up by then;
             # For example, "top" seems to be sized correctly on the first display
             # this way
-            gobject.timeout_add(50, self.__idle_do_cmd_fork, cmd, cwd)
+            gobject.timeout_add(250, self.__idle_do_cmd_fork, cmd, cwd)
             
     @log_except(_logger)
     def __idle_do_cmd_fork(self, cmd, cwd):
