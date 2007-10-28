@@ -6,6 +6,7 @@ import gconf
 
 import hotwire_ui.widgets as hotwidgets
 from hotwire.sysdep.term_impl.base_term import BaseTerminal, TerminalWidget
+from hotwire.logutil import log_except
 from hotwire.async import MiniThreadPool
 
 _logger = logging.getLogger("hotwire.sysdep.Terminal.Vte")
@@ -86,13 +87,20 @@ class VteTerminalWidget(TerminalWidget):
             MiniThreadPool.getInstance().run(self.__stream_to_fd, args=(self._stream, self.__slave))
         else:
             self._stream = None
-            _logger.debug("Forking cmd: %s", cmd)
-            self.__term.connect("child-exited", self._on_child_exited)
-            if cmd:
-                pid = self.__term.fork_command('/bin/sh', ['/bin/sh', '-c', cmd], directory=cwd)
-            else:
-                pid = self.__term.fork_command(directory=cwd)
-            self._set_pid(pid)
+            # We do the command in an idle to hopefully have more state set up by then;
+            # For example, "top" seems to be sized correctly on the first display
+            # this way
+            gobject.timeout_add(50, self.__idle_do_cmd_fork, cmd, cwd)
+            
+    @log_except(_logger)
+    def __idle_do_cmd_fork(self, cmd, cwd):
+        _logger.debug("Forking cmd: %s", cmd)
+        self.__term.connect("child-exited", self._on_child_exited)
+        if cmd:
+            pid = self.__term.fork_command('/bin/sh', ['/bin/sh', '-c', cmd], directory=cwd)
+        else:
+            pid = self.__term.fork_command(directory=cwd)
+        self._set_pid(pid)
 
     def __fd_to_stream(self, fd, stream):
         while True:
