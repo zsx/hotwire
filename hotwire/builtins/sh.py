@@ -10,6 +10,7 @@ import hotwire
 from hotwire.text import MarkupText
 from hotwire.async import MiniThreadPool
 from hotwire.builtin import Builtin, BuiltinRegistry, InputStreamSchema
+from hotwire.sysdep import is_windows
 from hotwire.sysdep.proc import ProcessManager
 
 _logger = logging.getLogger("hotwire.builtin.Sh")
@@ -20,7 +21,7 @@ class ShBuiltin(Builtin):
         super(ShBuiltin, self).__init__('sh',
                                         input=InputStreamSchema(str, optional=True),
                                         output=str,
-                                        parseargs='str-shquoted',
+                                        parseargs=(is_windows() and 'shglob' or 'str-shquoted'),
                                         hasstatus=True,
                                         threaded=True)
 
@@ -67,15 +68,18 @@ class ShBuiltin(Builtin):
             (master_fd, slave_fd) = (None, None)
             stdout_target = subprocess.PIPE
 
-        subproc = subprocess.Popen([arg],
-                                   shell=True,
-                                   bufsize=1,
-                                   universal_newlines=True,
-                                   stdin=context.input and subprocess.PIPE or None,
-                                   stdout=stdout_target,
-                                   stderr=subprocess.STDOUT,
-                                   cwd=context.cwd,
-                                   **extra_args)
+        subproc_args = {'bufsize': 1,
+                        'universal_newlines': True,
+                        'stdin': context.input and subprocess.PIPE or None,
+                        'stdout': stdout_target,
+                        'stderr': subprocess.STDOUT,
+                        'cwd': context.cwd}
+        subproc_args.update(extra_args)
+        if is_windows():
+            subproc = subprocess.Popen(arg, **subproc_args)
+        else:
+            subproc_args['shell'] = True
+            subproc = subprocess.Popen([arg], **subproc_args)
         if not subproc.pid:
             os.close(slave_fd)
             raise ValueError('Failed to execute %s' % (arg,))
