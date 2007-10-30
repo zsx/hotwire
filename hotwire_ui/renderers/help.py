@@ -46,5 +46,8 @@ class HelpItemRenderer(UnicodeRenderer):
 
     def get_autoscroll(self):
         return False
+    
+    def supports_input(self):
+        return False
 
 ClassRendererMapping.getInstance().register(HelpItem, HelpItemRenderer)

@@ -32,7 +32,7 @@ class ClassRendererMapping(Singleton):
     def register(self, cls, target_class):
         self.__map[cls] = target_class
 
-class ObjectsRenderer(gobject.GObject):
+class ObjectsRenderer(gobject.GObject):  
     def __init__(self, context):
         super(ObjectsRenderer, self).__init__()
         self.context = context
@@ -57,6 +57,12 @@ class ObjectsRenderer(gobject.GObject):
     
     def do_copy(self):
         return False
+    
+    def supports_input(self):
+        return False
+    
+    def get_input(self):
+        raise NotImplementedError()
 
 class TreeObjectsRenderer(ObjectsRenderer):
     def __init__(self, context, column_types=None, **kwargs): 

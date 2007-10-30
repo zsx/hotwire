@@ -150,6 +150,67 @@ class SearchArea(gtk.HBox):
 
     def __do_prev(self):
         self.__search_interactive(False)
+        
+
+class InputArea(gtk.HBox):
+    __gsignals__ = {
+        "close" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, []),
+        "object-input" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (gobject.TYPE_PYOBJECT,)),  
+    }
+
+    def __init__(self, textview, **kwargs):
+        super(InputArea, self).__init__(**kwargs)
+
+        self.__textview = textview
+
+        close = gtk.Button()
+        close.set_focus_on_click(False)
+        close.set_relief(gtk.RELIEF_NONE)
+        img = gtk.Image()
+        img.set_from_stock(gtk.STOCK_CLOSE, gtk.ICON_SIZE_SMALL_TOOLBAR)
+        close.add(img)
+        close.connect('clicked', lambda b: self.__do_close())        
+        self.pack_start(close, expand=False)
+        self.__input = gtk.Entry()
+        self.__input.connect("key-press-event", lambda i, e: self.__on_input_keypress(e))
+        hbox = gtk.HBox()
+        hbox.pack_start(self.__input, expand=True)
+        self.__send= gtk.Button('_Send', gtk.STOCK_OK)
+        self.__send.set_focus_on_click(False)
+        self.__send.connect("clicked", lambda b: self.__do_send())
+        hbox.pack_start(self.__send, expand=False)
+        self.__password_button = gtk.CheckButton(label='_Password mode')
+        self.__password_button.connect('toggled', self.__on_password_toggled)
+        self.__password_button.set_focus_on_click(False)
+        hbox.pack_start(hotwidgets.Align(self.__password_button, padding_left=8), expand=False)
+        self.pack_start(hotwidgets.Align(hbox, xscale=0.75), expand=True)        
+
+    def __on_input_keypress(self, e):
+        if e.keyval == gtk.gdk.keyval_from_name('Escape'):
+            self.__do_close()
+            return True
+        elif e.keyval == gtk.gdk.keyval_from_name('Return'):
+            self.__do_send()
+            return True      
+        return False
+    
+    def __on_password_toggled(self, tb):
+        self.__input.set_visibility(not tb.get_active())
+
+    def __do_close(self):
+        self.reset()
+        self.hide()
+        self.emit("close")
+        
+    def __do_send(self):
+        self.emit('object-input', self.__input.get_property('text'))
+        self.reset()
+
+    def focus(self):
+        self.__input.grab_focus()
+
+    def reset(self):
+        self.__input.set_property('text', '')
 
 class UnicodeRenderer(ObjectsRenderer):
     def __init__(self, context, monospace=True, **kwargs):
@@ -168,8 +229,8 @@ class UnicodeRenderer(ObjectsRenderer):
         self.__text.unset_flags(gtk.CAN_FOCUS)
         self.__empty = True
         self._buf.insert_markup("<i>(No output)</i>")
-        self.__search = SearchArea(self.__text) 
-        self.__search_added = False
+        self.__search = SearchArea(self.__text)
+        self.__inputarea = InputArea(self.__text)
         self.__text.connect('populate-popup', self.__on_populate_popup)
         self.__links = {} # internal hyperlinks
         self.__support_links = False
@@ -332,6 +393,12 @@ class UnicodeRenderer(ObjectsRenderer):
         menuitem.connect("activate", self.__on_toggle_wrap)
         menuitem.show_all()
         menu.append(menuitem)
+
+    def supports_input(self):
+        return True
+    
+    def get_input(self):
+        return self.__inputarea
 
 ClassRendererMapping.getInstance().register(unicode, UnicodeRenderer)
 ClassRendererMapping.getInstance().register(str, UnicodeRenderer) # for now

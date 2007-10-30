@@ -35,7 +35,7 @@ class CommandExecutionHeader(gtk.VBox):
         "setvisible" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, []),
         "complete" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, ()),
     }
-    def __init__(self, context, pipeline, odisp, **args):
+    def __init__(self, context, pipeline, odisp, highlight=True, **args):
         super(CommandExecutionHeader, self).__init__(**args)
         self.__pipeline = pipeline
         self.__visible = True
@@ -43,17 +43,20 @@ class CommandExecutionHeader(gtk.VBox):
         self.__undone = False
         self.__exception = False
         self.__mouse_hovering = False
+        
+        self.__tooltips = gtk.Tooltips()
 
         self.__pipeline.connect("state-changed", self.__on_pipeline_state_change)
         self.__pipeline.connect("metadata", self.__on_pipeline_metadata)
         
         self.__titlebox_ebox = gtk.EventBox()
-        self.__titlebox_ebox.add_events(gtk.gdk.BUTTON_PRESS_MASK
-                                        & gtk.gdk.ENTER_NOTIFY_MASK
-                                        & gtk.gdk.LEAVE_NOTIFY_MASK)
-        self.__titlebox_ebox.connect("enter_notify_event", self.__on_enter) 
-        self.__titlebox_ebox.connect("leave_notify_event", self.__on_leave) 
-        self.__titlebox_ebox.connect("button-press-event", lambda eb, e: self.__on_button_press(e))
+        if highlight:
+            self.__titlebox_ebox.add_events(gtk.gdk.BUTTON_PRESS_MASK
+                                            & gtk.gdk.ENTER_NOTIFY_MASK
+                                            & gtk.gdk.LEAVE_NOTIFY_MASK)
+            self.__titlebox_ebox.connect("enter_notify_event", self.__on_enter) 
+            self.__titlebox_ebox.connect("leave_notify_event", self.__on_leave) 
+            self.__titlebox_ebox.connect("button-press-event", lambda eb, e: self.__on_button_press(e))
 
         self.__titlebox = gtk.HBox()
         self.__titlebox_ebox.add(self.__titlebox)
@@ -146,6 +149,9 @@ class CommandExecutionHeader(gtk.VBox):
         else:
             self.__title.set_markup('<tt>%s</tt>' % (gobject.markup_escape_text(self.__pipeline_str),))
             
+        if self.__objects:
+            self.__tooltips.set_tip(self.__titlebox_ebox, 'Output: ' + str(self.__objects.get_default_output_type()))
+            
         ocount = self.__objects and self.__objects.get_ocount() or 0
             
         def set_status_action(status_text_left, action_text='', status_markup=False):
@@ -234,7 +240,7 @@ class CommandExecutionDisplay(gtk.VBox):
     def __init__(self, context, pipeline, odisp):
         super(CommandExecutionDisplay, self).__init__()
         self.odisp = odisp
-        self.cmd_header = CommandExecutionHeader(context, pipeline, odisp)
+        self.cmd_header = CommandExecutionHeader(context, pipeline, odisp, highlight=False)
         self.pack_start(self.cmd_header, expand=False)
         self.pack_start(odisp, expand=True)
         
@@ -298,7 +304,8 @@ class CommandExecutionControl(gtk.VBox):
     <menu action='EditMenu'>
       <menuitem action='Copy'/>
       <separator/>
-      <menuitem action='Search'/>      
+      <menuitem action='Search'/>
+      <menuitem action='Input'/> 
     </menu>
     <menu action='ViewMenu'>
       <menuitem action='Overview'/>
@@ -322,7 +329,8 @@ class CommandExecutionControl(gtk.VBox):
             ('Copy', None, '_Copy', '<control>c', 'Copy output', self.__copy_cb),                          
             ('Cancel', None, '_Cancel', '<control><shift>c', 'Cancel current command', self.__cancel_cb),
             ('Undo', None, '_Undo', None, 'Undo current command', self.__undo_cb),            
-            ('Search', None, '_Search', '<control>s', 'Search output', self.__search_cb),          
+            ('Search', None, '_Search', '<control>s', 'Search output', self.__search_cb),
+            ('Input', None, '_Input', '<control>i', 'Send input', self.__input_cb),                         
             ('ScrollHome', None, 'Output _Top', '<control>Home', 'Scroll to output top', self.__view_home_cb),
             ('ScrollEnd', None, 'Output _Bottom', '<control>End', 'Scroll to output bottom', self.__view_end_cb), 
             ('ScrollPgUp', None, 'Output Page _Up', 'Page_Up', 'Scroll output up', self.__view_up_cb),
@@ -346,8 +354,8 @@ class CommandExecutionControl(gtk.VBox):
             button = gtk.Button(label='x')
             button.connect('clicked', lambda *args: action.activate())
             action.connect("notify::sensitive", lambda *args: button.set_sensitive(action.get_sensitive()))
-            button.set_focus_on_click(False)
             button.set_property('image', icon)
+            button.set_focus_on_click(False)            
             return button
         self.__header_label = create_arrow_button('PreviousCommand')
         self.__header.pack_start(self.__header_label, expand=False)
@@ -404,7 +412,15 @@ class CommandExecutionControl(gtk.VBox):
         cmd.show_all()
         pgnum = self.__cmd_notebook.append_page(cmd)
         self.__cmd_notebook.set_current_page(pgnum)
-        self.__cmd_overview.add_pipeline(pipeline, odisp)
+        self.__cmd_overview.add_pipeline(pipeline, odisp)     
+        
+        # Garbage-collect old commands at this point        
+        self.__command_gc()
+                
+        self.__sync_visible()                
+        self.__sync_display(pgnum)
+        
+    def __command_gc(self):
         curtime = time.time()
         for cmd in self.__iter_cmds():
             pipeline = cmd.get_pipeline()
@@ -412,9 +428,7 @@ class CommandExecutionControl(gtk.VBox):
             if not compl_time:
                 continue
             if curtime - compl_time > self.COMPLETE_CMD_EXPIRATION_SECS:
-                self.remove_pipeline(pipeline)
-        self.__sync_visible()                
-        self.__sync_display(pgnum)                
+                self.remove_pipeline(pipeline)                        
         
     def remove_pipeline(self, pipeline, disconnect=True):
         if disconnect:
@@ -499,11 +513,17 @@ class CommandExecutionControl(gtk.VBox):
         cmd = self.get_current_cmd(full=True)
         cmd.undo()        
         
-    def __search_cb(self,a ):
+    def __search_cb(self, a):
         cmd = self.get_current_cmd(full=True)
         top = self.get_toplevel()
         lastfocused = top.get_focus()
         cmd.odisp.start_search(lastfocused)
+        
+    def __input_cb(self, a):
+        cmd = self.get_current_cmd(full=True)
+        top = self.get_toplevel()
+        lastfocused = top.get_focus()
+        cmd.odisp.start_input(lastfocused)        
     
     def __view_previous_cb(self, a):
         self.open_output(True)
@@ -568,7 +588,7 @@ class CommandExecutionControl(gtk.VBox):
         self.__sync_cmd_sensitivity()
             
     def __sync_cmd_sensitivity(self, curpage=None):
-        actions = map(self.__action_group.get_action, ['Copy', 'Cancel', 'PreviousCommand', 'NextCommand', 'Undo'])
+        actions = map(self.__action_group.get_action, ['Copy', 'Cancel', 'PreviousCommand', 'NextCommand', 'Undo', 'Input'])
         if self.__history_visible:
             for action in actions:
                 action.set_sensitive(False)
@@ -586,6 +606,7 @@ class CommandExecutionControl(gtk.VBox):
             _logger.debug("cancellable: %s undoable: %s", cancellable, undoable)
             actions[1].set_sensitive(cancellable)
             actions[4].set_sensitive(undoable)
+            actions[5].set_sensitive(cmd and cmd.odisp.supports_input())
         actions[2].set_sensitive(self.__get_prevcmd_count(curpage) > 0)
         actions[3].set_sensitive(self.__get_nextcmd_count(curpage) > 0)
         
@@ -629,3 +650,7 @@ class CommandExecutionControl(gtk.VBox):
         if dry_run:
             return True
         self.__cmd_notebook.set_current_page(target_nth)
+        from hotwire_ui.shell import locate_current_shell
+        hw = locate_current_shell(self)
+        hw.grab_focus()         
+        

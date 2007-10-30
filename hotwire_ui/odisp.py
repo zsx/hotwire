@@ -2,12 +2,16 @@ import Queue, logging
 
 import gtk, gobject
 
+from hotwire.async import IterableQueue
 from hotwire_ui.render import ClassRendererMapping, DefaultObjectsRenderer
 import hotwire_ui.widgets as hotwidgets
 
 _logger = logging.getLogger("hotwire.ui.ODisp")
 
 class ObjectsDisplay(gtk.VBox):
+    __gsignals__ = {
+        "object-input" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (gobject.TYPE_PYOBJECT,)),
+    }      
     def __init__(self, output_spec, context, **kwargs):
         super(ObjectsDisplay, self).__init__(**kwargs)
         self.__context = context
@@ -21,6 +25,8 @@ class ObjectsDisplay(gtk.VBox):
         vadjust = self.__scroll.get_vadjustment()
         vadjust.connect('value-changed', self.__on_scroll_value_changed)        
         self.__search = None
+        self.__inputarea = None
+        self.__output_type = None
         self.__old_focus = None
         self.__box.pack_start(self.__scroll, expand=True)
         self.__display = None
@@ -30,15 +36,15 @@ class ObjectsDisplay(gtk.VBox):
         self.__autoscroll_id = 0
 
     def __add_display(self, output_spec, force=False):
-        if output_spec == 'any':
-            if force:
-                self.__display = DefaultObjectsRenderer(self.__context)
-        else:
+        if output_spec != 'any':
             self.__display = ClassRendererMapping.getInstance().lookup(output_spec, self.__context)
+        if not self.__display and force:
+            self.__display = DefaultObjectsRenderer(self.__context)        
         if self.__display:
             self.__display_widget = self.__display.get_widget()
             self.__display_widget.show_all()
             self.__scroll.add(self.__display_widget)
+            self.__output_type = output_spec            
 
     def __on_keypress(self, e):
         if e.keyval in (gtk.gdk.keyval_from_name('s'), gtk.gdk.keyval_from_name('f')) and e.state & gtk.gdk.CONTROL_MASK:
@@ -64,6 +70,31 @@ class ObjectsDisplay(gtk.VBox):
         if self.__old_focus:
             self.__old_focus.grab_focus()
             
+    def supports_input(self):
+        return self.__display and self.__display.supports_input()
+            
+    def start_input(self, old_focus):
+        if self.__inputarea is None:
+            self.__inputarea = self.__display.get_input()
+            if self.__inputarea is not True:
+                self.__box.pack_start(self.__inputarea, expand=False)
+                self.__inputarea.connect("close", self.__on_inputarea_close)
+                self.__inputarea.connect("object-input", self.__on_object_input)
+        self.__old_focus = old_focus
+        if self.__inputarea is not True:
+            self.__inputarea.show_all()
+            self.__inputarea.focus()
+
+    def __on_object_input(self, ia, obj):
+        _logger.debug("got interactive object input: %s", obj)
+        self.emit('object-input', obj)
+
+    def __on_inputarea_close(self, search):
+        if self.__inputarea is not True:
+            self.__inputarea.hide()
+        if self.__old_focus:
+            self.__old_focus.grab_focus()            
+            
     def get_opt_formats(self):
         if self.__display:
             return self.__display.get_opt_formats()
@@ -73,6 +104,9 @@ class ObjectsDisplay(gtk.VBox):
         if self.__display:
             for obj in self.__display.get_objects():
                 yield obj
+            
+    def get_output_type(self):
+        return self.__output_type
                 
     def append_object(self, object):
         # just in time!
@@ -148,12 +182,23 @@ class MultiObjectsDisplay(gtk.Notebook):
         self.__do_autoswitch = True
         self.__suppress_noyield = not not list(pipeline.get_status_commands())
         self.set_show_tabs(False)
+
+        self.__inputqueue = None        
+        if self.__pipeline.get_input_type() and self.__pipeline.get_input_optional():
+            self.__inputqueue = IterableQueue()
+            self.__pipeline.set_input_queue(self.__inputqueue)
         self.append_ostream(pipeline.get_output_type(), None, pipeline.get_output(), False)
         for aux in pipeline.get_auxstreams():
             self.append_ostream(aux.schema.otype, aux.name, aux.queue, aux.schema.merge_default)
 
     def start_search(self, old_focus):
         self.__default_odisp.start_search(old_focus)
+
+    def supports_input(self):
+        return self.__default_odisp and self.__default_odisp.supports_input()
+
+    def start_input(self, old_focus):
+        self.__default_odisp.start_input(old_focus)
 
     def do_copy(self):
         return self.__default_odisp.do_copy()
@@ -178,6 +223,7 @@ class MultiObjectsDisplay(gtk.Notebook):
             odisp = ObjectsDisplay(otype, self.__context) 
             if name is None:
                 self.__default_odisp = odisp
+                odisp.connect('object-input', self.__on_object_input)
                 self.__default_odisp
                 self.insert_page(odisp, position=0)
                 self.set_tab_label_text(odisp, name or 'Default')
@@ -201,6 +247,12 @@ class MultiObjectsDisplay(gtk.Notebook):
 
     def get_ocount(self):
         return self.__ocount
+    
+    def get_default_output_type(self):
+        return self.__default_odisp and self.__default_odisp.get_output_type()
+    
+    def __on_object_input(self, odisp, obj):
+        self.__inputqueue.put(obj)
 
     def __idle_handle_output(self, queue):
         if self.__cancelled:

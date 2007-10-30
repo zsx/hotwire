@@ -492,6 +492,9 @@ class Pipeline(gobject.GObject):
 
     def set_output_queue(self, queue, map_fn):
         self.__components[-1].set_output_queue(queue, map_fn)
+        
+    def set_input_queue(self, queue):
+        self.__components[0].set_input(queue)
 
     def get_locality(self):
         return self.__locality
