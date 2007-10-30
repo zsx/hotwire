@@ -163,6 +163,9 @@ class MultiObjectsDisplay(gtk.Notebook):
             return self.__default_odisp.get_opt_formats()
         return []
 
+    def get_pipeline(self):
+        return self.__pipeline
+
     def get_objects(self):
         for obj in self.__default_odisp.get_objects():
             yield obj

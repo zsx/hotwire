@@ -52,7 +52,11 @@ class CommandContext(object):
         self.input = None
         self.pipeline = None
         self.cwd = hotwire.get_cwd()
-        self.last_output = hotwire.get_last_output()
+        # This is kind of a hack; we need to store a snapshot of the
+        # currently displayed output when executing a new command.
+        # We should be sure this isn't creating circular references.
+        self.current_output_type = hotwire.get_current_output_type()
+        self.current_output = hotwire.get_current_output()        
         self.hotwire = hotwire
         self.__auxstreams = {}
         self.__metadata_handler = None

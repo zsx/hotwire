@@ -468,6 +468,10 @@ class CommandExecutionControl(gtk.VBox):
             hw = locate_current_shell(self)
             hw.grab_focus()                        
  
+    def get_current(self):
+        cmd = self.get_current_cmd(full=True)
+        return cmd and cmd.odisp
+ 
     def get_current_cmd(self, full=False, curpage=None):
         if curpage is not None:
             page = curpage

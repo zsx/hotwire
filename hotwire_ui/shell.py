@@ -54,8 +54,11 @@ class HotwireClientContext(hotwire.command.HotwireContext):
     def push_msg(self, text, **kwargs):
         self.__hotwire.push_msg(text, **kwargs)
 
-    def get_last_output(self):
-        return self.__hotwire.get_last_output()
+    def get_current_output_type(self):
+        return self.__hotwire.get_current_output_type()
+
+    def get_current_output(self):
+        return self.__hotwire.get_current_output()
 
     def get_history(self):
         # FIXME arbitrary limit
@@ -211,7 +214,6 @@ class Hotwire(gtk.VBox):
         self.__completions.connect('completion-selected', self.__on_completion_selected)
         self.__completion_token = None
         self.__history_suppress = False
-        self.__last_output = None
 
         self.__sync_cwd()
         self.__update_status()
@@ -277,11 +279,17 @@ class Hotwire(gtk.VBox):
         _logger.debug("selected recent dir %s", d)
         self.context.do_cd(d)        
 
-    def get_last_output(self):
-        last = self.__last_output
-        if last:
-            return (last.get_output_type(), last.get_output())
-        return None
+    def get_current_output_type(self):
+        odisp = self.__outputs.get_current()
+        if not odisp:
+            return None
+        return odisp.get_pipeline().get_output_type()
+    
+    def get_current_output(self):
+        odisp = self.__outputs.get_current()
+        if not odisp:
+            return None
+        return odisp.get_objects()        
     
     def do_copy_url_drag_to_dir(self, urls, path):
         quoted_fpaths = map(quote_arg, urls.split('\r\n'))

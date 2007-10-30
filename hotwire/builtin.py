@@ -169,12 +169,12 @@ class BuiltinRegistry(Singleton):
 import hotwire.builtins.cat
 import hotwire.builtins.cd
 import hotwire.builtins.cp
+import hotwire.builtins.current
 import hotwire.builtins.edit
 import hotwire.builtins.filter
 import hotwire.builtins.fsearch
 import hotwire.builtins.help
 import hotwire.builtins.history
-import hotwire.builtins.last
 import hotwire.builtins.ls
 import hotwire.builtins.mv
 import hotwire.builtins.open
