@@ -125,6 +125,13 @@ class VteTerminalWidget(TerminalWidget):
             os.close(self.__master)
             os.close(self.__slave)
             self._stream = None
+            
+    # Used as a hack to avoid sizing issues in tabs
+    def hide_internals(self):
+        self.__term.hide()
+        
+    def show_internals(self):
+        self.__term.show()
 
     def do_dispose(self):
         self.__term = None

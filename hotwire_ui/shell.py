@@ -937,25 +937,37 @@ along with Hotwire; if not, write to the Free Software Foundation, Inc.,
         _logger.debug("got focus page, idx: %d", pn)
         # User switched tabs, reset tab affinity
         self.__preautoswitch_index = -1
+        
+        # Basically the entire pile of hacks below here is adapted from gnome-terminal.
+        # We're actually more complex in that we have non-terminals and terminals tabs
+        # in the same notebook.
+        # One key hack is that we hide the widget for the non-active tab.  This seems
+        # to avoid having it influence the size of the notebook when we don't want it to.
+        # Note when we switch to Hotwire tabs, we set the geometry hints to nothing;
+        # only terminal tabs get hints set.
         widget = self.__notebook.get_nth_page(pn)
         is_hw = widget.get_data('hotwire-is-hotwire')
         old_idx = self.__notebook.get_current_page()
-        if old_idx != pn:
+        if old_idx != pn and old_idx >= 0:
             old_widget = self.__notebook.get_nth_page(old_idx)
             old_is_hw = widget.get_data('hotwire-is-hotwire')
+            if hasattr(old_widget, 'hide_internals'):
+                _logger.debug("hiding widget at idx %s", old_idx)
+                old_widget.hide_internals()
         else:
             old_widget = None
             old_is_hw = False
+        if hasattr(widget, 'show_internals'):
+            _logger.debug("showing widget at idx %s", old_idx)
+            widget.show_internals()            
         if is_hw:
             gobject.idle_add(self.set_focus, widget.get_entry())
-            #self.__old_geom_widget = widget
-            if len(self.__geom_hints) > 0 and not self.__curtab_is_hotwire:
-                _logger.debug("setting geom hints: %s", self.__geom_hints)                
-                self.set_geometry_hints(widget, **self.__geom_hints)       
+            self.set_geometry_hints(widget, **{})            
+            self.__old_geom_widget = widget   
         elif hasattr(widget, 'get_term_geometry'):
             (cw, ch, (xp, yp)) = widget.get_term_geometry()
-            if not (cw == self.__old_char_width and ch == self.__old_char_height): #and widget == self.__old_geom_widget):
-                _logger.debug("resetting geometry %s %s => %s %s", self.__old_char_width, self.__old_char_height, cw, ch)
+            if not (cw == self.__old_char_width and ch == self.__old_char_height and widget == self.__old_geom_widget):
+                _logger.debug("resetting geometry on %s %s %s => %s %s", widget, self.__old_char_width, self.__old_char_height, cw, ch)
                 kwargs = {'base_width':xp,
                           'base_height':yp,
                           'width_inc':cw,
@@ -968,7 +980,7 @@ along with Hotwire; if not, write to the Free Software Foundation, Inc.,
                 self.__old_char_width = cw
                 self.__old_char_height = ch
                 self.__old_geom_widget = widget
-
+        
         self.__curtab_is_hotwire = is_hw
                 
         ## Attempt to change our UI merge; this code is a bit wonky.
