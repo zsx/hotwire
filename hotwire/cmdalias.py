@@ -17,10 +17,13 @@ default_aliases = {'vi': 'term vi',
 
 class AliasRegistry(Singleton):
     def __init__(self):
-        self.__aliases = default_aliases
+        self.__aliases = dict(default_aliases)
 
     def remove(self, name):
-        raise NotImplementedError()
+        del self.__aliases[name]
+    
+    def insert(self, name, value):
+        self.__aliases[name] = value
 
     def __getitem__(self, item):
         return self.__aliases[item]
