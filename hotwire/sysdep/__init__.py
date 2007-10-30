@@ -22,5 +22,11 @@ if is_unix():
     import hotwire.sysdep.unix
 elif is_windows():
     import hotwire.sysdep.win32
+    
+def do_late_init():
+    if is_unix():
+        import hotwire.sysdep.unix_lateinit
+    elif is_windows:
+        import hotwire.sysdep.win32_lateinit
 
 

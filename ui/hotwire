@@ -130,10 +130,12 @@ def main():
     _logger.debug('initializing threads')
     gobject.threads_init()
 
+	hotwire.sysdep.do_late_init()
+
     if no_persist:
         Persister.getInstance().disable()
         
-    hotwire.pluginsystem.load_user_plugins()
+    hotwire.pluginsystem.load_plugins()
 
     w = HotWindowFactory.getInstance().create_initial_window(subtitle=(no_persist and ' (Unshared)' or ''))
     w.show()

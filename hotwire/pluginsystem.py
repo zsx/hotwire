@@ -6,16 +6,19 @@ from hotwire.sysdep.fs import Filesystem
 
 _logger = logging.getLogger("hotwire.PluginSystem")
 
-def load_user_plugins():
+def load_plugins():
     custom_path = Filesystem.getInstance().makedirs_p(os.path.join(Filesystem.getInstance().get_conf_dir(), "plugins"))
-    if not os.path.isdir(custom_path):
-       return
-    for f in DirectoryGenerator(custom_path):
+    _load_plugins_in_dir(custom_path)
+   
+def _load_plugins_in_dir(dirname):
+    if not os.path.isdir(dirname):
+       return    
+    for f in DirectoryGenerator(dirname):
         if f.endswith('.py'):
             fname = os.path.basename(f[:-3])
             try:
-                _logger.debug("Attempting to load user custom file: %s", f)
-                (stream, path, desc) = imp.find_module(fname, [custom_path])
+                _logger.debug("Attempting to load plugin: %s", f)
+                (stream, path, desc) = imp.find_module(fname, [dirname])
                 try:
                     imp.load_module(fname, stream, f, desc)
                 finally:
