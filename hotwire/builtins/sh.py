@@ -44,7 +44,9 @@ class ShBuiltin(Builtin):
 
     def cancel(self, context):
         if context.attribs.has_key('pid'):
-            ProcessManager.getInstance().interrupt_pid(context.attribs['pid'])
+            pid = context.attribs['pid']
+            _logger.debug("cancelling pid %s", pid)
+            ProcessManager.getInstance().interrupt_pid(pid)
             
     def cleanup(self, context):
         if 'master_fd' in context.attribs:
