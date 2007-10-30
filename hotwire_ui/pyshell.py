@@ -88,6 +88,7 @@ outln('''
         self.input.move_mark_by_name("selection_bound", self.input.get_end_iter())        
             
         self.set_title('Hotwire Command Shell')
+        self.input_view.modify_font(pango.FontDescription("monospace"))        
 
     def __eval_cb(self, a):
         try:
