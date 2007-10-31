@@ -99,6 +99,7 @@ class CommandQueue(IterableQueue):
         self.opt_type = None
 
     def negotiate(self, out_fmts, in_fmts):
+        _logger.debug("negotating out_fmts: %s in_fmts: %s", out_fmts, in_fmts)
         for fmt in out_fmts:
             if fmt in in_fmts:
                 self.opt_type = fmt
@@ -238,7 +239,7 @@ class Command(gobject.GObject):
             if options:
                 kwargs['options'] = options
             if opt_format:
-                kwargs['in_opt_format'] = in_opt_format
+                kwargs['in_opt_format'] = opt_format
                 _logger.debug("chose optimized format %s", opt_format)
             try:
                 for result in self.builtin.execute(self.context, *target_args, **kwargs):
@@ -356,11 +357,11 @@ class Pipeline(gobject.GObject):
         prev_opt_formats = []
         for cmd in self.__components[:-1]:
             cmd.output.negotiate(prev_opt_formats, cmd.get_input_opt_formats())
-            cmd.execute(force_sync)
+            cmd.execute(force_sync, opt_format=cmd.output.opt_type)
             prev_opt_formats = cmd.get_output_opt_formats()
         last = self.__components[-1] 
-        last.output.negotiate(prev_opt_formats, opt_formats)
-        last.execute(force_sync)
+        last.output.negotiate(last.get_output_opt_formats(), opt_formats)
+        last.execute(force_sync, opt_format=last.output.opt_type)
         
     def validate_state_transition(self, state):
         if self.__state == 'waiting':

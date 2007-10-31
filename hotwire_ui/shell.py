@@ -362,7 +362,7 @@ class Hotwire(gtk.VBox):
         self.__unset_welcome()
 
         self.__outputs.add_pipeline(pipeline)
-        pipeline.execute()
+        pipeline.execute(opt_formats=self.__outputs.get_current().get_opt_formats())
         
     def __unset_welcome(self):
         if not self.__welcome:
