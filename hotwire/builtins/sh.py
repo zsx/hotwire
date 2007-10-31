@@ -25,11 +25,10 @@ class ShBuiltin(Builtin):
                                         hasstatus=True,
                                         threaded=True)
 
-    def __inputreader(self, input, stdin):
-        for val in input:
+    def __on_input(self, input, stdin):
+        for val in input.iter_avail():
             stdin.write(str(val))
             stdin.write('\n')
-        stdin.close()
 
     @staticmethod
     def __unbuffered_readlines(stream):
@@ -49,10 +48,22 @@ class ShBuiltin(Builtin):
             ProcessManager.getInstance().interrupt_pid(pid)
             
     def cleanup(self, context):
-        if 'master_fd' in context.attribs:
-            os.close(context.attribs['master_fd'])
-        if 'stdout_read' in context.attribs:
-            context.attribs['stdout_read'].close()
+        try:
+            if 'master_fd' in context.attribs:
+                os.close(context.attribs['master_fd'])
+        except:
+            pass
+        try:
+            if 'stdout_read' in context.attribs:
+                context.attribs['stdout_read'].close()
+        except:
+            pass
+        try:
+            if 'stdin' in context.attribs:
+                context.disconnect()                
+                context.attribs['stdin'].close()
+        except:
+            pass
 
     def execute(self, context, arg):
         extra_args = ProcessManager.getInstance().get_extra_subproc_args()
@@ -90,7 +101,9 @@ class ShBuiltin(Builtin):
             self.cancel(context)
         context.status_notify('pid %d' % (context.attribs['pid'],))
         if context.input:
-            MiniThreadPool.getInstance().run(lambda: self.__inputreader(context.input, subproc.stdin))
+            # FIXME hack - need to rework input streaming
+            context.input._source.connect(self.__on_input, subproc.stdin)
+            context.attribs['stdin'] = subproc.stdin
         if pty_available:
             os.close(slave_fd)
             stdout_read = os.fdopen(master_fd, 'rU')

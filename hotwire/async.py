@@ -87,6 +87,13 @@ class IterableQueue(Queue.Queue):
     def put(self, *args):
         Queue.Queue.put(self, *args)
         self.__add_idle()
+        
+    def iter_avail(self):
+        try:
+            while True:
+                yield self.get(False)
+        except Queue.Empty, e:
+            pass
 
     def __iter__(self):
         for obj in QueueIterator(self):
