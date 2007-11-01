@@ -25,6 +25,12 @@ if __name__ == '__main__' and hasattr(sys.modules['__main__'], '__file__'):
         # Extend PATH so hotwire-editor works correctly
         os.environ['PATH'] = (basedir + os.pathsep + os.environ.get('PATH', ''))
 
+try:
+    import psyco
+    psyco.full() 
+except:
+    pass
+
 if sys.version_info[0] == 2 and sys.version_info[1] < 6:
     import hotwire.pycompat.webbrowser as webbrowser
 else:
