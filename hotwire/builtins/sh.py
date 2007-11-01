@@ -101,12 +101,6 @@ class ShBuiltin(Builtin):
             # such as for loops, I/O redirection, etc.  In the longer term
             # future, we want to implement replacements for both of these,
             # and execute the command directly.
-            ## On Unix, we re've requoted all the arguments, and now we process
-            # them as a single string through /bin/sh.  This is a gross hack,
-            # but necessary if we want to allow people to use shell features
-            # such as for loops, I/O redirection, etc.  In the longer term
-            # future, we want to implement replacements for both of these,
-            # and execute the command directly.
             subproc_args['shell'] = True
             subproc_args['universal_newlines'] = False
             subproc_args['close_fds'] = True
