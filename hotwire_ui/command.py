@@ -606,7 +606,7 @@ class CommandExecutionControl(gtk.VBox):
             _logger.debug("cancellable: %s undoable: %s", cancellable, undoable)
             actions[1].set_sensitive(cancellable)
             actions[4].set_sensitive(undoable)
-            actions[5].set_sensitive(cmd and cmd.odisp.supports_input())
+            actions[5].set_sensitive(cmd and cmd.odisp.supports_input() or False)
         actions[2].set_sensitive(self.__get_prevcmd_count(curpage) > 0)
         actions[3].set_sensitive(self.__get_nextcmd_count(curpage) > 0)
         
