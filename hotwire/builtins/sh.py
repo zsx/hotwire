@@ -10,7 +10,7 @@ import hotwire
 from hotwire.text import MarkupText
 from hotwire.async import MiniThreadPool
 from hotwire.builtin import Builtin, BuiltinRegistry, InputStreamSchema, OutputStreamSchema
-from hotwire.sysdep import is_windows
+from hotwire.sysdep import is_windows, is_unix
 from hotwire.sysdep.proc import ProcessManager
 
 _logger = logging.getLogger("hotwire.builtin.Sh")
@@ -64,8 +64,6 @@ class ShBuiltin(Builtin):
         # output as lines (in_opt_format is None), or as unbuffered byte chunks
         # (determined by text/chunked).
         
-        extra_args = ProcessManager.getInstance().get_extra_subproc_args()
-
         if pty_available:
             # We create a pseudo-terminal to ensure that the subprocess is line-buffered.
             # Yes, this is gross, but as far as I know there is no other way to
@@ -93,11 +91,16 @@ class ShBuiltin(Builtin):
                         'stdout': stdout_target,
                         'stderr': subprocess.STDOUT,
                         'cwd': context.cwd}
-        subproc_args.update(extra_args)
         if is_windows():
             subproc_args['universal_newlines'] = True                
             subproc = subprocess.Popen(arg, **subproc_args)
-        else:
+        elif is_unix():
+            ## On Unix, we re've requoted all the arguments, and now we process
+            # them as a single string through /bin/sh.  This is a gross hack,
+            # but necessary if we want to allow people to use shell features
+            # such as for loops, I/O redirection, etc.  In the longer term
+            # future, we want to implement replacements for both of these,
+            # and execute the command directly.
             ## On Unix, we re've requoted all the arguments, and now we process
             # them as a single string through /bin/sh.  This is a gross hack,
             # but necessary if we want to allow people to use shell features
@@ -106,7 +109,11 @@ class ShBuiltin(Builtin):
             # and execute the command directly.
             subproc_args['shell'] = True
             subproc_args['universal_newlines'] = False
+            subproc_args['close_fds'] = True
+            subproc_args['preexec_fn'] = lambda: os.setsid()
             subproc = subprocess.Popen([arg], **subproc_args)
+        else:
+            assert(False)
         if not subproc.pid:
             if master_fd is not None:
                 os.close(master_fd)
