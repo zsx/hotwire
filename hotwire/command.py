@@ -41,7 +41,10 @@ class HotwireContext(gobject.GObject):
     def info_msg(self, msg):
         print msg
 
-    def get_last_output(self):
+    def get_current_output_type(self):
+        return None
+    
+    def get_current_output(self):
         return None
 
 class CommandContext(object):

@@ -1,7 +1,7 @@
 # -*- tab-width: 4 -*-
 import os, sys, subprocess, string, threading, logging
 try:
-    import pty
+    import pty, termios
     pty_available = True
 except:
     pty_available = False
@@ -9,7 +9,7 @@ except:
 import hotwire
 from hotwire.text import MarkupText
 from hotwire.async import MiniThreadPool
-from hotwire.builtin import Builtin, BuiltinRegistry, InputStreamSchema
+from hotwire.builtin import Builtin, BuiltinRegistry, InputStreamSchema, OutputStreamSchema
 from hotwire.sysdep import is_windows
 from hotwire.sysdep.proc import ProcessManager
 
@@ -20,7 +20,7 @@ class ShBuiltin(Builtin):
     def __init__(self):
         super(ShBuiltin, self).__init__('sh',
                                         input=InputStreamSchema(str, optional=True),
-                                        output=str,
+                                        output=OutputStreamSchema(str, opt_formats=['text/chunked']),
                                         parseargs=(is_windows() and 'shglob' or 'str-shquoted'),
                                         hasstatus=True,
                                         threaded=True)
@@ -38,7 +38,6 @@ class ShBuiltin(Builtin):
                 yield line
                 line = stream.readline()
         except IOError, e:
-            _logger.debug("Caught error reading from subprocess pipe", exc_info=True)
             pass
 
     def cancel(self, context):
@@ -49,23 +48,22 @@ class ShBuiltin(Builtin):
             
     def cleanup(self, context):
         try:
-            if 'master_fd' in context.attribs:
-                os.close(context.attribs['master_fd'])
+            if 'input_connected' in context.attribs:
+                _logger.debug("disconnecting from stdin")
+                if context.input:                
+                    context.input._source.disconnect()
         except:
-            pass
-        try:
-            if 'stdout_read' in context.attribs:
-                context.attribs['stdout_read'].close()
-        except:
-            pass
-        try:
-            if 'stdin' in context.attribs:
-                context.disconnect()                
-                context.attribs['stdin'].close()
-        except:
+            _logger.debug("failed to disconnect from stdin", exc_info=True)               
             pass
 
-    def execute(self, context, arg):
+    def execute(self, context, arg, in_opt_format=None):
+        # This function is complex.  There are two major variables.  First,
+        # are we on Unix or Windows?  This is effectively determined by
+        # pty_available, though I suppose some Unixes might not have ptys.
+        # Second, in_opt_format tells us whether we want to stream the 
+        # output as lines (in_opt_format is None), or as unbuffered byte chunks
+        # (determined by text/chunked).
+        
         extra_args = ProcessManager.getInstance().get_extra_subproc_args()
 
         if pty_available:
@@ -73,46 +71,80 @@ class ShBuiltin(Builtin):
             # Yes, this is gross, but as far as I know there is no other way to
             # control the buffering used by subprocesses.
             (master_fd, slave_fd) = pty.openpty()
-            context.attribs['master_fd'] = master_fd
+            
+            # These lines prevent us from having newlines converted to CR+NL.            
+            # Honestly, I have no idea why the ONLCR flag appears to be set by default.
+            # This was happening on Fedora 7, glibc-2.6-4, kernel-2.6.22.9-91.fc7.
+            attrs = termios.tcgetattr(master_fd)
+            attrs[1] = attrs[1] & (~termios.ONLCR)
+            termios.tcsetattr(master_fd, termios.TCSANOW, attrs)
+            
             _logger.debug("allocated pty fds %d %d", master_fd, slave_fd)
             stdout_target = slave_fd
+            stdin_target = slave_fd
         else:
             _logger.debug("no pty available, not allocating fds")
             (master_fd, slave_fd) = (None, None)
             stdout_target = subprocess.PIPE
+            stdin_target = subprocess.PIPE
 
-        subproc_args = {'bufsize': 1,
-                        'universal_newlines': True,
-                        'stdin': context.input and subprocess.PIPE or None,
+        subproc_args = {'bufsize': 0,
+                        'stdin': context.input and stdin_target or None,
                         'stdout': stdout_target,
                         'stderr': subprocess.STDOUT,
                         'cwd': context.cwd}
         subproc_args.update(extra_args)
         if is_windows():
+            subproc_args['universal_newlines'] = True                
             subproc = subprocess.Popen(arg, **subproc_args)
         else:
+            ## On Unix, we re've requoted all the arguments, and now we process
+            # them as a single string through /bin/sh.  This is a gross hack,
+            # but necessary if we want to allow people to use shell features
+            # such as for loops, I/O redirection, etc.  In the longer term
+            # future, we want to implement replacements for both of these,
+            # and execute the command directly.
             subproc_args['shell'] = True
+            subproc_args['universal_newlines'] = False
             subproc = subprocess.Popen([arg], **subproc_args)
         if not subproc.pid:
-            os.close(slave_fd)
+            if master_fd is not None:
+                os.close(master_fd)
+            if slave_fd is not None:
+                os.close(slave_fd)
             raise ValueError('Failed to execute %s' % (arg,))
         context.attribs['pid'] = subproc.pid
         if context.cancelled:
             self.cancel(context)
         context.status_notify('pid %d' % (context.attribs['pid'],))
         if context.input:
+            if pty_available:
+                stdin_stream = os.fdopen(master_fd, 'w')
+            else:
+                stdin_stream = subproc.stdin           
             # FIXME hack - need to rework input streaming
-            context.input._source.connect(self.__on_input, subproc.stdin)
-            context.attribs['stdin'] = subproc.stdin
+            context.attribs['input_connected'] = True
+            context.input._source.connect(self.__on_input, stdin_stream)
         if pty_available:
             os.close(slave_fd)
-            stdout_read = os.fdopen(master_fd, 'rU')
-            del context.attribs['master_fd']
-            context.attribs['stdout_read'] = stdout_read
+            stdout_fd = master_fd
+            stdout_read = os.fdopen(master_fd, 'r')
         else:
             stdout_read = subproc.stdout
-        for line in ShBuiltin.__unbuffered_readlines(stdout_read):
-            yield line[:-1]
+            stdout_fd = subproc.stdout.fileno
+        if not in_opt_format:
+            for line in ShBuiltin.__unbuffered_readlines(stdout_read):
+                yield line[:-1]
+        elif in_opt_format == 'text/chunked':
+            try:
+                buf = os.read(stdout_fd, 512)
+                while buf:
+                    yield buf
+                    buf = os.read(stdout_fd, 512)
+            except OSError, e:
+                pass
+        else:
+            assert(False)
         stdout_read.close()
         retcode = subproc.wait()
         if retcode >= 0:

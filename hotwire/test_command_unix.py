@@ -44,7 +44,7 @@ class PipelineRunTestsUnix(PipelineRunTestFramework):
         results = list(p.get_output())
         results.sort()
         self.assertEquals(len(results), 1)
-        self.assertEquals(results[0], 'testdir')
+        self.assertEquals(results[0], 'testdir')            
 
     def testShCancel1(self):
         p = Pipeline.parse("sh sleep 30", self._context)
