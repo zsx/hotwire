@@ -108,11 +108,11 @@ class ObjectsDisplay(gtk.VBox):
     def get_output_type(self):
         return self.__output_type
                 
-    def append_object(self, object):
+    def append_object(self, object, **kwargs):
         # just in time!
         if not self.__display:
             self.__add_display(object.__class__, force=True)
-        self.__display.append_obj(object)
+        self.__display.append_obj(object, **kwargs)
             
     def __vadjust(self, pos, full):
         adjustment = self.__scroll.get_vadjustment()
@@ -264,6 +264,9 @@ class MultiObjectsDisplay(gtk.Notebook):
         active_odisp = False
         maxitems = 100
         i = 0
+        append_kwargs = {}
+        if queue.opt_type:
+            append_kwargs['fmt'] = queue.opt_type
         try:
             while i < maxitems:
                 i += 1
@@ -283,7 +286,7 @@ class MultiObjectsDisplay(gtk.Notebook):
                         self.set_tab_label_text(odisp, name or 'Default')
                         self.set_show_tabs(True)
                         odisp_displayed = True
-                    odisp.append_object(item)
+                    odisp.append_object(item, **append_kwargs)
                     self.__ocount += 1
                     if self.__do_autoswitch:
                         self.set_current_page(self.page_num(odisp))

@@ -43,7 +43,7 @@ class ObjectsRenderer(gobject.GObject):
     def get_opt_formats(self):
         return []
 
-    def append_obj(self, obj):
+    def append_obj(self, obj, **kwargs):
         raise NotImplementedError()
 
     def get_autoscroll(self):
@@ -204,7 +204,7 @@ class TreeObjectsRenderer(ObjectsRenderer):
         obj = model.get_value(iter, 0)
         cell.set_property('text', unicode(repr(obj)))
 
-    def append_obj(self, obj):
+    def append_obj(self, obj, **kwargs):
         self._model.append((obj,))
 
     def __onclick(self, path, col, rel_x, rel_y):

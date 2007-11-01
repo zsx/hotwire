@@ -144,7 +144,7 @@ class FilePathRenderer(TreeObjectsRenderer):
         file_obj.connect("changed", self._signal_obj_changed, 1)
         return (obj, file_obj)
 
-    def append_obj(self, obj):
+    def append_obj(self, obj, **kwargs):
         row = self._get_row(obj)
         if self.__basedir is not False:
             bn,fn = os.path.split(row[1].path)

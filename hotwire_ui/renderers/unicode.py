@@ -346,7 +346,10 @@ class UnicodeRenderer(ObjectsRenderer):
             start = idx
         self._buf.insert(buf.get_end_iter(), start and obj[start:] or obj)
 
-    def append_obj(self, obj):
+    def append_obj(self, obj, fmt=None):
+        if fmt == 'text/chunked':
+            self.append_optimized(obj)
+            return
         if self.__empty:
             self._buf.delete(self._buf.get_start_iter(), self._buf.get_end_iter())
             self.__empty = False
