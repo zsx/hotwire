@@ -49,8 +49,5 @@ class Win32ProcessManager(object):
         ph = win32api.OpenProcess(win32con.PROCESS_TERMINATE|win32con.PROCESS_QUERY_INFORMATION,0,pid)
         win32api.TerminateProcess(ph, 0)
 
-    def get_extra_subproc_args(self):
-        return {}
-
 def getInstance():
     return Win32ProcessManager()
