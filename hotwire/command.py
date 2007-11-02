@@ -140,6 +140,7 @@ class Command(gobject.GObject):
             self.context.attach_auxstream(CommandAuxStream(self, schema))
         if self.builtin.get_hasmeta():
             self.context.set_metadata_handler(lambda *args: self.emit("metadata", *args))
+        self.input = None
         self.output = CommandQueue()
         self.map_fn = lambda x: x
         self.args = args
@@ -364,7 +365,8 @@ class Pipeline(gobject.GObject):
             cmd.connect("metadata", self.__on_cmd_metadata)
         prev_opt_formats = []
         for cmd in self.__components[:-1]:
-            cmd.input.negotiate(prev_opt_formats, cmd.get_input_opt_formats())
+            if cmd.input:
+                cmd.input.negotiate(prev_opt_formats, cmd.get_input_opt_formats())
             prev_opt_formats = cmd.get_output_opt_formats()
         last = self.__components[-1] 
         last.output.negotiate(last.get_output_opt_formats(), opt_formats)
