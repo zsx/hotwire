@@ -91,7 +91,9 @@ class IterableQueue(Queue.Queue):
     def iter_avail(self):
         try:
             while True:
-                yield self.get(False)
+                val = self.get(False)
+                if val is not None:
+                    yield val
         except Queue.Empty, e:
             pass
 
@@ -111,27 +113,3 @@ class QueueIterator(object):
                 yield item
             else:
                 break
-
-class CancellableQueueIterator:
-    def __init__(self, source):
-        self._source = source
-        self._cancelled = False
-
-    def __iter__(self):
-        if self._cancelled:
-            return
-        item = True
-        while not self._cancelled:
-            try:
-                item = self._source.get(False, 1)
-            except Queue.Empty:
-                continue
-            if not (item is None):
-                yield item
-            else:
-                break
-
-    def cancel(self):
-        self._cancelled = True
-
-    

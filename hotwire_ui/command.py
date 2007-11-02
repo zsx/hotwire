@@ -4,7 +4,8 @@ import gtk, gobject
 
 import hotwire_ui.widgets as hotwidgets
 from hotwire_ui.odisp import MultiObjectsDisplay
-from hotwire.async import QueueIterator, IterableQueue
+from hotwire.command import CommandQueue
+from hotwire.async import QueueIterator
 from hotwire.logutil import log_except
 
 _logger = logging.getLogger("hotwire.ui.Command")
@@ -125,7 +126,7 @@ class CommandExecutionHeader(gtk.VBox):
         # Can't just return objects directly as this can be
         # called from other threads
         # TODO make this actually async
-        queue = IterableQueue()
+        queue = CommandQueue()
         gobject.idle_add(self.__enqueue_output, queue)
         for obj in QueueIterator(queue):
             yield obj

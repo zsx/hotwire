@@ -6,7 +6,7 @@ import gobject
 
 import hotwire.fs
 from hotwire.fs import path_normalize
-from hotwire.async import CancellableQueueIterator, IterableQueue, MiniThreadPool
+from hotwire.async import IterableQueue, MiniThreadPool
 from hotwire.builtin import BuiltinRegistry
 import hotwire.util
 from hotwire.util import quote_arg, assert_strings_equal
@@ -39,7 +39,7 @@ class HotwireContext(gobject.GObject):
         return self.__cwd
 
     def info_msg(self, msg):
-        print msg
+        _logger.info("msg: %s", msg)
 
     def get_current_output_type(self):
         return None
@@ -53,6 +53,7 @@ class CommandContext(object):
     the execution context."""
     def __init__(self, hotwire):
         self.input = None
+        self.input_is_first = False
         self.pipeline = None
         self.cwd = hotwire.get_cwd()
         # This is kind of a hack; we need to store a snapshot of the
@@ -108,6 +109,9 @@ class CommandQueue(IterableQueue):
                 self.opt_type = fmt
                 _logger.debug("Negotiated optimized type %s", fmt)
                 break
+            
+    def cancel(self):
+        self.put(None)
 
 class CommandAuxStream(object):
     def __init__(self, command, schema):
@@ -145,9 +149,10 @@ class Command(gobject.GObject):
     def set_pipeline(self, pipeline):
         self.context.set_pipeline(pipeline)
 
-    def set_input(self, input):
-        self.input = input and CancellableQueueIterator(input)        
+    def set_input(self, input, is_first=False):
+        self.input = input       
         self.context.input = self.input
+        self.context.input_is_first = is_first
         
     def disconnect(self):
         self.context = None
@@ -185,7 +190,7 @@ class Command(gobject.GObject):
         for obj in self.context.get_auxstreams():
             yield obj
 
-    def __run(self, opt_format=None):
+    def __run(self):
         if self._cancelled:
             _logger.debug("%s cancelled, returning", self)
             self.output.put(self.map_fn(None))
@@ -241,9 +246,8 @@ class Command(gobject.GObject):
             kwargs = {}
             if options:
                 kwargs['options'] = options
-            if opt_format:
-                kwargs['in_opt_format'] = opt_format
-                _logger.debug("chose optimized format %s", opt_format)
+            if self.output.opt_type:
+                kwargs['out_opt_format'] = self.output.opt_type
             try:
                 for result in self.builtin.execute(self.context, *target_args, **kwargs):
                     # if it has status, let it do its own cleanup
@@ -252,6 +256,7 @@ class Command(gobject.GObject):
                         self.output.put(self.map_fn(None))
                         self.emit("complete")                        
                         return
+                    #print "queue %s: %s" % (self.output, result)
                     self.output.put(self.map_fn(result))
             finally:
                 self.builtin.cleanup(self.context)
@@ -359,12 +364,13 @@ class Pipeline(gobject.GObject):
             cmd.connect("metadata", self.__on_cmd_metadata)
         prev_opt_formats = []
         for cmd in self.__components[:-1]:
-            cmd.output.negotiate(prev_opt_formats, cmd.get_input_opt_formats())
-            cmd.execute(force_sync, opt_format=cmd.output.opt_type)
+            cmd.input.negotiate(prev_opt_formats, cmd.get_input_opt_formats())
             prev_opt_formats = cmd.get_output_opt_formats()
         last = self.__components[-1] 
         last.output.negotiate(last.get_output_opt_formats(), opt_formats)
-        last.execute(force_sync, opt_format=last.output.opt_type)
+        for i,cmd in enumerate(self.__components[:-1]):
+            cmd.execute(force_sync)
+        last.execute(force_sync)
         
     def validate_state_transition(self, state):
         if self.__state == 'waiting':
@@ -498,7 +504,8 @@ class Pipeline(gobject.GObject):
         self.__components[-1].set_output_queue(queue, map_fn)
         
     def set_input_queue(self, queue):
-        self.__components[0].set_input(queue)
+        # FIXME - remove this is_first bit
+        self.__components[0].set_input(queue, is_first=True)
 
     def get_locality(self):
         return self.__locality
@@ -713,59 +720,3 @@ class Pipeline(gobject.GObject):
 
     def __str__(self):
         return string.join(map(lambda x: x.__str__(), self.__components), ' | ')        
-
-class MinionPipeline(gobject.GObject):
-
-    __gsignals__ = {
-        "exception" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (gobject.TYPE_PYOBJECT, gobject.TYPE_PYOBJECT)),
-    }
-
-    def __init__(self, minion, pipeline_str, context=None):
-        super(MinionPipeline, self).__init__()
-        self.__minion = minion
-        self.__channel = minion.open_channel()
-        self.__channel_event_queue = CancellableQueueIterator(self.__channel.event_queue) 
-        self.__pipeline_str = pipeline_str
-        self.__pipeline_id = -1
-        self.__result_queue = IterableQueue()
-
-    def execute(self):
-        MiniThreadPool.getInstance().run(self.__pipeline_com)
-
-    def execute_sync(self):
-        raise NotImplementedError()
-
-    def cancel(self):
-        self.__channel_event_queue.cancel()
-        raise NotImplementedError() # need to cancel minion stuff
-
-    def is_nostatus(self):
-        return False
-
-    def get_output_type(self):
-        return str # for now
-
-    def __pipeline_com(self):
-        self.__channel.invoke('create_pipeline', self.__pipeline_str)
-        for event in self.__channel_event_queue:
-            if event.name == 'PipelineObject':
-                pipeid = event.args[0]
-                clsname = event.args[1]
-                strval = event.args[2]
-                #obj = RemoteObjectFactory.getInstance().load(event.args[0], event.args[1],
-                #                                            event.args[2:])
-                self.__result_queue.put(strval)
-            elif event.name == 'PipelineComplete':
-                _logger.debug("Got pipeline complete for %s", self.__pipeline_str)
-                self.__result_queue.put(None)
-                break
-
-    def get_output(self):
-        return self.__result_queue
-
-    @staticmethod
-    def parse(minion, text, context=None):
-        return MinionPipeline(minion, text)
-
-    def __str__(self):
-        return '[%s] %s' % (self.__minion, self.__pipeline_str)

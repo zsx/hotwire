@@ -2,7 +2,7 @@ import Queue, logging
 
 import gtk, gobject
 
-from hotwire.async import IterableQueue
+from hotwire.command import CommandQueue
 from hotwire_ui.render import ClassRendererMapping, DefaultObjectsRenderer
 import hotwire_ui.widgets as hotwidgets
 
@@ -183,9 +183,10 @@ class MultiObjectsDisplay(gtk.Notebook):
         self.__suppress_noyield = not not list(pipeline.get_status_commands())
         self.set_show_tabs(False)
 
-        self.__inputqueue = None        
+        self.__inputqueue = None
+        _logger.debug("input type %s opt: %s", self.__pipeline.get_input_type(), self.__pipeline.get_input_optional())
         if self.__pipeline.get_input_type() and self.__pipeline.get_input_optional():
-            self.__inputqueue = IterableQueue()
+            self.__inputqueue = CommandQueue()
             self.__pipeline.set_input_queue(self.__inputqueue)
         self.append_ostream(pipeline.get_output_type(), None, pipeline.get_output(), False)
         for aux in pipeline.get_auxstreams():

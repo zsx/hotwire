@@ -322,7 +322,7 @@ class UnicodeRenderer(ObjectsRenderer):
     def get_opt_formats(self):
         return ['text/chunked']
 
-    def append_optimized(self, obj):
+    def __append_chunk(self, obj):
         if self.__empty:
             self._buf.delete(self._buf.get_start_iter(), self._buf.get_end_iter())
             self.__empty = False
@@ -348,7 +348,7 @@ class UnicodeRenderer(ObjectsRenderer):
 
     def append_obj(self, obj, fmt=None):
         if fmt == 'text/chunked':
-            self.append_optimized(obj)
+            self.__append_chunk(obj)
             return
         if self.__empty:
             self._buf.delete(self._buf.get_start_iter(), self._buf.get_end_iter())
@@ -364,7 +364,7 @@ class UnicodeRenderer(ObjectsRenderer):
                prev_tagend = real_end
             self._buf.insert(self._buf.get_end_iter(), obj[prev_tagend:])          
         else:
-            self.append_optimized(obj)
+            self.__append_chunk(obj)
         self._buf.insert(self._buf.get_end_iter(), '\n')
 
     def get_autoscroll(self):

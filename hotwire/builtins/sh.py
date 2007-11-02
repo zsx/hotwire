@@ -29,6 +29,13 @@ class ShBuiltin(Builtin):
         for val in input.iter_avail():
             stdin.write(str(val))
             stdin.write('\n')
+        stdin.flush()
+            
+    def __inputwriter(self, input, stdin):
+        for val in input:
+            stdin.write(str(val))
+            stdin.write('\n')
+        stdin.flush()
 
     @staticmethod
     def __unbuffered_readlines(stream):
@@ -56,12 +63,12 @@ class ShBuiltin(Builtin):
             _logger.debug("failed to disconnect from stdin", exc_info=True)               
             pass
 
-    def execute(self, context, arg, in_opt_format=None):
+    def execute(self, context, arg, out_opt_format=None):
         # This function is complex.  There are two major variables.  First,
         # are we on Unix or Windows?  This is effectively determined by
         # pty_available, though I suppose some Unixes might not have ptys.
-        # Second, in_opt_format tells us whether we want to stream the 
-        # output as lines (in_opt_format is None), or as unbuffered byte chunks
+        # Second, out_opt_format tells us whether we want to stream the 
+        # output as lines (out_opt_format is None), or as unbuffered byte chunks
         # (determined by text/chunked).
         
         if pty_available:
@@ -70,16 +77,9 @@ class ShBuiltin(Builtin):
             # control the buffering used by subprocesses.
             (master_fd, slave_fd) = pty.openpty()
             
-            # These lines prevent us from having newlines converted to CR+NL.            
-            # Honestly, I have no idea why the ONLCR flag appears to be set by default.
-            # This was happening on Fedora 7, glibc-2.6-4, kernel-2.6.22.9-91.fc7.
-            attrs = termios.tcgetattr(master_fd)
-            attrs[1] = attrs[1] & (~termios.ONLCR)
-            termios.tcsetattr(master_fd, termios.TCSANOW, attrs)
-            
             _logger.debug("allocated pty fds %d %d", master_fd, slave_fd)
             stdout_target = slave_fd
-            stdin_target = slave_fd
+            stdin_target = subprocess.PIPE
         else:
             _logger.debug("no pty available, not allocating fds")
             (master_fd, slave_fd) = (None, None)
@@ -101,11 +101,9 @@ class ShBuiltin(Builtin):
             # such as for loops, I/O redirection, etc.  In the longer term
             # future, we want to implement replacements for both of these,
             # and execute the command directly.
-            subproc_args['shell'] = True
-            subproc_args['universal_newlines'] = False
             subproc_args['close_fds'] = True
-            subproc_args['preexec_fn'] = lambda: os.setsid()
-            subproc = subprocess.Popen([arg], **subproc_args)
+            subproc_args['preexec_fn'] = os.setsid
+            subproc = subprocess.Popen(['/bin/sh', '-c', arg], **subproc_args)
         else:
             assert(False)
         if not subproc.pid:
@@ -118,14 +116,14 @@ class ShBuiltin(Builtin):
         if context.cancelled:
             self.cancel(context)
         context.status_notify('pid %d' % (context.attribs['pid'],))
-        if context.input:
-            if pty_available:
-                stdin_stream = os.fdopen(master_fd, 'w')
+        if context.input:        
+            stdin_stream = subproc.stdin
+            # FIXME hack - need to rework input streaming                
+            if context.input_is_first:
+                context.attribs['input_connected'] = True
+                context.input.connect(self.__on_input, stdin_stream)
             else:
-                stdin_stream = subproc.stdin           
-            # FIXME hack - need to rework input streaming
-            context.attribs['input_connected'] = True
-            context.input._source.connect(self.__on_input, stdin_stream)
+                MiniThreadPool.getInstance().run(self.__inputwriter, args=(context.input, stdin_stream))
         if pty_available:
             os.close(slave_fd)
             stdout_fd = master_fd
@@ -133,15 +131,16 @@ class ShBuiltin(Builtin):
         else:
             stdout_read = subproc.stdout
             stdout_fd = subproc.stdout.fileno
-        if not in_opt_format:
+        if out_opt_format is None:
             for line in ShBuiltin.__unbuffered_readlines(stdout_read):
                 yield line[:-1]
-        elif in_opt_format == 'text/chunked':
+        elif out_opt_format == 'text/chunked':       
             try:
-                buf = os.read(stdout_fd, 512)
+                buf = os.read(stdout_fd, 5)
                 while buf:
+                    print "yield: '%s'" % (buf,)
                     yield buf
-                    buf = os.read(stdout_fd, 512)
+                    buf = os.read(stdout_fd, 5)
             except OSError, e:
                 pass
         else:
