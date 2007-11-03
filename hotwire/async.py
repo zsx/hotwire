@@ -92,8 +92,7 @@ class IterableQueue(Queue.Queue):
         try:
             while True:
                 val = self.get(False)
-                if val is not None:
-                    yield val
+                yield val
         except Queue.Empty, e:
             pass
 

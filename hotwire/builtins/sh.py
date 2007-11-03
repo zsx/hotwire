@@ -27,6 +27,9 @@ class ShBuiltin(Builtin):
 
     def __on_input(self, input, stdin):
         for val in input.iter_avail():
+            if val is None:
+                stdin.close()
+                return
             stdin.write(str(val))
             stdin.write('\n')
         stdin.flush()
@@ -35,7 +38,8 @@ class ShBuiltin(Builtin):
         for val in input:
             stdin.write(str(val))
             stdin.write('\n')
-        stdin.flush()
+            stdin.flush()
+        stdin.close()
 
     @staticmethod
     def __unbuffered_readlines(stream):
@@ -58,7 +62,7 @@ class ShBuiltin(Builtin):
             if 'input_connected' in context.attribs:
                 _logger.debug("disconnecting from stdin")
                 if context.input:                
-                    context.input._source.disconnect()
+                    context.input.disconnect()
         except:
             _logger.debug("failed to disconnect from stdin", exc_info=True)               
             pass
@@ -76,6 +80,13 @@ class ShBuiltin(Builtin):
             # Yes, this is gross, but as far as I know there is no other way to
             # control the buffering used by subprocesses.
             (master_fd, slave_fd) = pty.openpty()
+            
+            # These lines prevent us from having newlines converted to CR+NL.            
+            # Honestly, I have no idea why the ONLCR flag appears to be set by default.
+            # This was happening on Fedora 7, glibc-2.6-4, kernel-2.6.22.9-91.fc7.            
+            attrs = termios.tcgetattr(master_fd)
+            attrs[1] = attrs[1] & (~termios.ONLCR)
+            termios.tcsetattr(master_fd, termios.TCSANOW, attrs)            
             
             _logger.debug("allocated pty fds %d %d", master_fd, slave_fd)
             stdout_target = slave_fd
