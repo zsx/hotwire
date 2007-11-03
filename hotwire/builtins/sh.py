@@ -149,7 +149,6 @@ class ShBuiltin(Builtin):
             try:
                 buf = os.read(stdout_fd, 5)
                 while buf:
-                    print "yield: '%s'" % (buf,)
                     yield buf
                     buf = os.read(stdout_fd, 5)
             except OSError, e:
