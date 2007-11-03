@@ -26,20 +26,26 @@ class ShBuiltin(Builtin):
                                         threaded=True)
 
     def __on_input(self, input, stdin):
-        for val in input.iter_avail():
-            if val is None:
-                stdin.close()
-                return
-            stdin.write(str(val))
-            stdin.write('\n')
-        stdin.flush()
+        try:
+            for val in input.iter_avail():
+                if val is None:
+                    stdin.close()
+                    return
+                stdin.write(str(val))
+                stdin.write('\n')
+            stdin.flush()
+        except IOError, e:
+            pass
             
     def __inputwriter(self, input, stdin):
-        for val in input:
-            stdin.write(str(val))
-            stdin.write('\n')
-            stdin.flush()
-        stdin.close()
+        try:
+            for val in input:
+                stdin.write(str(val))
+                stdin.write('\n')
+                stdin.flush()
+            stdin.close()
+        except IOError, e:
+            pass
 
     @staticmethod
     def __unbuffered_readlines(stream):
