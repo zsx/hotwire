@@ -15,6 +15,9 @@ class BaseIpc(object):
 
     def raise_existing(self):
         raise NotImplementedError()
+    
+    def run_tty_command(self, *args):
+        raise NotImplementedError()
 
 _module = None
 if is_unix():
