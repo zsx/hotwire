@@ -769,6 +769,8 @@ class HotWindow(gtk.Window):
         self.__old_char_height = 0
         self.__old_geom_widget = None
         
+        self.__closesigs = {}
+        
         self.__curtab_is_hotwire = False
 
         # Records the last tab index from which we created a new tab, so we 
@@ -1048,6 +1050,9 @@ along with Hotwire; if not, write to the Free Software Foundation, Inc.,
         _logger.debug("tab closed, preautoswitch idx: %d current: %d", savedidx, idx)
         self.__notebook.remove_page(idx)
         self.__sync_tabs_visible()
+        if w in self.__closesigs:
+            w.disconnect(self.__closesigs[w])
+            del self.__closesigs[w]
         if savedidx >= 0:
             if idx < savedidx:
                 savedidx -= 1
@@ -1090,7 +1095,7 @@ along with Hotwire; if not, write to the Free Software Foundation, Inc.,
         label.set_text(title)
         widget.show_all()
         self.__notebook.set_current_page(idx)
-        widget.connect('closed', self.__remove_page_widget)
+        self.__closesigs[widget] = widget.connect('closed', self.__remove_page_widget)
         _logger.debug("preautoswitch idx: %d", savedidx)
         self.__preautoswitch_index = savedidx
 
