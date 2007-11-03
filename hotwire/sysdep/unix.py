@@ -1,5 +1,7 @@
 import os
 
+os.environ['HOTWIRE_SHELL'] = '1'
+
 # Ensure subprocesses don't try to treat us as a full tty
 os.environ['TERM'] = 'dumb'
 # Fix Fedora and probably other systems
