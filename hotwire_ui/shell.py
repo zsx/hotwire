@@ -834,7 +834,7 @@ class HotWindow(gtk.Window):
     def __show_pyshell(self):
         if self.__pyshell:
             self.__pyshell.destroy()
-        self.__pyshell = hotwire_ui.pyshell.CommandShell({'hotwin': self},
+        self.__pyshell = hotwire_ui.pyshell.CommandShell({'curshell': lambda: locate_current_shell(self)},
                                                          savepath=os.path.join(Filesystem.getInstance().get_conf_dir(), 'pypad.py'))
         self.__pyshell.set_title('Hotwire PyShell')
         self.__pyshell.show_all()

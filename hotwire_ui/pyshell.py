@@ -51,8 +51,9 @@ class OutputWindow(gtk.Window):
 class CommandShell(HotEditorWindow):
     DEFAULT_CONTENT = '''## Hotwire Python Pad
 ## Global values:
-##   outln(value): (Function) Print a value and a newline to output stream
-##   hotwin: (Value) The global Hotwire window
+##   outln(val): (Function) Print a value and a newline to output stream
+##   curshell(): (Function) Get current Hotwire object 
+##   
 import os,sys,re
 import gtk, gobject
 
@@ -64,18 +65,21 @@ outln('''
 <ui>
   <menubar name='Menubar'>
     <menu action='ToolsMenu'>
-      <menuitem action='Eval'/>
+      <menuitem action='Eval'/>    
+      <separator/>
+      <menuitem action='Reset'/>
     </menu>
   </menubar>
 </ui>        
 """    
         actions = [
             ('ToolsMenu', None, 'Tools'),
-            ('Eval', None, '_Eval', '<control>Return', 'Evaluate current input', self.__eval_cb),
+            ('Eval', None, '_Eval', '<control>Return', 'Evaluate current input', self.__eval_cb),            
+            ('Reset', None, '_Reset', None, 'Reset to default content', self.__reset_cb),
             ]
         self.__actiongroup = ag = gtk.ActionGroup('ShellActions')        
         ag.add_actions(actions)
-        self._ui.insert_action_group(ag, 0)
+        self._ui.insert_action_group(ag, 1)
         self._ui.add_ui_from_string(self.__ui_string)
 
         if self.gtksourceview_mode:
@@ -83,6 +87,9 @@ outln('''
             pylang = gtksourceview.SourceLanguagesManager().get_language_from_mime_type("text/x-python")
             self.input.set_language(pylang)
             self.input.set_highlight(True)
+            
+        # Doesn't make sense when we're not backed by a file
+        self._ui.get_action_groups()[0].get_action('Revert').set_sensitive(False)
             
         self.input.move_mark_by_name("insert", self.input.get_end_iter())
         self.input.move_mark_by_name("selection_bound", self.input.get_end_iter())        
@@ -110,6 +117,9 @@ outln('''
             _logger.debug("caught exception executing", exc_info=True)
             owin = OutputWindow(traceback.format_exc())
             owin.show_all()
+            
+    def __reset_cb(self, a):
+        self.input.set_property('text', self.DEFAULT_CONTENT)
             
     def __outln(self, stream, v):
         stream.write(str(v))
