@@ -2,7 +2,12 @@ import os,sys,threading,pty,logging
 
 import gtk, gobject, pango
 import vte
-import gconf
+
+try:
+    import gconf
+    gconf_available = True
+except:
+    gconf_available = False
 
 import hotwire_ui.widgets as hotwidgets
 from hotwire.sysdep.term_impl.base_term import BaseTerminal, TerminalWidget
@@ -58,11 +63,12 @@ class VteTerminalWidget(TerminalWidget):
         self.__term.connect('selection-changed', self.__on_selection_changed)
 
         # Use Gnome font 
-        gconf_client = gconf.client_get_default() 
-        mono_font = gconf_client.get_string('/desktop/gnome/interface/monospace_font_name')
-        _logger.debug("Using font '%s'", mono_font)
-        font_desc = pango.FontDescription(mono_font)
-        self.__term.set_font(font_desc)
+        if gconf_available:
+            gconf_client = gconf.client_get_default() 
+            mono_font = gconf_client.get_string('/desktop/gnome/interface/monospace_font_name')
+            _logger.debug("Using font '%s'", mono_font)
+            font_desc = pango.FontDescription(mono_font)
+            self.__term.set_font(font_desc)
 
         # Colors
         fg = self.__term.style.text[gtk.STATE_NORMAL]
