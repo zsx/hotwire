@@ -66,6 +66,13 @@ class ShBuiltin(Builtin):
         except:
             _logger.debug("failed to disconnect from stdin", exc_info=True)               
             pass
+        try:
+            if 'master_fd' in context.attribs:
+                _logger.debug("closing pty master")
+                os.close(context.attribs['master_fd'])
+        except:
+            _logger.debug("failed to disconnect from stdin", exc_info=True)               
+            pass        
 
     def execute(self, context, arg, out_opt_format=None):
         # This function is complex.  There are two major variables.  First,
@@ -75,7 +82,10 @@ class ShBuiltin(Builtin):
         # output as lines (out_opt_format is None), or as unbuffered byte chunks
         # (determined by text/chunked).
         
-        if pty_available:
+        using_pty_out = pty_available and out_opt_format == 'text/chunked'
+        using_pty_in = pty_available and context.input_is_first
+        _logger.debug("using pty in: %s out: %s", using_pty_in, using_pty_out)
+        if using_pty_in or using_pty_out:
             # We create a pseudo-terminal to ensure that the subprocess is line-buffered.
             # Yes, this is gross, but as far as I know there is no other way to
             # control the buffering used by subprocesses.
@@ -86,13 +96,21 @@ class ShBuiltin(Builtin):
             # This was happening on Fedora 7, glibc-2.6-4, kernel-2.6.22.9-91.fc7.            
             attrs = termios.tcgetattr(master_fd)
             attrs[1] = attrs[1] & (~termios.ONLCR)
+            attrs[3] = attrs[3] & (~termios.ECHO)
             termios.tcsetattr(master_fd, termios.TCSANOW, attrs)            
             
             _logger.debug("allocated pty fds %d %d", master_fd, slave_fd)
-            stdout_target = slave_fd
-            stdin_target = subprocess.PIPE
+            if using_pty_out:
+                stdout_target = slave_fd
+            else:
+                stdout_target = subprocess.PIPE
+            if using_pty_in:
+                stdin_target = slave_fd
+            else:
+                stdin_target = subprocess.PIPE
+            context.attribs['master_fd'] = master_fd
         else:
-            _logger.debug("no pty available, not allocating fds")
+            _logger.debug("no pty available or non-chunked output, not allocating fds")
             (master_fd, slave_fd) = (None, None)
             stdout_target = subprocess.PIPE
             stdin_target = subprocess.PIPE
@@ -128,17 +146,19 @@ class ShBuiltin(Builtin):
             self.cancel(context)
         context.status_notify('pid %d' % (context.attribs['pid'],))
         if context.input:        
-            stdin_stream = subproc.stdin
+            if using_pty_in:
+                stdin_stream = os.fdopen(master_fd, 'w')
+            else:
+                stdin_stream = subproc.stdin
             # FIXME hack - need to rework input streaming                
             if context.input_is_first:
                 context.attribs['input_connected'] = True
                 context.input.connect(self.__on_input, stdin_stream)
             else:
                 MiniThreadPool.getInstance().run(self.__inputwriter, args=(context.input, stdin_stream))
-        if pty_available:
+        if using_pty_out:
             os.close(slave_fd)
             stdout_fd = master_fd
-            stdout_read = os.fdopen(master_fd, 'r')
         else:
             stdout_read = subproc.stdout
             stdout_fd = subproc.stdout.fileno
@@ -147,15 +167,14 @@ class ShBuiltin(Builtin):
                 yield line[:-1]
         elif out_opt_format == 'text/chunked':       
             try:
-                buf = os.read(stdout_fd, 5)
+                buf = os.read(stdout_fd, 512)
                 while buf:
                     yield buf
-                    buf = os.read(stdout_fd, 5)
+                    buf = os.read(stdout_fd, 512)
             except OSError, e:
                 pass
         else:
             assert(False)
-        stdout_read.close()
         retcode = subproc.wait()
         if retcode >= 0:
             retcode_str = '%d' % (retcode,)

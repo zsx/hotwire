@@ -231,10 +231,14 @@ class UnicodeRenderer(ObjectsRenderer):
         self._buf.insert_markup("<i>(No output)</i>")
         self.__search = SearchArea(self.__text)
         self.__inputarea = InputArea(self.__text)
+        self.__inputarea.connect('object-input', self.__on_object_input)
         self.__text.connect('populate-popup', self.__on_populate_popup)
         self.__links = {} # internal hyperlinks
         self.__support_links = False
         self.__hovering_over_link = False
+        
+    def __on_object_input(self, ia, o):
+        self.append_obj(o)
 
     def __on_event_after(self, textview, e):
         if e.type != gtk.gdk.BUTTON_RELEASE:
