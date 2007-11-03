@@ -94,6 +94,8 @@ class GnomeVFSFilesystem(UnixFilesystem):
         subprocess.call(['gnome-open', path])
 
     def __launch_vfsmimeapp(self, app, uri):
+        if uri.startswith('file://'):
+            uri = gnomevfs.get_local_path_from_uri(uri)
         if hasattr(gnomevfs, 'mime_application_launch'):
             gnomevfs.mime_application_launch(app, uri)
         else:
@@ -104,9 +106,6 @@ class GnomeVFSFilesystem(UnixFilesystem):
                     exec_components[i] = uri
                     replaced_f = True
             if not replaced_f:
-                # Many apps don't take URIs
-                if uri.startswith('file://'):
-                    uri = uri[7:]
                 exec_components.append(uri)
             subprocess.Popen(exec_components, stdout=sys.stdout, stderr=sys.stderr)        
 
@@ -119,7 +118,7 @@ class GnomeVFSFilesystem(UnixFilesystem):
         self.__launch_vfsmimeapp(app, uri)
 
     def get_file_menuitems(self, file_obj):
-        uri = gnomevfs.get_uri_from_local_path(file_obj.path) 
+        uri = gnomevfs.get_uri_from_local_path(file_obj.path)
         vfsstat = gnomevfs.get_file_info(uri, gnomevfs.FILE_INFO_GET_MIME_TYPE)
         apps = gnomevfs.mime_get_all_applications(vfsstat.mime_type)
         textapp = gnomevfs.mime_get_default_application("text/plain")
