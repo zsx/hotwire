@@ -16,7 +16,7 @@ class FilterBuiltin(Builtin):
         super(FilterBuiltin, self).__init__('filter',
                                             input=InputStreamSchema('any'),
                                             output='identity',
-                                            options=['-i', '--ignore-case'],
+                                            options=[['-i', '--ignore-case'],],
                                             threaded=True)
 
     def execute(self, context, regexp, prop=None, options=[]):
