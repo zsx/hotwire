@@ -601,13 +601,14 @@ class CommandExecutionControl(gtk.VBox):
                 for action in actions:
                     action.set_sensitive(False)
                     return
+            pipeline = cmd.cmd_header.get_pipeline()   
             _logger.debug("sync sensitivity page %s pipeline: %s", curpage, cmd.cmd_header.get_pipeline().get_state())                
-            cancellable = not not (cmd and cmd.cmd_header.get_pipeline().validate_state_transition('cancelled'))
-            undoable = not not (cmd and cmd.cmd_header.get_pipeline().validate_state_transition('undone'))
+            cancellable = not not (pipeline.validate_state_transition('cancelled'))
+            undoable = not not (pipeline.validate_state_transition('undone'))
             _logger.debug("cancellable: %s undoable: %s", cancellable, undoable)
             actions[1].set_sensitive(cancellable)
             actions[4].set_sensitive(undoable)
-            actions[5].set_sensitive(cmd and cmd.odisp.supports_input() or False)
+            actions[5].set_sensitive(pipeline.get_state() == 'executing' and cmd.odisp.supports_input() or False)
         actions[2].set_sensitive(self.__get_prevcmd_count(curpage) > 0)
         actions[3].set_sensitive(self.__get_nextcmd_count(curpage) > 0)
         
