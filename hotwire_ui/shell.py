@@ -183,11 +183,9 @@ class Hotwire(gtk.VBox):
 
         self.__active_input_completers = []
         self.__input = gtk.Entry()
-        self.__shift_only = False
         self.__input.connect("notify::scroll-offset", self.__on_scroll_offset)
         self.__input.connect("notify::text", lambda *args: self.__on_input_changed())
         self.__input.connect("key-press-event", lambda i, e: self.__on_input_keypress(e))
-        self.__input.connect("key-release-event", lambda i, e: self.__on_input_keyrelease(e))
         self.__input.connect("focus-out-event", self.__on_entry_focus_lost)
         self.__bottom.pack_start(self.__input, expand=False)
 
@@ -533,26 +531,9 @@ class Hotwire(gtk.VBox):
         self.__completions.hide()
 
     @log_except(_logger)
-    def __on_input_keyrelease(self, e):
-        shiftval = gtk.gdk.keyval_from_name('Shift_L') 
-        if e.keyval == shiftval and self.__shift_only: 
-            if not self.__completion_active:
-                _logger.debug("got shift but no completion active, choosing first completion")
-                self.__do_completion(False)
-            else:    
-                _logger.debug("got shift when completion active, choosing current completion")
-            self.__completion_active = False
-            self.__queue_parse()
-        return False
-
-    @log_except(_logger)
     def __on_input_keypress(self, e):
         curtext = self.__input.get_property("text") 
 
-        if e.keyval == gtk.gdk.keyval_from_name('Shift_L'):
-            self.__shift_only = True
-        else:
-            self.__shift_only = False
         if e.keyval == gtk.gdk.keyval_from_name('Return'):
             self.__execute()
             return True
