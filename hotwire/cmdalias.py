@@ -11,7 +11,10 @@ default_aliases = {'vi': 'term vi',
                    'man': 'term man',
                    'top': 'term top',
                    'nano': 'term nano',
-                   'pico': 'term pico'}
+                   'pico': 'term pico',
+                   'irssi': 'term irssi',
+                   'mutt': 'term mutt',
+                  }
 
 ## TODO: Kill this class in favor of better autoterm integration.
 
