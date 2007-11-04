@@ -850,9 +850,7 @@ class HotWindow(gtk.Window):
         self.new_tab_widget(term, 'term')
 
     def __close_cb(self, action):
-        self.__remove_page_widget(self.__notebook.get_nth_page(self.__notebook.get_current_page()))
-        if self.__notebook.get_n_pages() == 0:
-            self.destroy()          
+        self.__remove_page_widget(self.__notebook.get_nth_page(self.__notebook.get_current_page()))         
 
     def __python_workpad_cb(self, action):
         self.__show_pyshell()
@@ -1034,10 +1032,12 @@ along with Hotwire; if not, write to the Free Software Foundation, Inc.,
         if w in self.__closesigs:
             w.disconnect(self.__closesigs[w])
             del self.__closesigs[w]
-        if savedidx >= 0:
+        if self.__notebook.get_n_pages() == 0:
+            self.destroy()                
+        elif savedidx >= 0:
             if idx < savedidx:
                 savedidx -= 1
-            self.__notebook.set_current_page(savedidx)
+            self.__notebook.set_current_page(savedidx)        
 
     def __add_widget_title(self, w):
         hbox = gtk.HBox()
