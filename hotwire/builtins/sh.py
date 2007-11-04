@@ -59,18 +59,14 @@ class ShBuiltin(Builtin):
 
     @staticmethod
     def __unbuffered_read_pipe(fd=None, stream=None):
-        # This function is actually currently buffered on
-        # Windows; we need to figure out how to fix that.
-        if is_windows():
-            buf = stream.read(512)
-            while buf:
-                yield buf
-                buf = stream.read(512)
+        if fd is not None:
+            fdno = fd
         else:
-            buf = os.read(fd, 512)
-            while buf:
-                yield buf
-                buf = os.read(fd, 512)
+            fdno = stream.fileno()
+        buf = os.read(fdno, 10)
+        while buf:
+            yield buf
+            buf = os.read(fdno, 10)
 
     def cancel(self, context):
         if context.attribs.has_key('pid'):
@@ -183,7 +179,7 @@ class ShBuiltin(Builtin):
             stdout_fd = master_fd
         else:
             stdout_read = subproc.stdout
-            stdout_fd = subproc.stdout.fileno
+            stdout_fd = subproc.stdout.fileno()
         if out_opt_format is None:
             for line in ShBuiltin.__unbuffered_readlines(stdout_read):
                 yield line[:-1]
