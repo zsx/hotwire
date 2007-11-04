@@ -1,8 +1,8 @@
 [Setup]
 AppName=hotwire
-AppVerName=hotwire 0.595
+AppVerName=hotwire 0.600
 AppPublisher=me
-AppPublisherURL=http://submind.verbum.org/hotwire
+AppPublisherURL=http://hotwire-shell.org
 DefaultDirName={pf}\hotwire
 DefaultGroupName=hotwire
 DisableProgramGroupPage=true
