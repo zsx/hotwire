@@ -57,6 +57,21 @@ class ShBuiltin(Builtin):
         except IOError, e:
             pass
 
+    @staticmethod
+    def __unbuffered_read_pipe(fd=None, stream=None):
+        # This function is actually currently buffered on
+        # Windows; we need to figure out how to fix that.
+        if is_windows():
+            buf = stream.read(512)
+            while buf:
+                yield buf
+                buf = stream.read(512)
+        else:
+            buf = os.read(fd, 512)
+            while buf:
+                yield buf
+                buf = os.read(fd, 512)
+
     def cancel(self, context):
         if context.attribs.has_key('pid'):
             pid = context.attribs['pid']
@@ -164,6 +179,7 @@ class ShBuiltin(Builtin):
                 MiniThreadPool.getInstance().run(self.__inputwriter, args=(context.input, stdin_stream))
         if using_pty_out:
             os.close(slave_fd)
+            stdout_read = None
             stdout_fd = master_fd
         else:
             stdout_read = subproc.stdout
@@ -171,12 +187,10 @@ class ShBuiltin(Builtin):
         if out_opt_format is None:
             for line in ShBuiltin.__unbuffered_readlines(stdout_read):
                 yield line[:-1]
-        elif out_opt_format == 'text/chunked':       
+        elif out_opt_format == 'text/chunked':                
             try:
-                buf = os.read(stdout_fd, 512)
-                while buf:
+                for buf in ShBuiltin.__unbuffered_read_pipe(stream=stdout_read, fd=stdout_fd):
                     yield buf
-                    buf = os.read(stdout_fd, 512)
             except OSError, e:
                 pass
         else:
