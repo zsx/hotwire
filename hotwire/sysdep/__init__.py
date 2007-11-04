@@ -1,12 +1,5 @@
 import os,sys,platform
 
-# set up our editor as default if none set
-if 'EDITOR' not in os.environ:
-    os.environ['EDITOR'] = 'hotwire-editor'
-
-# Work around git bug
-os.environ['GIT_PAGER'] = 'cat'
-
 def is_windows():
     return platform.system() in ('Windows', 'Microsoft')
 
