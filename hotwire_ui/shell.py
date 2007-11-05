@@ -157,6 +157,7 @@ class Hotwire(gtk.VBox):
                            [('text/uri-list', 0, 0)],
                            gtk.gdk.ACTION_COPY) 
         self.connect("drag-data-received", self.__on_drag_data_received)
+        self.connect("key-press-event", self.__on_toplevel_keypress) 
 
         self.__paned = gtk.VBox()
         self.__topbox = gtk.VBox()
@@ -529,6 +530,13 @@ class Hotwire(gtk.VBox):
 
     def __on_entry_focus_lost(self, entry, e):
         self.__completions.hide()
+        
+    @log_except(_logger)
+    def __on_toplevel_keypress(self, s2, e):
+        if e.keyval == gtk.gdk.keyval_from_name('Escape'):
+            self.grab_focus()
+            return True 
+        return False       
 
     @log_except(_logger)
     def __on_input_keypress(self, e):
