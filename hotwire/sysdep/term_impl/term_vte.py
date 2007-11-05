@@ -57,7 +57,9 @@ class VteTerminalWidget(TerminalWidget):
         self.__term.set_emulation('xterm')
         self.__term.set_allow_bold(True)
         self.__term.set_size(80, 24)
+        self.__term.set_scrollback_lines(1500)
         self.__term.set_mouse_autohide(True)
+        self.__term.set_default_colors()
 
         self.__term.connect('popup_menu', self.__on_popup_menu)
         self.__term.connect('selection-changed', self.__on_selection_changed)
@@ -69,15 +71,6 @@ class VteTerminalWidget(TerminalWidget):
             _logger.debug("Using font '%s'", mono_font)
             font_desc = pango.FontDescription(mono_font)
             self.__term.set_font(font_desc)
-
-        # Colors
-        fg = self.__term.style.text[gtk.STATE_NORMAL]
-        bg = self.__term.style.base[gtk.STATE_NORMAL]
-        self.__term.set_default_colors()
-        self.__term.set_color_background(bg)
-        self.__term.set_color_foreground(fg)
-        self.__term.set_color_bold(fg)
-        self.__term.set_color_dim(fg)
 
         self._selection_changed(False)
 
@@ -172,6 +165,8 @@ class VteTerminalWidget(TerminalWidget):
     def set_color(self, is_foreground, color):
         if is_foreground:
             self.__term.set_color_foreground(color)
+            self.__term.set_color_bold(color)
+            self.__term.set_color_dim(color)            
         else:
             self.__term.set_color_background(color)        
 
