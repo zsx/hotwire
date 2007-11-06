@@ -270,7 +270,7 @@ class PathCompleter(BaseCompleter):
                     resultpath = path
                 have_fcompletions = True
                 yield FilePathCompletion(resultpath, len(dname), len(input_fname),
-                                         hint_no_space=True, exact=False, ctxhit=True)
+                                         hint_no_space=True, exact=exact, ctxhit=True)
 
 class DirExecutableGenerator(object):
     def __init__(self, dir, include_subdirs=False):
@@ -408,7 +408,7 @@ class VerbCompleter(object):
         for item in AliasCompleter.getInstance().search(text):
             found_noncwd = True
             yield item
-        if text.find(os.sep) >= 0 or text.startswith('.' + os.sep):
+        if text.find('/') >= 0 or text.startswith('.' + os.sep):
             pc = PathCompleter()
             pc.add_filter(self.__dir_or_x)
             for item in pc.search(text, context=context, hotwire=hotwire):
