@@ -5,7 +5,12 @@ import cairo, gtk, gobject, pango
 _logger = logging.getLogger("hotwire.Editor")
 
 try:
-    import gtksourceview
+    try:
+        from gtksourceview2 import Buffer as SourceBuffer, View as SourceView
+        gtksourceview2_avail = True
+    except ImportError, e:
+        import gtksourceview
+        gtksourceview2_avail = False
     gtksourceview_avail = True
     _logger.debug("gtksourceview available")
 except ImportError, e:
@@ -42,10 +47,14 @@ class HotEditorWindow(gtk.Window):
         self.gtksourceview_mode = gtksourceview_avail
 
         if gtksourceview_avail:
-            self.input = gtksourceview.SourceBuffer()
-            self.input_view = gtksourceview.SourceView(self.input)
-            self.input.connect('can-undo', lambda *args: self.__sync_undoredo())
-            self.input.connect('can-redo', lambda *args: self.__sync_undoredo())
+            self.input = SourceBuffer()
+            self.input_view = SourceView(self.input)
+            if gtksourceview2_avail:
+                self.input.connect('notify::can-undo', lambda *args: self.__sync_undoredo())
+                self.input.connect('notify::can-redo', lambda *args: self.__sync_undoredo())
+            else:
+                self.input.connect('can-undo', lambda *args: self.__sync_undoredo())
+                self.input.connect('can-redo', lambda *args: self.__sync_undoredo())
         else:
             self.input = gtk.TextBuffer()
             self.input_view = gtk.TextView(self.input)

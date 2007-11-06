@@ -83,10 +83,14 @@ outln('''
         self._ui.add_ui_from_string(self.__ui_string)
 
         if self.gtksourceview_mode:
-            import gtksourceview            
-            pylang = gtksourceview.SourceLanguagesManager().get_language_from_mime_type("text/x-python")
+            try:
+                import gtksourceview2
+                pylang = gtksourceview2.language_manager_get_default().get_language('python')
+            except ImportError, e:
+                import gtksourceview
+                pylang = gtksourceview.SourceLanguagesManager().get_language_from_mime_type("text/x-python")
+                self.input.set_highlight(True)
             self.input.set_language(pylang)
-            self.input.set_highlight(True)
             
         # Doesn't make sense when we're not backed by a file
         self._ui.get_action_groups()[0].get_action('Revert').set_sensitive(False)
