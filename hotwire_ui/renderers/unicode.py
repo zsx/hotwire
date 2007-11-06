@@ -228,6 +228,7 @@ class UnicodeRenderer(ObjectsRenderer):
         self.__text.set_cursor_visible(False)
         self.__text.unset_flags(gtk.CAN_FOCUS)
         self.__empty = True
+        self.__bytecount = 0
         self._buf.insert_markup("<i>(No output)</i>")
         self.__search = SearchArea(self.__text)
         self.__inputarea = InputArea(self.__text)
@@ -306,6 +307,9 @@ class UnicodeRenderer(ObjectsRenderer):
     def get_search(self):
         return self.__search
 
+    def get_status_str(self):
+        return "%d bytes" % (self.__bytecount,)
+
     def get_objects(self):
         iter = self._buf.get_start_iter()
         if iter == self._buf.get_end_iter():
@@ -333,6 +337,7 @@ class UnicodeRenderer(ObjectsRenderer):
         ## Initial support for terminal codes.  Only 08 is handled now.
         start = 0
         olen = len(obj)
+        self.__bytecount += olen
         buf = self._buf
         ## This algorithm groups consecutive 8 bytes together to do the delete in one pass. 
         while True:

@@ -41,6 +41,9 @@ class HelpItemRenderer(UnicodeRenderer):
                     self._buf.insert_markup('    ' + gobject.markup_escape_text(line))
                 self._buf.insert_markup('\n')
 
+    def get_status_str(self):
+        return ''
+
     def append_obj(self, o):
         pass
 

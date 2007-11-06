@@ -49,6 +49,9 @@ class ObjectsRenderer(gobject.GObject):
     def get_autoscroll(self):
         return False
 
+    def get_status_str(self):
+        return None
+
     def get_objects(self):
         raise NotImplementedError()
 

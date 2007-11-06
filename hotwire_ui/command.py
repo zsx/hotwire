@@ -153,8 +153,14 @@ class CommandExecutionHeader(gtk.VBox):
         if self.__objects:
             self.__tooltips.set_tip(self.__titlebox_ebox, 'Output: ' + str(self.__objects.get_default_output_type()))
             
-        ocount = self.__objects and self.__objects.get_ocount() or 0
-            
+        if self.__objects:
+            ocount = self.__objects.get_ocount() or 0
+            status_str = self.__objects.get_status_str()
+            if status_str is None:
+                status_str = '%d objects' % (ocount,)
+        else:
+            status_str = None
+
         def set_status_action(status_text_left, action_text='', status_markup=False):
             if action_text:
                 status_text_left += " ("
@@ -170,7 +176,11 @@ class CommandExecutionHeader(gtk.VBox):
                 self.__action.hide()
             status_right_start = action_text and ')' or ''
             status_right_end = self.__pipeline_status_visible and '; ' or ''
-            self.__status_right.set_text(status_right_start + (", %d objects" % (ocount,)) + status_right_end)
+            if status_str:
+                status_str_fmt = ', ' + status_str
+            else:
+                status_str_fmt = ''
+            self.__status_right.set_text(status_right_start + status_str_fmt + status_right_end)
             
         def _color(str, color):
             return '<span foreground="%s">%s</span>' % (color,gobject.markup_escape_text(str))            

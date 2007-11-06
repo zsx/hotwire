@@ -100,6 +100,9 @@ class ObjectsDisplay(gtk.VBox):
             return self.__display.get_opt_formats()
         return []
 
+    def get_status_str(self):
+        return self.__display and self.__display.get_status_str()
+
     def get_objects(self):
         if self.__display:
             for obj in self.__display.get_objects():
@@ -248,6 +251,9 @@ class MultiObjectsDisplay(gtk.Notebook):
 
     def get_ocount(self):
         return self.__ocount
+
+    def get_status_str(self):
+        return self.__default_odisp and self.__default_odisp.get_status_str()
     
     def get_default_output_type(self):
         return self.__default_odisp and self.__default_odisp.get_output_type()
