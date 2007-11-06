@@ -23,6 +23,7 @@ if __name__ == '__main__' and hasattr(sys.modules['__main__'], '__file__'):
 		print "Running uninstalled, extending PYTHONPATH with: %s" % (up_basedir,)
         sys.path.insert(0, up_basedir)
         # Extend PATH so hotwire-editor works correctly
+        os.environ['PYTHONPATH'] = os.pathsep.join(sys.path)
         os.environ['PATH'] = (basedir + os.pathsep + os.environ.get('PATH', ''))
 
 try:
