@@ -891,7 +891,7 @@ You should have received a copy of the GNU General Public License
 along with Hotwire; if not, write to the Free Software Foundation, Inc.,
 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA''')
         dialog.set_property('name', "Hotwire")
-        comments = "A Python-based object oriented crossplatform command execution shell\n\n"
+        comments = "A Python-based object oriented\ncrossplatform command execution shell\n\n"
         if hotwire.version.svn_version_info:
             comments += "changeset: %s\ndate: %s\n" % (hotwire.version.svn_version_info['Revision'], hotwire.version.svn_version_info['Last Changed Date'],)
         dialog.set_property('comments', comments)
@@ -1050,6 +1050,7 @@ along with Hotwire; if not, write to the Free Software Foundation, Inc.,
     def __add_widget_title(self, w):
         hbox = gtk.HBox()
         label = gtk.Label('<notitle>')
+        label.set_selectable(False)
         label.set_ellipsize(pango.ELLIPSIZE_END)
         hbox.pack_start(hotwidgets.Align(label, padding_right=4), expand=True)
 
