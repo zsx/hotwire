@@ -552,11 +552,19 @@ class Pipeline(gobject.GObject):
 """
         result = []
         _logger.debug("parsing '%s'", text)
+        
+        curpos = 0        
+        # Hack - we need to clean the below up
+        currentpipe = 'current | '
+        if text.startswith('| '):
+            text = currentpipe + text[2:]
+            curpos += (len(currentpipe)-1)
+        
         pipeline_items = text.split(" | ")
+        _logger.debug("items: %s", pipeline_items)        
         if pipeline_items[0] == '':
             return result
 
-        curpos = 0
         for item in pipeline_items:
             if curpos != 0:
                 curpos += 3 # previous pipe
