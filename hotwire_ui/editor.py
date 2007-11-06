@@ -156,10 +156,8 @@ class HotEditorWindow(gtk.Window):
         self.input.redo()
 
     def __sync_undoredo(self):
-        if not gtksourceview_avail:
-            return
-        self.__actiongroup.get_action('Redo').set_sensitive(self.input.can_redo())
-        self.__actiongroup.get_action('Undo').set_sensitive(self.input.can_undo())
+        self.__actiongroup.get_action('Redo').set_sensitive(gtksourceview_avail and self.input.can_redo())
+        self.__actiongroup.get_action('Undo').set_sensitive(gtksourceview_avail and self.input.can_undo())
 
     def __create_ui(self):
         self.__actiongroup = ag = gtk.ActionGroup('WindowActions')
@@ -167,13 +165,10 @@ class HotEditorWindow(gtk.Window):
             ('FileMenu', None, '_File'),
             ('Revert', None, '_Revert', None, 'Revert to saved text', self.__revert_cb),
             ('Close', gtk.STOCK_CLOSE, '_Close', '<control>Return', 'Save and close', self.__close_cb),
-            ('EditMenu', None, '_Edit')]
-
-        if gtksourceview_avail:
-            actions.extend([
+            ('EditMenu', None, '_Edit'),
             ('Undo', gtk.STOCK_UNDO, '_Undo', '<control>z', 'Undo previous action', self.__undo_cb),
             ('Redo', gtk.STOCK_REDO, '_Redo', '<control><shift>Z', 'Redo action', self.__redo_cb),
-            ])
+            ]
         ag.add_actions(actions)
         self._ui = gtk.UIManager()
         self._ui.insert_action_group(ag, 0)
