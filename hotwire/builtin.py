@@ -176,6 +176,7 @@ import hotwire.builtins.fsearch
 import hotwire.builtins.help
 import hotwire.builtins.history
 import hotwire.builtins.ls
+import hotwire.builtins.mkdir
 import hotwire.builtins.mv
 import hotwire.builtins.open
 import hotwire.builtins.prop
