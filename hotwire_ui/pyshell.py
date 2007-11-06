@@ -58,8 +58,8 @@ import os,sys,re
 import gtk, gobject
 
 outln('''
-    def __init__(self, locals={}, savepath=None):
-        super(CommandShell, self).__init__(content=self.DEFAULT_CONTENT, filename=savepath)
+    def __init__(self, locals={}, savepath=None, content=None):
+        super(CommandShell, self).__init__(content=(content or self.DEFAULT_CONTENT), filename=savepath)
         self._locals = locals
         self.__ui_string = """
 <ui>

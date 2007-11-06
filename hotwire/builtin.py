@@ -181,6 +181,7 @@ import hotwire.builtins.mv
 import hotwire.builtins.open
 import hotwire.builtins.prop
 import hotwire.builtins.proc
+import hotwire.builtins.py
 import hotwire.builtins.rm
 import hotwire.builtins.sechash
 import hotwire.builtins.sh

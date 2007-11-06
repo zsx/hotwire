@@ -73,11 +73,17 @@ class HotwireClientContext(hotwire.command.HotwireContext):
     def open_term(self, cwd, pipeline, arg):
         gobject.idle_add(self.__idle_open_term, cwd, pipeline, arg)
 
+    def open_pyshell(self):
+        gobject.idle_add(self.__idle_open_pyshell)
+
     def __idle_open_term(self, cwd, pipeline, arg):
         title = str(pipeline)
         term = Terminal.getInstance().get_terminal_widget_cmd(cwd, arg, title)
         self.__hotwire.append_tab(term, title)
         
+    def __idle_open_pyshell(self):
+        self.__hotwire.open_pyshell()
+    
     def get_ui(self):
         return self.__hotwire.get_global_ui()
 
@@ -228,6 +234,20 @@ class Hotwire(gtk.VBox):
 
     def get_ui(self):
         return self.__outputs.get_ui()
+
+    def open_pyshell(self):
+        PYCMD_CONTENT = '''## Python Command
+import os,sys,re
+import gtk, gobject
+
+# input type: %s
+for obj in curshell.get_current_output():
+  ''' % (self.get_current_output_type(),)
+        shell = hotwire_ui.pyshell.CommandShell({'curshell': self},
+                                                content=PYCMD_CONTENT)
+        shell.set_icon_name('hotwire')        
+        shell.set_title('Hotwire Python Command')
+        shell.show_all()  
 
     def append_tab(self, widget, title):
         self.emit("new-tab-widget", widget, title)
@@ -827,8 +847,9 @@ class HotWindow(gtk.Window):
             self.__pyshell.destroy()
         self.__pyshell = hotwire_ui.pyshell.CommandShell({'curshell': lambda: locate_current_shell(self)},
                                                          savepath=os.path.join(Filesystem.getInstance().get_conf_dir(), 'pypad.py'))
+        self.__pyshell.set_icon_name('hotwire')        
         self.__pyshell.set_title('Hotwire PyShell')
-        self.__pyshell.show_all()
+        self.__pyshell.show_all()      
 
     def __on_buttonpress(self, s2, e):
         widget = self.__notebook.get_nth_page(self.__notebook.get_current_page())
