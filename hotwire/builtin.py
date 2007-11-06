@@ -185,3 +185,4 @@ import hotwire.builtins.rm
 import hotwire.builtins.sechash
 import hotwire.builtins.sh
 import hotwire.builtins.term
+import hotwire.builtins.write
