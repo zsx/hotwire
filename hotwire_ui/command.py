@@ -309,6 +309,12 @@ class CommandExecutionControl(gtk.VBox):
     }        
     def __init__(self, context):
         super(CommandExecutionControl, self).__init__()
+
+        self.__prevcmd_count = 0
+        self.__prevcmd_executing_count = 0
+        self.__nextcmd_count = 0
+        self.__nextcmd_executing_count = 0
+
         self.__ui_string = """
 <ui>
   <menubar name='Menubar'>
@@ -370,6 +376,8 @@ class CommandExecutionControl(gtk.VBox):
             return button
         self.__header_label = create_arrow_button('PreviousCommand')
         self.__header.pack_start(self.__header_label, expand=False)
+        self.__header_exec_label = gtk.Label()
+        self.__header.pack_start(self.__header_exec_label, expand=False)
         self.pack_start(self.__header, expand=False)
         self.__cmd_notebook = gtk.Notebook()
         self.__cmd_notebook.connect('switch-page', self.__on_page_switch)
@@ -383,8 +391,10 @@ class CommandExecutionControl(gtk.VBox):
         self.__cmd_overview.connect('command-action', self.__handle_cmd_overview_action) 
         self.pack_start(self.__cmd_overview, expand=True)
         self.__footer = gtk.HBox()    
-        self.__footer_label = create_arrow_button('NextCommand')         
-        self.__footer.pack_start(self.__footer_label, expand=False) 
+        self.__footer_label = create_arrow_button('NextCommand')
+        self.__footer.pack_start(self.__footer_label, expand=False)
+        self.__footer_exec_label = gtk.Label()
+        self.__footer.pack_start(self.__footer_exec_label, expand=False)
         self.pack_start(self.__footer, expand=False)        
         self.__history_visible = False
         self.__cached_executing_count = 0
@@ -596,7 +606,7 @@ class CommandExecutionControl(gtk.VBox):
     @log_except(_logger)
     def __on_pipeline_state_change(self, pipeline):
         _logger.debug("handling state change to %s", pipeline.get_state())
-        self.__sync_cmd_sensitivity()
+        self.__sync_display()
             
     def __sync_cmd_sensitivity(self, curpage=None):
         actions = map(self.__action_group.get_action, ['Copy', 'Cancel', 'PreviousCommand', 'NextCommand', 'Undo', 'Input'])
@@ -619,33 +629,49 @@ class CommandExecutionControl(gtk.VBox):
             actions[1].set_sensitive(cancellable)
             actions[4].set_sensitive(undoable)
             actions[5].set_sensitive(pipeline.get_state() == 'executing' and cmd.odisp.supports_input() or False)
-        actions[2].set_sensitive(self.__get_prevcmd_count(curpage) > 0)
-        actions[3].set_sensitive(self.__get_nextcmd_count(curpage) > 0)
+        actions[2].set_sensitive(self.__prevcmd_count > 0)
+        actions[3].set_sensitive(self.__nextcmd_count > 0)
         
     def __sync_display(self, nth=None):
-        def set_label(container, label, n):
+        def set_label(container, label, n, label_exec, n_exec):
             if n <= 0 or self.__history_visible:
                 container.hide_all()
                 return
             container.show_all()
             label.set_label(' %d commands' % (n,))
-        set_label(self.__header, self.__header_label, self.__get_prevcmd_count(nth))
-        set_label(self.__footer, self.__footer_label, self.__get_nextcmd_count(nth))
+            if n_exec > 0:
+                label_exec.set_label(' %d executing' % (n_exec,))
+            else:
+                label_exec.set_label('')
+        self.__prevcmd_count = 0
+        self.__prevcmd_executing_count = 0
+        self.__nextcmd_count = 0
+        self.__nextcmd_executing_count = 0
+        for cmd in self.__iter_cmdslice(False, nth):
+            self.__prevcmd_count += 1
+            if cmd.odisp.get_pipeline().get_state() == 'executing':
+                self.__prevcmd_executing_count += 1
+        for cmd in self.__iter_cmdslice(True, nth):
+            self.__nextcmd_count += 1
+            if cmd.odisp.get_pipeline().get_state() == 'executing':
+                self.__nextcmd_executing_count += 1
+        set_label(self.__header, self.__header_label, self.__prevcmd_count, self.__header_exec_label, self.__prevcmd_executing_count)
+        set_label(self.__footer, self.__footer_label, self.__nextcmd_count, self.__footer_exec_label, self.__nextcmd_executing_count)
         self.__sync_cmd_sensitivity(curpage=nth)        
         
-    def __get_prevcmd_count(self, cur=None):
-        if cur is not None:
-            return cur
-        return self.__cmd_notebook.get_current_page()
-    
-    def __get_nextcmd_count(self, cur=None):
-        if cur is not None:
-            nth = cur
-        else:       
-            nth = self.__cmd_notebook.get_current_page()        
+    def __iter_cmdslice(self, is_end, nth_src=None):
+        if nth_src is not None:
+            nth = nth_src
+        else:
+            nth = self.__cmd_notebook.get_current_page()
         n_pages = self.__cmd_notebook.get_n_pages()
-        return (n_pages-1) - nth        
- 
+        if is_end:
+            r = xrange(nth, n_pages-1 )
+        else:
+            r = xrange(0, nth)
+        for i in r:
+            yield self.__cmd_notebook.get_nth_page(i)
+
     def __on_page_switch(self, notebook, page, nth):
         self.__sync_display(nth=nth)
  
