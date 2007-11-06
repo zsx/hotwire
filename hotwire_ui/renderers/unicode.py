@@ -366,12 +366,14 @@ class UnicodeRenderer(ObjectsRenderer):
         if isinstance(obj, MarkupText):
             tags = []
             prev_tagend = 0
+            olen = len(obj)
             for (tagname, start, end) in obj.markup:
                self._buf.insert(self._buf.get_end_iter(), obj[prev_tagend:start])
-               real_end = (end == -1) and len(obj) or end
+               real_end = (end == -1) and olen or end
                self._buf.insert_with_tags_by_name(self._buf.get_end_iter(), obj[start:real_end], tagname)
                prev_tagend = real_end
-            self._buf.insert(self._buf.get_end_iter(), obj[prev_tagend:])          
+            self._buf.insert(self._buf.get_end_iter(), obj[prev_tagend:])
+            self.__bytecount += olen
         else:
             self.__append_chunk(obj)
         self._buf.insert(self._buf.get_end_iter(), '\n')
