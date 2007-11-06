@@ -9,7 +9,8 @@ from hotwire.sysdep.fs import Filesystem
 class EditBuiltin(Builtin):
     """Launch the text editor."""
     def __init__(self):
-        super(EditBuiltin, self).__init__('edit',nostatus=True,
+        super(EditBuiltin, self).__init__('edit',
+                                          nostatus=True,
                                           parseargs='shglob',
                                           idempotent=True)
  
