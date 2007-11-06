@@ -155,7 +155,7 @@ class SearchArea(gtk.HBox):
 class InputArea(gtk.HBox):
     __gsignals__ = {
         "close" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, []),
-        "object-input" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (gobject.TYPE_PYOBJECT,)),  
+        "object-input" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (gobject.TYPE_PYOBJECT,gobject.TYPE_BOOLEAN)),  
     }
 
     def __init__(self, textview, **kwargs):
@@ -203,7 +203,7 @@ class InputArea(gtk.HBox):
         self.emit("close")
         
     def __do_send(self):
-        self.emit('object-input', self.__input.get_property('text'))
+        self.emit('object-input', self.__input.get_property('text'), self.__password_button.get_active())
         self.reset()
 
     def focus(self):
@@ -238,8 +238,9 @@ class UnicodeRenderer(ObjectsRenderer):
         self.__support_links = False
         self.__hovering_over_link = False
         
-    def __on_object_input(self, ia, o):
-        self.append_obj(o)
+    def __on_object_input(self, ia, o, pwmode):
+        if not pwmode:
+            self.append_obj(o)
 
     def __on_event_after(self, textview, e):
         if e.type != gtk.gdk.BUTTON_RELEASE:
