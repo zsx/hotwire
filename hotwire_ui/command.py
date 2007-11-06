@@ -310,11 +310,6 @@ class CommandExecutionControl(gtk.VBox):
     def __init__(self, context):
         super(CommandExecutionControl, self).__init__()
 
-        self.__prevcmd_count = 0
-        self.__prevcmd_executing_count = 0
-        self.__nextcmd_count = 0
-        self.__nextcmd_executing_count = 0
-
         self.__ui_string = """
 <ui>
   <menubar name='Menubar'>
@@ -396,9 +391,14 @@ class CommandExecutionControl(gtk.VBox):
         self.__footer_exec_label = gtk.Label()
         self.__footer.pack_start(self.__footer_exec_label, expand=False)
         self.pack_start(self.__footer, expand=False)        
+
         self.__history_visible = False
-        self.__cached_executing_count = 0
-        self.__cached_total_count = 0
+        self.__prevcmd_count = 0
+        self.__prevcmd_executing_count = 0
+        self.__nextcmd_count = 0
+        self.__nextcmd_executing_count = 0
+        self.__idle_command_gc_id = 0
+
         self.__sync_visible()
         self.__sync_cmd_sensitivity()
         
@@ -434,13 +434,14 @@ class CommandExecutionControl(gtk.VBox):
         pgnum = self.__cmd_notebook.append_page(cmd)
         self.__cmd_notebook.set_current_page(pgnum)
         self.__cmd_overview.add_pipeline(pipeline, odisp)     
-        
-        # Garbage-collect old commands at this point        
-        self.__command_gc()
                 
         self.__sync_visible()                
         self.__sync_display(pgnum)
-        
+                
+        # Garbage-collect old commands at this point        
+        gobject.idle_add(self.__command_gc)
+
+    @log_except(_logger)
     def __command_gc(self):
         curtime = time.time()
         for cmd in self.__iter_cmds():
