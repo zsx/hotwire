@@ -85,7 +85,7 @@ class ObjectsDisplay(gtk.VBox):
             self.__inputarea.show_all()
             self.__inputarea.focus()
 
-    def __on_object_input(self, ia, obj):
+    def __on_object_input(self, ia, obj, *args):
         _logger.debug("got interactive object input: %s", obj)
         self.emit('object-input', obj)
 

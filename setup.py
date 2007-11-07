@@ -60,7 +60,8 @@ if 'py2exe' in sys.argv:
                          }
 else:
     kwargs['scripts'] = ['ui/hotwire', 'ui/hotwire-editor']
-    kwargs['data_files'] = [('share/applications', ['hotwire.desktop']), ('share/icons/hicolor/24x24/apps', ['hotwire.png'])]
+    kwargs['data_files'] = [('share/applications', ['hotwire.desktop']), ('share/icons/hicolor/24x24/apps', ['images/hotwire.png']),
+                            ('share/hotwire/images', ['images/throbber.gif', 'images/throbber-done.gif'])]
 
 setup(name='hotwire',
       version=__version__,

@@ -2,8 +2,10 @@ import os, sys, logging, time
 
 import gtk, gobject
 
+from hotwire.singletonmixin import Singleton
 import hotwire_ui.widgets as hotwidgets
 from hotwire_ui.odisp import MultiObjectsDisplay
+from hotwire_ui.pixbufcache import PixbufCache
 from hotwire.command import CommandQueue
 from hotwire.async import QueueIterator
 from hotwire.logutil import log_except
@@ -30,24 +32,64 @@ class CommandStatusDisplay(gtk.HBox):
                 self.__progress.show()
             self.__progress.set_fraction(progress/100.0)
 
+def _new_subpixbuf(pb, x, y, w, h):
+    src_w = pb.get_width()
+    src_h = pb.get_height()
+    if x+w > src_w:
+        print "width lose"
+    if y+h > src_h:
+        print "height lose"
+    
+    pixels = pb.get_pixels()
+    pixels = pixels[(y * pb.get_rowstride() + x * pb.get_n_channels()):]
+    print len(pixels)         
+    subpixbuf = gtk.gdk.pixbuf_new_from_data(pixels, pb.get_colorspace(),
+                                             pb.get_has_alpha(),
+                                             pb.get_bits_per_sample(),
+                                             w, h,
+                                             pb.get_rowstride())
+    return subpixbuf    
+
+class ThrobberData(Singleton):
+    def __init__(self):
+        super(ThrobberData, self).__init__()
+        self.pixbuf = PixbufCache.getInstance().get(os.path.join('images', 'throbber.png'), size=None)
+        height = self.pixbuf.get_height()
+        width = self.pixbuf.get_width()
+        self.framecount = width / height
+        frameheight = height
+        framewidth = height
+        subpixbufs = []
+        for i in xrange(self.framecount):
+            #subpixbuf = _new_subpixbuf(self.pixbuf, i*framewidth, 0, framewidth, frameheight)
+            subpixbuf=None
+            subpixbufs.append(subpixbuf)
+        self.subpixbufs = subpixbufs
+
 class CommandExecutionHeader(gtk.VBox):
     __gsignals__ = {
         "action" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, []),                    
         "setvisible" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, []),
         "complete" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, ()),
     }
-    def __init__(self, context, pipeline, odisp, highlight=True, **args):
+    def __init__(self, context, pipeline, odisp, highlight=True, extra_status=True, **args):
         super(CommandExecutionHeader, self).__init__(**args)
         self.__pipeline = pipeline
+        self.__primary_complete = False
+        self.__extra_status = extra_status
         self.__visible = True
+        self.__prev_pipeline_state = None
         self.__cancelled = False
         self.__undone = False
         self.__exception = False
         self.__mouse_hovering = False
         
+        self.__throbber_pixbuf_done = PixbufCache.getInstance().get(os.path.join('images', 'throbber-done.gif'), size=None)
+        self.__throbber_pixbuf_ani = PixbufCache.getInstance().get(os.path.join('images', 'throbber.gif'), size=None, animation=True)
+        
         self.__tooltips = gtk.Tooltips()
 
-        self.__pipeline.connect("state-changed", self.__on_pipeline_state_change)
+        self.__pipeline.connect("state-changed", self.__on_pipeline_state_change)   
         self.__pipeline.connect("metadata", self.__on_pipeline_metadata)
         
         self.__titlebox_ebox = gtk.EventBox()
@@ -67,6 +109,8 @@ class CommandExecutionHeader(gtk.VBox):
         self.__title.set_alignment(0, 0.5)
         #self.__title.set_selectable(True)        
         self.__title.set_ellipsize(True)
+        self.__state_image = gtk.Image()
+        self.__titlebox.pack_start(self.__state_image, expand=False)
         self.__titlebox.pack_start(hotwidgets.Align(self.__title, padding_left=4), expand=True)
         self.__statusbox = gtk.HBox()
         self.pack_start(self.__statusbox, expand=False)
@@ -75,7 +119,7 @@ class CommandExecutionHeader(gtk.VBox):
         self.__statusbox.pack_start(hotwidgets.Align(self.__status_left, padding_left=4), expand=False)
         self.__action = hotwidgets.Link()
         self.__action.connect("clicked", self.__on_action)
-        self.__statusbox.pack_start(hotwidgets.Align(self.__action), expand=False)   
+        self.__statusbox.pack_start(hotwidgets.Align(self.__action), expand=False)          
         self.__statusbox.pack_start(hotwidgets.Align(self.__status_right), expand=False)        
         
         self.__undoable = self.__pipeline.get_undoable() and (not self.__pipeline.get_idempotent())
@@ -93,11 +137,13 @@ class CommandExecutionHeader(gtk.VBox):
             self.__cmd_status_show_cmd = False
 
         self.__objects = odisp
+        self.__objects.connect("primary-complete", self.__on_primary_complete)        
         self.__objects.connect("changed", lambda o: self.__update_titlebox())
 
         self.__exception_text = gtk.Label() 
         self.pack_start(self.__exception_text, expand=False)
-        self.__exception_text.hide()
+        if extra_status:
+            self.pack_start(gtk.HSeparator(), expand=False)
 
     def get_pipeline(self):
         return self.__pipeline
@@ -136,6 +182,10 @@ class CommandExecutionHeader(gtk.VBox):
             queue.put(obj)
         queue.put(None)
 
+    def __on_primary_complete(self, od):
+        self.__primary_complete = True
+        self.__on_pipeline_state_change(self.__pipeline)
+    
     @log_except(_logger)
     def __on_action(self, *args):
         _logger.debug("emitting action")
@@ -150,9 +200,7 @@ class CommandExecutionHeader(gtk.VBox):
         else:
             self.__title.set_markup('<tt>%s</tt>' % (gobject.markup_escape_text(self.__pipeline_str),))
             
-        if self.__objects:
-            self.__tooltips.set_tip(self.__titlebox_ebox, 'Output: ' + str(self.__objects.get_default_output_type()))
-            
+
         if self.__objects:
             ocount = self.__objects.get_ocount() or 0
             status_str = self.__objects.get_status_str()
@@ -160,14 +208,20 @@ class CommandExecutionHeader(gtk.VBox):
                 status_str = '%d objects' % (ocount,)
         else:
             status_str = None
+            
+        if self.__objects:
+            self.__tooltips.set_tip(self.__titlebox_ebox, (status_str or '') + ' Output type: ' + str(self.__objects.get_default_output_type()))      
 
         def set_status_action(status_text_left, action_text='', status_markup=False):
             if action_text:
                 status_text_left += " ("
-            if status_markup:
-                self.__status_left.set_markup(status_text_left)
-            else:                
-                self.__status_left.set_text(status_text_left)
+            if status_text_left:
+                if status_markup:
+                    self.__status_left.set_markup(status_text_left)
+                else:                
+                    self.__status_left.set_text(status_text_left)
+            else:
+                self.__status_left.set_text('')
             if action_text:
                 self.__action.set_text(action_text)
                 self.__action.show()
@@ -177,7 +231,11 @@ class CommandExecutionHeader(gtk.VBox):
             status_right_start = action_text and ')' or ''
             status_right_end = self.__pipeline_status_visible and '; ' or ''
             if status_str:
-                status_str_fmt = ', ' + status_str
+                if status_text_left:
+                    status_str_fmt = ', '
+                else:
+                    status_str_fmt = ''
+                status_str_fmt += status_str                
             else:
                 status_str_fmt = ''
             self.__status_right.set_text(status_right_start + status_str_fmt + status_right_end)
@@ -194,9 +252,9 @@ class CommandExecutionHeader(gtk.VBox):
         elif state == 'exception':
             set_status_action(_color('Exception', "red"), '', status_markup=True) 
         elif state == 'executing':
-            set_status_action('Executing', 'Cancel')
+            set_status_action('Executing', None)
         elif state == 'complete':
-            set_status_action('Complete', self.__pipeline.get_undoable() and 'Undo' or '')
+            set_status_action('Complete', None)
 
     def __on_pipeline_metadata(self, pipeline, cmdidx, cmd, key, flags, meta):
         _logger.debug("got pipeline metadata idx=%d key=%s flags=%s", cmdidx, key, flags)
@@ -210,12 +268,19 @@ class CommandExecutionHeader(gtk.VBox):
     def __on_pipeline_state_change(self, pipeline):
         state = self.__pipeline.get_state()        
         _logger.debug("state change to %s for pipeline %s", state, self.__pipeline_str)
-        self.__update_titlebox()         
-        if state == 'executing':
-            return
-        elif state in ('cancelled', 'complete', 'undone'):
-            pass
+        self.__update_titlebox()
+        if state != 'exception':
+            self.__exception_text.hide()                
+        if state == 'executing' or (state == 'complete' and not self.__primary_complete):
+            self.__state_image.set_from_animation(self.__throbber_pixbuf_ani)
+        elif state == 'complete':
+            self.__state_image.set_from_pixbuf(self.__throbber_pixbuf_done)            
+        elif state == 'cancelled':
+            self.__state_image.set_from_stock('gtk-dialog-error', gtk.ICON_SIZE_MENU)
+        elif state == 'undone':
+            self.__state_image.set_from_stock('gtk-dialog-warning', gtk.ICON_SIZE_MENU)
         elif state == 'exception':
+            self.__state_image.set_from_stock('gtk-dialog-error', gtk.ICON_SIZE_MENU)            
             self.__exception_text.show()
             excinfo = self.__pipeline.get_exception_info()
             self.__exception_text.set_text("Exception %s: %s" % (excinfo[0], excinfo[1]))
@@ -251,7 +316,7 @@ class CommandExecutionDisplay(gtk.VBox):
     def __init__(self, context, pipeline, odisp):
         super(CommandExecutionDisplay, self).__init__()
         self.odisp = odisp
-        self.cmd_header = CommandExecutionHeader(context, pipeline, odisp, highlight=False)
+        self.cmd_header = CommandExecutionHeader(context, pipeline, odisp, highlight=False, extra_status=False)
         self.pack_start(self.cmd_header, expand=False)
         self.pack_start(odisp, expand=True)
         
