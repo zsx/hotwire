@@ -1,7 +1,7 @@
 # -*- tab-width: 4 -*-
 import os,signal,logging
 
-from hotwire.sysdep.proc import Process
+from hotwire.sysdep.proc import Process, BaseProcessManager
 
 _logger = logging.getLogger("hotwire.proc.Unix")
 
@@ -9,7 +9,7 @@ class UnixProcess(Process):
     def kill(self):
         UnixProcessManager._kill_pid(self.pid)
 
-class UnixProcessManager(object):
+class UnixProcessManager(BaseProcessManager):
     
     @staticmethod
     def signal_pid_recurse(pid, signum):

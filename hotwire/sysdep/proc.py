@@ -15,6 +15,13 @@ class BaseProcessManager(object):
 
     def kill_pid(self, pid):
         raise NotImplementedError()
+    
+    def get_self(self):
+        pid = os.getpid()
+        for proc in self.get_processes():
+            if proc.pid == pid:
+                return proc
+        return None    
 
 class Process(object):
     def __init__(self, pid, cmd, owner_name):
