@@ -1,4 +1,4 @@
-import os, sys, threading, Queue, logging, string, re, time, shlex
+import os, sys, threading, Queue, logging, string, re, time, shlex, traceback
 import posixpath
 from StringIO import StringIO
 
@@ -468,7 +468,7 @@ class Pipeline(gobject.GObject):
             _logger.exception("Nested exception while cancelling")
             pass
         self.emit("exception", e, cmd)
-        self.__exception_info = (e.__class__, str(e), cmd)
+        self.__exception_info = (e.__class__, str(e), cmd, traceback.format_exc())
         self.__set_state('exception')
         
     def get_exception_info(self):
