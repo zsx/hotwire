@@ -358,11 +358,17 @@ class Pipeline(gobject.GObject):
     
     def __execute_internal(self, force_sync, opt_formats=[]):
         _logger.debug("Executing %s", self)
-        self.__set_state('executing')        
-        for cmd in self.__components:
-            cmd.connect("complete", self.__on_cmd_complete)            
-            cmd.connect("exception", self.__on_cmd_exception)
-            cmd.connect("metadata", self.__on_cmd_metadata)
+        self.__set_state('executing')
+        meta_idx = 0          
+        for i,cmd in enumerate(self.__components):
+            cmd.connect("complete", self.__on_cmd_complete)
+            cmd.connect("exception", self.__on_cmd_exception)            
+            # Here we record which commands include metadata, and
+            # pass in the index in the pipeline for them.
+            if cmd.builtin.get_hasmeta():
+                _logger.debug("connecting to metadata on cmd %s, idx=%s", cmd, meta_idx)
+                cmd.connect("metadata", self.__on_cmd_metadata, meta_idx)
+                meta_idx += 1                
         prev_opt_formats = []
         for cmd in self.__components[:-1]:
             if cmd.input:
@@ -426,25 +432,19 @@ class Pipeline(gobject.GObject):
             if cmd.builtin.get_hasstatus():
                 yield cmd.builtin.name
 
-    def __on_cmd_metadata(self, cmd, key, flags, meta):
+    def __on_cmd_metadata(self, cmd, key, flags, meta, cmdidx):
         self.__cmd_metadata_lock.acquire()
         if self.__idle_emit_cmd_metadata_id == 0:
             self.__idle_emit_cmd_metadata_id = gobject.timeout_add(200, self.__idle_emit_cmd_metadata, cmd, priority=gobject.PRIORITY_LOW)
-        self.__cmd_metadata[cmd] = (key, flags, meta)
+        self.__cmd_metadata[cmd] = (cmdidx, key, flags, meta)
         self.__cmd_metadata_lock.release()
 
     def __idle_emit_cmd_metadata(self, cmd):
         _logger.debug("command metadata: %s", cmd)        
         self.__cmd_metadata_lock.acquire()
         self.__idle_emit_cmd_metadata_id = 0
-        key, flags, meta = self.__cmd_metadata[cmd]
+        cmd_idx, key, flags, meta = self.__cmd_metadata[cmd]
         self.__cmd_metadata_lock.release()
-        cmd_idx = 0 
-        for i,c in enumerate(self.__components):
-            if cmd == c:
-                break
-            if c.builtin.get_hasmeta():
-                cmd_idx += 1
         self.emit("metadata", cmd_idx, cmd, key, flags, meta)
 
     def __on_cmd_complete(self, cmd):
