@@ -13,14 +13,14 @@ class PsBuiltin(Builtin):
                                         threaded=True)
 
     def execute(self, context, options=[]):
+        myself_only = '-u' in options        
         pm = ProcessManager.getInstance()
-        selfproc = pm.get_self()
-        selfname = selfproc.owner_name
-        myself_only = '-u' in options
         if not myself_only:
             for proc in pm.get_processes():
                 yield proc
         else:
+            selfproc = pm.get_self()
+            selfname = selfproc.owner_name            
             for proc in pm.get_processes():
                 if proc.owner_name != selfname:
                     continue
