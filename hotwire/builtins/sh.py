@@ -25,15 +25,14 @@ class ShBuiltin(Builtin):
                                         hasstatus=True,
                                         threaded=True)
 
-    def __on_input(self, input, stdin):
+    def __on_input(self, input, stream):
         try:
             for val in input.iter_avail():
                 if val is None:
-                    stdin.close()
+                    stream.close()
                     return
-                stdin.write(str(val))
-                stdin.write('\n')
-            stdin.flush()
+                stream.write(str(val))
+                stream.write('\n')
         except IOError, e:
             pass
             
@@ -87,6 +86,7 @@ class ShBuiltin(Builtin):
             if 'master_fd' in context.attribs:
                 _logger.debug("closing pty master")
                 os.close(context.attribs['master_fd'])
+                del context.attribs['master_fd']
         except:
             _logger.debug("failed to disconnect from stdin", exc_info=True)               
             pass        
@@ -161,8 +161,10 @@ class ShBuiltin(Builtin):
         context.attribs['pid'] = subproc.pid
         if context.cancelled:
             self.cancel(context)
+        if using_pty_in or using_pty_out:
+            os.close(slave_fd)
         context.status_notify('pid %d' % (context.attribs['pid'],))
-        if context.input:        
+        if context.input:
             if using_pty_in:
                 stdin_stream = os.fdopen(master_fd, 'w')
             else:
@@ -174,7 +176,6 @@ class ShBuiltin(Builtin):
             else:
                 MiniThreadPool.getInstance().run(self.__inputwriter, args=(context.input, stdin_stream))
         if using_pty_out:
-            os.close(slave_fd)
             stdout_read = None
             stdout_fd = master_fd
         else:
@@ -183,7 +184,7 @@ class ShBuiltin(Builtin):
         if out_opt_format is None:
             for line in ShBuiltin.__unbuffered_readlines(stdout_read):
                 yield line[:-1]
-        elif out_opt_format == 'text/chunked':                
+        elif out_opt_format == 'text/chunked':     
             try:
                 for buf in ShBuiltin.__unbuffered_read_pipe(stream=stdout_read, fd=stdout_fd):
                     yield buf
