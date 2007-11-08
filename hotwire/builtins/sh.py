@@ -159,8 +159,6 @@ class ShBuiltin(Builtin):
                 os.close(slave_fd)
             raise ValueError('Failed to execute %s' % (arg,))
         context.attribs['pid'] = subproc.pid
-        if context.cancelled:
-            self.cancel(context)
         if using_pty_in or using_pty_out:
             os.close(slave_fd)
         context.status_notify('pid %d' % (context.attribs['pid'],))
