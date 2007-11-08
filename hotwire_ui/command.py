@@ -224,8 +224,17 @@ class CommandExecutionHeader(gtk.VBox):
 
     def __on_pipeline_metadata(self, pipeline, cmdidx, cmd, key, flags, meta):
         _logger.debug("got pipeline metadata idx=%d key=%s flags=%s", cmdidx, key, flags)
-        if key != 'hotwire.status':
+        if key == 'hotwire.fileop.basedir':
+            self.__handle_basedir(cmdidx, meta)
             return
+        if key == 'hotwire.status':
+            self.__handle_status(cmdidx, meta)
+            return
+        
+    def __handle_basedir(self, cmdidx, meta):
+        _logger.debug("got basedir %s", meta)
+        
+    def __handle_status(self, cmdidx, meta):
         self.__pipeline_status_visible = True
         statusdisp = self.__cmd_statuses.get_children()[cmdidx]
         statusdisp.set_status(*meta)

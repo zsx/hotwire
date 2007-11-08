@@ -17,7 +17,7 @@ class RmBuiltin(FileOpBuiltin):
                                         threaded=True)
 
     def execute(self, context, args):
-        sources = map(lambda arg: FilePath(arg, context.hotwire.get_cwd()), args) 
+        sources = map(lambda arg: FilePath(arg, context.cwd), args) 
         sources_total = len(sources)
         undo_targets = []
         self._status_notify(context, sources_total, 0)
@@ -27,6 +27,7 @@ class RmBuiltin(FileOpBuiltin):
                 fs.move_to_trash(arg)
                 undo_targets.append(arg)
                 self._status_notify(context,sources_total,i+1)
+                self._note_modified_paths(context, sources)
         finally:
             context.push_undo(lambda: fs.undo_trashed(undo_targets))
         return []

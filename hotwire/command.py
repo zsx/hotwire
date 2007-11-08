@@ -435,15 +435,15 @@ class Pipeline(gobject.GObject):
     def __on_cmd_metadata(self, cmd, key, flags, meta, cmdidx):
         self.__cmd_metadata_lock.acquire()
         if self.__idle_emit_cmd_metadata_id == 0:
-            self.__idle_emit_cmd_metadata_id = gobject.timeout_add(200, self.__idle_emit_cmd_metadata, cmd, priority=gobject.PRIORITY_LOW)
-        self.__cmd_metadata[cmd] = (cmdidx, key, flags, meta)
+            self.__idle_emit_cmd_metadata_id = gobject.timeout_add(200, self.__idle_emit_cmd_metadata, cmd, key, priority=gobject.PRIORITY_LOW)
+        self.__cmd_metadata[(cmd, key)] = (cmdidx, flags, meta)
         self.__cmd_metadata_lock.release()
 
-    def __idle_emit_cmd_metadata(self, cmd):
-        _logger.debug("command metadata: %s", cmd)        
+    def __idle_emit_cmd_metadata(self, cmd, key):
+        _logger.debug("command metadata key=%s cmd=%s", key, cmd)        
         self.__cmd_metadata_lock.acquire()
         self.__idle_emit_cmd_metadata_id = 0
-        cmd_idx, key, flags, meta = self.__cmd_metadata[cmd]
+        cmd_idx, flags, meta = self.__cmd_metadata[(cmd, key)]
         self.__cmd_metadata_lock.release()
         self.emit("metadata", cmd_idx, cmd, key, flags, meta)
 
