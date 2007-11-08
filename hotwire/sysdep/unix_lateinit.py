@@ -2,7 +2,8 @@ import os,sys
 
 from hotwire.cmdalias import AliasRegistry
 
-default_aliases = {'vi': 'term vi',
+default_aliases = {'sudo': 'term sudo',
+                   'vi': 'term vi',
                    'vim': 'term vim',
                    'ssh': 'term ssh',
                    'man': 'term man',
@@ -19,10 +20,3 @@ default_aliases = {'vi': 'term vi',
 aliases = AliasRegistry.getInstance()
 for name,value in default_aliases.iteritems():
     aliases.insert(name, value)
-
-# This is a hack until we properly support command input in some way.
-if os.path.exists('/usr/bin/gksudo'):
-    aliases.insert('sudo', 'sh /usr/bin/gksudo --')
-
-
-    
