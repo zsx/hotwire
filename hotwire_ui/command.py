@@ -32,40 +32,6 @@ class CommandStatusDisplay(gtk.HBox):
                 self.__progress.show()
             self.__progress.set_fraction(progress/100.0)
 
-def _new_subpixbuf(pb, x, y, w, h):
-    src_w = pb.get_width()
-    src_h = pb.get_height()
-    if x+w > src_w:
-        print "width lose"
-    if y+h > src_h:
-        print "height lose"
-    
-    pixels = pb.get_pixels()
-    pixels = pixels[(y * pb.get_rowstride() + x * pb.get_n_channels()):]
-    print len(pixels)         
-    subpixbuf = gtk.gdk.pixbuf_new_from_data(pixels, pb.get_colorspace(),
-                                             pb.get_has_alpha(),
-                                             pb.get_bits_per_sample(),
-                                             w, h,
-                                             pb.get_rowstride())
-    return subpixbuf    
-
-class ThrobberData(Singleton):
-    def __init__(self):
-        super(ThrobberData, self).__init__()
-        self.pixbuf = PixbufCache.getInstance().get(os.path.join('images', 'throbber.png'), size=None)
-        height = self.pixbuf.get_height()
-        width = self.pixbuf.get_width()
-        self.framecount = width / height
-        frameheight = height
-        framewidth = height
-        subpixbufs = []
-        for i in xrange(self.framecount):
-            #subpixbuf = _new_subpixbuf(self.pixbuf, i*framewidth, 0, framewidth, frameheight)
-            subpixbuf=None
-            subpixbufs.append(subpixbuf)
-        self.subpixbufs = subpixbufs
-
 class CommandExecutionHeader(gtk.VBox):
     __gsignals__ = {
         "action" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, []),                    
