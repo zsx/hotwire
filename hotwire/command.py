@@ -435,17 +435,19 @@ class Pipeline(gobject.GObject):
     def __on_cmd_metadata(self, cmd, key, flags, meta, cmdidx):
         self.__cmd_metadata_lock.acquire()
         if self.__idle_emit_cmd_metadata_id == 0:
-            self.__idle_emit_cmd_metadata_id = gobject.timeout_add(200, self.__idle_emit_cmd_metadata, cmd, key, priority=gobject.PRIORITY_LOW)
-        self.__cmd_metadata[(cmd, key)] = (cmdidx, flags, meta)
+            self.__idle_emit_cmd_metadata_id = gobject.timeout_add(200, self.__idle_emit_cmd_metadata, priority=gobject.PRIORITY_LOW)
+        self.__cmd_metadata[(cmd, cmdidx, key)] = (flags, meta)
         self.__cmd_metadata_lock.release()
 
-    def __idle_emit_cmd_metadata(self, cmd, key):
-        _logger.debug("command metadata key=%s cmd=%s", key, cmd)        
+    def __idle_emit_cmd_metadata(self):
+        _logger.debug("signalling command metadata")      
         self.__cmd_metadata_lock.acquire()
         self.__idle_emit_cmd_metadata_id = 0
-        cmd_idx, flags, meta = self.__cmd_metadata[(cmd, key)]
+        meta_ref = self.__cmd_metadata
+        self.__cmd_metadata = {}
         self.__cmd_metadata_lock.release()
-        self.emit("metadata", cmd_idx, cmd, key, flags, meta)
+        for (cmd,cmdidx,key),(flags,meta) in meta_ref.iteritems():
+            self.emit("metadata", cmdidx, cmd, key, flags, meta)
 
     def __on_cmd_complete(self, cmd):
         _logger.debug("command complete: %s", cmd)
