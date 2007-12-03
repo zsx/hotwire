@@ -25,7 +25,7 @@ def is_windows():
     return platform.system() in ('Windows', 'Microsoft')
 
 def is_unix():
-    return platform.system() in ('Linux',)
+    return platform.system() in ('Linux','FreeBSD',)
 
 def is_linux():
     return platform.system() == 'Linux'
