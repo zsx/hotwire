@@ -1,5 +1,9 @@
 include hotwire.desktop
 include COPYING
 include hotwire.spec
-include hotwire.png
+include images/*.png
+include images/*.gif
 include ui/test-hotwire
+include DistUtilsExtra/*
+include DistUtilsExtra/command/*
+include po/POTFILES.in

@@ -1,3 +1,21 @@
+# This file is part of the Hotwire Shell user interface.
+#   
+# Copyright (C) 2007 Colin Walters <walters@verbum.org>
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
 import StringIO
 
 import gobject
@@ -15,21 +33,22 @@ class HelpItemRenderer(UnicodeRenderer):
         
     def __help_all(self):
         self._buf.insert_markup('Hotwire <i>%s</i>\n\n' % (__version__,))
-        self._buf.insert_markup('New to hotwire? ')
-        self.append_link('View Tutorial', 'http://hotwire-shell.org/trac/wiki/GettingStarted')
+        self._buf.insert_markup(_('New to Hotwire?'))
+        self._buf.insert_markup(' ')
+        self.append_link(_('View Tutorial'), 'http://hotwire-shell.org/trac/wiki/GettingStarted')
         self._buf.insert_markup('\n\n')
-        self._buf.insert_markup('<larger>Important Keybindings:</larger>\n')
-        self._buf.insert_markup('  <b>TAB</b> and <b>Shift-TAB</b> - Choose completions\n')
-        self._buf.insert_markup('  <b>Up/Down</b> - Search history\n')
-        self._buf.insert_markup('  <b>Ctrl-1</b>, <b>Ctrl-2</b>, ... or <b>Ctrl-PageUp</b> and <b>Ctrl-PageDown</b> - Switch tabs\n')
+        self._buf.insert_markup('<larger>%s:</larger>\n' % (_('Important Keybindings'),))
+        self._buf.insert_markup('  <b>TAB</b> %s <b>Shift-TAB</b> - %s\n' % (_('and'), _('Choose completions'))) 
+        self._buf.insert_markup('  <b>Up/Down</b> - %s\n' % (_('Search history'),))
+        self._buf.insert_markup('  <b>Ctrl-1</b>, <b>Ctrl-2</b>, ... %s <b>Ctrl-PageUp</b> %s <b>Ctrl-PageDown</b> - %s\n' % (_('or'), _('and'), _('Switch tabs'))) 
         self._buf.insert_markup('\n')
-        self._buf.insert_markup('  See the menu for other keybindings.\n')
+        self._buf.insert_markup('  %s\n' % (_('See the menu for other keybindings.'),))
         self._buf.insert_markup('\n')
-        self._buf.insert_markup('  The entry accepts Emacs/readline style input; for example:\n')
-        self._buf.insert_markup('  <b>Ctrl-a</b> and <b>Ctrl-e</b> - Beginning/end of line\n')
+        self._buf.insert_markup('  %s\n' % (_('The entry accepts Emacs/readline style input; for example:'),))
+        self._buf.insert_markup('  <b>Ctrl-a</b> %s <b>Ctrl-e</b> - %s\n' % (_('and'), _('Beginning/end of line')))
         self._buf.insert_markup('\n')
 
-        self._buf.insert_markup('<larger>Builtin Commands:</larger>\n')
+        self._buf.insert_markup('<larger>%s:</larger>\n' % (_('Builtin Commands'),))
         builtins = list(BuiltinRegistry.getInstance())
         builtins.sort(lambda a,b: cmp(a.name, b.name))
         for builtin in builtins:
@@ -38,10 +57,12 @@ class HelpItemRenderer(UnicodeRenderer):
             self.__append_builtin_doc(builtin)
 
     def __append_builtin_base_help(self, builtin):
-        self._buf.insert_markup('  <b>%s</b> - in%s: <i>%s</i> out: <i>%s</i>\n' \
+        self._buf.insert_markup('  <b>%s</b> - %s%s: <i>%s</i> %s: <i>%s</i>\n' \
                                 % (builtin.name,
+                                   _('in'),
                                    builtin.get_input_optional() and ' (opt)' or '',
                                    gobject.markup_escape_text(str(builtin.get_input_type())),
+                                   _('out'),
                                    gobject.markup_escape_text(str(builtin.get_output_type()))))
 
     def __append_builtin_doc(self, builtin):
@@ -54,7 +75,7 @@ class HelpItemRenderer(UnicodeRenderer):
         if not builtin.options:
             return
         argstr = '  '.join(map(lambda x: ','.join(x), builtin.options))
-        self._buf.insert_markup('    Options: ')
+        self._buf.insert_markup('    %s: ' % (_('Options'),))
         self._buf.insert_markup('<tt>' + gobject.markup_escape_text(argstr) + '</tt>')
         self._buf.insert_markup('\n')                
         

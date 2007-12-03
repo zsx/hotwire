@@ -1,3 +1,24 @@
+# This file is part of the Hotwire Shell project API.
+
+# Copyright (C) 2007 Colin Walters <walters@verbum.org>
+
+# Permission is hereby granted, free of charge, to any person obtaining a copy 
+# of this software and associated documentation files (the "Software"), to deal 
+# in the Software without restriction, including without limitation the rights 
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies 
+# of the Software, and to permit persons to whom the Software is furnished to do so, 
+# subject to the following conditions:
+
+# The above copyright notice and this permission notice shall be included in all 
+# copies or substantial portions of the Software.
+
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+# INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A 
+# PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE X CONSORTIUM BE 
+# LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, 
+# TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR 
+# THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
 import os,sys,logging,time,datetime
 import sqlite3
 
@@ -27,6 +48,8 @@ class History(Singleton):
         cursor.execute('''CREATE TABLE IF NOT EXISTS Autoterm (dbid INTEGER PRIMARY KEY AUTOINCREMENT, cmd TEXT UNIQUE, modtime DATETIME)''')
         cursor.execute('''CREATE TABLE IF NOT EXISTS Directories (dbid INTEGER PRIMARY KEY AUTOINCREMENT, path TEXT UNIQUE, count INTEGER, modtime DATETIME)''')  
         cursor.execute('''CREATE TABLE IF NOT EXISTS Tokens (dbid INTEGER PRIMARY KEY AUTOINCREMENT, token TEXT UNIQUE, count INTEGER, modtime DATETIME)''')
+        cursor.execute('''CREATE TABLE IF NOT EXISTS CmdInput (dbid INTEGER PRIMARY KEY AUTOINCREMENT, cmd TEXT, line TEXT, modtime DATETIME)''')
+        cursor.execute('''CREATE INDEX IF NOT EXISTS CmdInputIndex on CmdInput (cmd, line, modtime)''')        
         cursor.execute('''CREATE TABLE IF NOT EXISTS Meta (keyName TEXT UNIQUE, keyValue)''')
         self.__convert_from_persist('history', 'Commands', '(NULL, ?, 0, NULL)')
         self.__convert_from_persist('autoterm', 'Autoterm', '(NULL, ?, 0)')
@@ -64,7 +87,7 @@ class History(Singleton):
         cursor.execute('''INSERT INTO Commands VALUES (NULL, ?, ?, ?)''', vals)
         cursor.execute('''COMMIT''')
         
-    def __search_limit_query(self, tablename, column, orderval, searchterm, limit, countmin=0):
+    def __search_limit_query(self, tablename, column, orderval, searchterm, limit, countmin=0, filters=[]):
         queryclauses = []
         args = []        
         if searchterm:
@@ -72,6 +95,8 @@ class History(Singleton):
             args.append('%' + searchterm.replace('%', '%%') + '%')            
         if countmin > 0:
             queryclauses.append("count > %d " % (countmin,))
+        queryclauses.extend(map(lambda x: x[0], filters))
+        args.extend(map(lambda x: x[1], filters))
         if queryclauses:
             queryclause = ' WHERE ' + ' AND '.join(queryclauses)
         else:
@@ -151,17 +176,31 @@ class History(Singleton):
 
             for arg in cmd[1:]:
                 self.append_token_usage(arg.text)
+
+    def search_command_input(self, cmd, searchterm, limit=20):
+        cursor = self.__conn.cursor()
+        (sql, args) = self.__search_limit_query('CmdInput', 'line', 'modtime', searchterm, limit,
+                                                filters=[('cmd = ?', cmd)])         
+        _logger.debug("execute using args %s: %s", args, sql)
+        for v in cursor.execute(sql, args):
+            yield v[2]
+        
+    def record_command_input(self, cmd, input):
+        cursor = self.__conn.cursor()
+        cursor.execute('''BEGIN TRANSACTION''')
+        vals = (cmd, input, datetime.datetime.now())
+        _logger.debug("doing insert of %s", vals)
+        cursor.execute('''INSERT INTO CmdInput VALUES (NULL, ?, ?, ?)''', vals)
+        cursor.execute('''COMMIT''')
     
 _prefinstance = None
 class Preferences(gobject.GObject):
-    __gsignals__ = {
-        "tree-changed" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (gobject.TYPE_PYOBJECT,)),
-    }    
     def __init__(self):
         super(Preferences, self).__init__()
         path = _get_state_path('prefs.sqlite')
         _logger.debug("opening connection to prefs db: %s", path)
         self.__conn = sqlite3.connect(path, isolation_level=None)
+        self.__monitors = []
         
         cursor = self.__conn.cursor()
         cursor.execute('''CREATE TABLE IF NOT EXISTS Prefs (dbid INTEGER PRIMARY KEY AUTOINCREMENT, keyName TEXT UNIQUE, keyValue, modtime DATETIME)''')
@@ -179,7 +218,19 @@ class Preferences(gobject.GObject):
         cursor.execute('''BEGIN TRANSACTION''')
         cursor.execute('''INSERT OR REPLACE INTO Prefs VALUES (NULL, ?, ?, ?)''', [key, value, datetime.datetime.now()])
         cursor.execute('''COMMIT''')
-        self.emit('tree-changed', root)
+        self.__notify(key, value)
+        
+    def __notify(self, key, value):
+        _logger.debug("doing notify for key %s new value: %s", key, value)
+        for prefix, handler, args in self.__monitors:
+            if key.startswith(prefix):
+                try:
+                    handler(self, key, value, *args)
+                except:
+                    _logger.error('Failed to invoke handler for preference %s', key, exc_info=True)
+    
+    def monitor_prefs(self, prefix, handler, *args):
+        self.__monitors.append((prefix, handler, args))
     
     @staticmethod
     def getInstance():

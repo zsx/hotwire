@@ -1,3 +1,21 @@
+# This file is part of the Hotwire Shell user interface.
+#   
+# Copyright (C) 2007 Colin Walters <walters@verbum.org>
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
 import os, stat, signal, datetime, logging
 from StringIO import StringIO
 
@@ -36,7 +54,7 @@ class FilePathRenderer(TreeObjectsRenderer):
                                                        self._render_icon)
         col = self._table.get_column(colidx-1)
         col.set_spacing(0)
-        colidx = self._table.insert_column_with_data_func(-1, 'Path',
+        colidx = self._table.insert_column_with_data_func(-1, _('Path'),
                                                           hotwidgets.CellRendererLink(underline=pango.UNDERLINE_NONE,
                                                                                       family='Monospace'),
                                                           self._render_objtext)
@@ -47,34 +65,34 @@ class FilePathRenderer(TreeObjectsRenderer):
     
     def _setup_view_columns(self):
         self._setup_icon_path_columns()
-        colidx = self._table.insert_column_with_data_func(-1, 'Size',
+        colidx = self._table.insert_column_with_data_func(-1, _('Size'),
                                                            hotwidgets.CellRendererText(family='Monospace'),
                                                            self._render_size)
         col = self._table.get_column(colidx-1)
         col.set_resizable(True)
-        colidx = self._table.insert_column_with_data_func(-1, 'Last Modified',
+        colidx = self._table.insert_column_with_data_func(-1, _('Last Modified'),
                                                            hotwidgets.CellRendererText(family='Monospace'),
                                                            self._render_last_modified)
         col = self._table.get_column(colidx-1)
         col.set_resizable(True)
         if self.__fs.supports_owner():
-            colidx = self._table.insert_column_with_data_func(-1, 'Owner',
+            colidx = self._table.insert_column_with_data_func(-1, _('Owner'),
                                                               hotwidgets.CellRendererText(family='Monospace'),
                                                               self._render_owner)
             col = self._table.get_column(colidx-1)
             col.set_resizable(True)      
         if self.__fs.supports_group():
-            colidx = self._table.insert_column_with_data_func(-1, 'Group',
+            colidx = self._table.insert_column_with_data_func(-1, _('Group'),
                                                               hotwidgets.CellRendererText(family='Monospace'),
                                                               self._render_group)
             col = self._table.get_column(colidx-1)
             col.set_resizable(True)
-        colidx = self._table.insert_column_with_data_func(-1, 'Permissions',
+        colidx = self._table.insert_column_with_data_func(-1, _('Permissions'),
                                                            hotwidgets.CellRendererText(family='Monospace'),
                                                            self._render_permissions)
         col = self._table.get_column(colidx-1)
         col.set_resizable(True)  
-        colidx = self._table.insert_column_with_data_func(-1, 'File Type',
+        colidx = self._table.insert_column_with_data_func(-1, _('File Type'),
                                                            hotwidgets.CellRendererText(family='Monospace'),
                                                            self._render_mime)
         col = self._table.get_column(colidx-1)
@@ -164,11 +182,11 @@ class FilePathRenderer(TreeObjectsRenderer):
         if obj.is_directory(follow_link=True):
             self.context.do_cd(obj.path)
         else:    
-            self.__fs.launch_open_file(obj.path)        
+            self.__fs.launch_open_file(obj.path, self.context.get_cwd())        
 
     def _get_menuitems(self, iter):
         fobj = self._file_for_iter(self._model, iter)
-        items = self.__fs.get_file_menuitems(fobj)
+        items = self.__fs.get_file_menuitems(fobj, context=self.context)
         items.append(gtk.SeparatorMenuItem())
         menuitem = gtk.MenuItem('Move to Trash')
         menuitem.connect("activate", self.__on_remove_activated, fobj.path)

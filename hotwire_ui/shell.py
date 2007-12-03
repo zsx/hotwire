@@ -1,4 +1,21 @@
-# -*- tab-width: 4 -*-
+# This file is part of the Hotwire Shell user interface.
+#   
+# Copyright (C) 2007 Colin Walters <walters@verbum.org>
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
 import os, sys, re, logging, string
 
 import gtk, gobject, pango
@@ -11,18 +28,15 @@ import hotwire_ui.widgets as hotwidgets
 import hotwire_ui.pyshell
 from hotwire.singletonmixin import Singleton
 from hotwire.sysdep.term import Terminal
+from hotwire.builtin import BuiltinRegistry
 from hotwire.gutil import *
 from hotwire.util import markup_for_match, quote_arg
-from hotwire.fs import path_unexpanduser
+from hotwire.fs import path_unexpanduser, unix_basename
 from hotwire.sysdep.fs import Filesystem
-try:
-    from hotwire.minion import SshMinion
-    minion_available = True
-except:
-    minion_available = False
-from hotwire.state import History
+from hotwire.state import History, Preferences
 from hotwire_ui.command import CommandExecutionDisplay,CommandExecutionControl
 from hotwire_ui.completion import PopupDisplay
+from hotwire_ui.prefs import PrefsWindow
 from hotwire.logutil import log_except
 
 _logger = logging.getLogger("hotwire.ui.Shell")
@@ -70,70 +84,26 @@ class HotwireClientContext(hotwire.command.HotwireContext):
     def remote_exit(self):
         self.__hotwire.remote_exit()
 
-    def open_term(self, cwd, pipeline, arg):
-        gobject.idle_add(self.__idle_open_term, cwd, pipeline, arg)
+    def open_term(self, cwd, pipeline, arg, window=False):
+        gobject.idle_add(self.__idle_open_term, cwd, pipeline, arg, window)
 
     def open_pyshell(self):
         gobject.idle_add(self.__idle_open_pyshell)
 
-    def __idle_open_term(self, cwd, pipeline, arg):
+    def __idle_open_term(self, cwd, pipeline, arg, do_window):
         title = str(pipeline)
+        window = locate_current_window(self.__hotwire)
         term = Terminal.getInstance().get_terminal_widget_cmd(cwd, arg, title)
-        self.__hotwire.append_tab(term, title)
+        if do_window:
+            window.new_win_widget(term, title)
+        else:
+            window.new_tab_widget(term, title)
         
     def __idle_open_pyshell(self):
         self.__hotwire.open_pyshell()
     
     def get_ui(self):
         return self.__hotwire.get_global_ui()
-
-class DownloadStatus(gtk.HBox):
-    def __init__(self, fname):
-        super(DownloadStatus, self).__init__()
-        self.fname = fname
-        bname = os.path.basename(fname)
-        self.__fname = gtk.Label(bname)
-        self.pack_start(self.__fname, expand=False)
-        self.__progress = gtk.ProgressBar()
-        self.pack_start(self.__progress, expand=True)
-        self.__status = gtk.Label()
-        self.pack_start(self.__status, expand=False)
-
-    def notify_progress(self, bytes_read, bytes_total, err):
-        if err:
-            self.__status.set_text(err)
-        elif bytes_total:
-            self.__progress.set_fraction((bytes_read*1.0)/bytes_total)
-            self.__status.set_text("%d/%d" % (bytes_read, bytes_total))
-        else:
-            self.__status.set_text("(unknown)")
-
-class Downloads(gtk.VBox):
-    def __init__(self, **args):
-        super(Downloads, self).__init__(**args)
-        self.__idle_removes = {}
-
-    def __idle_remove_completed(self, child):
-        self.remove(child)
-        del self.__idle_removes[child.fname]
-        if len(self.get_children()) == 0:
-            self.hide()
-
-    def notify_progress(self, fname, bytes_read, bytes_total, err):
-        ds = None
-        for child in self.get_children():
-            if child.fname == fname:
-                ds = child
-                break
-        if not ds:
-            ds = DownloadStatus(fname)
-            self.pack_start(ds, expand=True)
-        ds.notify_progress(bytes_read, bytes_total, err)
-        if bytes_read == bytes_total and not self.__idle_removes.has_key(fname):
-            self.__idle_removes[fname] = (gobject.timeout_add(7000,
-                                                              self.__idle_remove_completed,
-                                                              ds))
-        self.show_all()
 
 class Hotwire(gtk.VBox):
     __gsignals__ = {
@@ -156,9 +126,6 @@ class Hotwire(gtk.VBox):
 
         self.__cwd = self.context.get_cwd()
 
-        self.__minion = None
-        self.__minion_cwd = None
-
         self.drag_dest_set(gtk.DEST_DEFAULT_MOTION | gtk.DEST_DEFAULT_HIGHLIGHT | gtk.DEST_DEFAULT_DROP,
                            [('text/uri-list', 0, 0)],
                            gtk.gdk.ACTION_COPY) 
@@ -176,9 +143,6 @@ class Hotwire(gtk.VBox):
         self.__outputs.connect("new-window", self.__on_commands_new_window)        
         self.__topbox.pack_start(self.__outputs, expand=True)
 
-        self.__downloads = Downloads()
-        self.__topbox.pack_start(self.__downloads, expand=False)
-
         self.__bottom = gtk.VBox()
         self.__paned.pack_end(hotwidgets.Align(self.__bottom, xscale=1.0, yalign=1.0), expand=False)
 
@@ -188,6 +152,7 @@ class Hotwire(gtk.VBox):
         self.__msgline.unset_flags(gtk.CAN_FOCUS)
         self.__bottom.pack_start(hotwidgets.Align(self.__msgline), expand=False)
 
+        self.__emacs_bindings = None
         self.__active_input_completers = []
         self.__input = gtk.Entry()
         self.__input.connect("notify::scroll-offset", self.__on_scroll_offset)
@@ -223,6 +188,10 @@ class Hotwire(gtk.VBox):
         self.__sync_cwd()
         self.__update_status()
 
+        prefs = Preferences.getInstance()
+        prefs.monitor_prefs('ui.', self.__on_pref_changed)
+        self.__sync_prefs(prefs)
+
         if initcmd_widget:
             self.__unset_welcome()            
             self.__outputs.add_cmd_widget(initcmd_widget)
@@ -246,7 +215,7 @@ for obj in curshell.get_current_output():
         shell = hotwire_ui.pyshell.CommandShell({'curshell': self},
                                                 content=PYCMD_CONTENT)
         shell.set_icon_name('hotwire')        
-        shell.set_title('Hotwire Python Command')
+        shell.set_title(_('Hotwire Python Command'))
         shell.show_all()  
 
     def append_tab(self, widget, title):
@@ -258,19 +227,8 @@ for obj in curshell.get_current_output():
         else:
             self.__msgline.set_markup(msg)
 
-    def ssh(self, host):
-        if not minion_available:
-            raise NotImplementedError()
-        _logger.debug("entering ssh mode host: '%s'", host)
-        self.__minion = SshMinion(host)
-        self.__minion.set_lcwd(self.__cwd)
-        self.__minion.connect("cwd", self.__on_minion_cwd)
-        self.__minion.connect("download", self.__on_download_progress)
-
     def __sync_cwd(self):
         max_recentdir_len = 10
-        if self.__minion:
-            self.__minion.set_lcwd(self.__cwd)
         model = self.__recentdirs.get_model()
         if model.iter_n_children(None) == max_recentdir_len:
             model.remove(model.iter_nth_child(None, max_recentdir_len-1))
@@ -320,23 +278,6 @@ for obj in curshell.get_current_output():
         sel_data = selection.data
         self.do_copy_url_drag_to_dir(sel_data, self.context.get_cwd())
         
-    def __on_minion_cwd(self, minion, cwd):
-        _logger.debug("minion cwd: '%s'", cwd)
-        self.__minion_cwd = cwd
-        self.__update_status()
-
-    def __on_download_progress(self, minion, fname, bytes_read, bytes_total, err):
-        _logger.debug("download progress '%s' %s %s %s", fname, bytes_read, bytes_total, err)
-        self.__downloads.notify_progress(fname, bytes_read, bytes_total, err)
-
-    def remote_active(self):
-        return not not self.__minion
-
-    def remote_exit(self):
-        _logger.debug("remote exit")
-        self.__minion.close()
-        self.__minion = None
-
     def get_entry(self):
         return self.__input
     
@@ -347,7 +288,8 @@ for obj in curshell.get_current_output():
         self.emit("title", self.get_title())
 
     def get_title(self):
-        return '%s' % (os.path.basename(self.context.get_cwd()),)
+        cwd = self.context.get_cwd()
+        return unix_basename(cwd)
 
     def execute_internal_str(self, pipeline_str):
         tree = Pipeline.parse(pipeline_str, self.context)
@@ -398,7 +340,7 @@ for obj in curshell.get_current_output():
             try:
                 self.__do_parse(throw=True)
             except hotwire.command.PipelineParseException, e:
-                self.push_msg("Failed to parse pipeline: %s" % (e.args[0],))
+                self.push_msg(_("Failed to parse pipeline: %s") % (e.args[0],))
                 return
         _logger.debug("executing '%s'", self.__pipeline_tree)
         if not self.__pipeline_tree or len(self.__pipeline_tree) == 0:
@@ -423,7 +365,7 @@ for obj in curshell.get_current_output():
                 if resolution_match:
                     resolutions.append((cmd, verb.text, resolution_match.get_matchdata()[0]))
                 else:
-                    self.push_msg('No matches for <b>%s</b>' %(gobject.markup_escape_text(verb.text),), markup=True)
+                    self.push_msg(_('No matches for <b>%s</b>') % (gobject.markup_escape_text(verb.text),), markup=True)
                     return
         for cmd,verbtext,matchtext in resolutions:
             subtree = Pipeline.parse_tree(matchtext, context=self.context)[0]
@@ -432,9 +374,9 @@ for obj in curshell.get_current_output():
                 cmd.insert(i, arg)
 
         if resolutions:
-            resolutions = ['<tt>%s</tt> to <tt>%s</tt>' % (gobject.markup_escape_text(x[1]),
-                                                           gobject.markup_escape_text(x[2])) for x in resolutions]
-            self.push_msg('Resolved: ' + string.join(resolutions, ', '), markup=True)
+            resolutions = [_('<tt>%s</tt> to <tt>%s</tt>') % (gobject.markup_escape_text(x[1]),
+                                                              gobject.markup_escape_text(x[2])) for x in resolutions]
+            self.push_msg(_('Resolved: ') + string.join(resolutions, ', '), markup=True)
 
         try:
             pipeline = Pipeline.parse_from_tree(self.__pipeline_tree, context=self.context)
@@ -445,8 +387,6 @@ for obj in curshell.get_current_output():
         History.getInstance().record_pipeline(self.__cwd, self.__pipeline_tree)
 
         text = self.__input.get_property("text")
-        if self.__minion and pipeline.get_locality() != 'local':
-            pipeline = MinionPipeline.parse(self.__minion, text, context=self.context)
 
         self.execute_pipeline(pipeline)
 
@@ -602,8 +542,53 @@ for obj in curshell.get_current_output():
         elif e.keyval == gtk.gdk.keyval_from_name('Escape'):
             self.__completions.hide()
             return True
+        elif self.__emacs_bindings and self.__handle_emacs_binding(e):
+            return True     
         else:
             return False
+        
+    def __handle_emacs_binding(self, e):
+        if e.keyval == gtk.gdk.keyval_from_name('b') \
+             and e.state & gtk.gdk.CONTROL_MASK:
+            self.__input.emit('move-cursor', gtk.MOVEMENT_LOGICAL_POSITIONS, -1, 0)
+            return True
+        elif e.keyval == gtk.gdk.keyval_from_name('f') \
+             and e.state & gtk.gdk.CONTROL_MASK:
+            self.__input.emit('move-cursor', gtk.MOVEMENT_LOGICAL_POSITIONS, 1, 0)
+            return True        
+        elif e.keyval == gtk.gdk.keyval_from_name('f') \
+             and e.state & gtk.gdk.MOD1_MASK:
+            self.__input.emit('move-cursor', gtk.MOVEMENT_WORDS, 1, False)
+            return True
+        elif e.keyval == gtk.gdk.keyval_from_name('b') \
+             and e.state & gtk.gdk.MOD1_MASK:
+            self.__input.emit('move-cursor', gtk.MOVEMENT_WORDS, -1, False)
+            return True 
+        elif e.keyval == gtk.gdk.keyval_from_name('A') \
+             and e.state & gtk.gdk.CONTROL_MASK:
+            self.__input.emit('move-cursor', gtk.MOVEMENT_BUFFER_ENDS, -1, True)
+            return True               
+        elif e.keyval == gtk.gdk.keyval_from_name('a') \
+             and e.state & gtk.gdk.CONTROL_MASK:
+            self.__input.emit('move-cursor', gtk.MOVEMENT_BUFFER_ENDS, -1, False)
+            return True
+        elif e.keyval == gtk.gdk.keyval_from_name('e') \
+             and e.state & gtk.gdk.CONTROL_MASK:
+            self.__input.emit('move-cursor', gtk.MOVEMENT_BUFFER_ENDS, 1, False)
+            return True
+        elif e.keyval == gtk.gdk.keyval_from_name('E') \
+             and e.state & gtk.gdk.CONTROL_MASK:
+            self.__input.emit('move-cursor', gtk.MOVEMENT_BUFFER_ENDS, 1, True)
+            return True        
+        elif e.keyval == gtk.gdk.keyval_from_name('k') \
+             and e.state & gtk.gdk.CONTROL_MASK:
+            self.__input.emit('delete-from-cursor', gtk.DELETE_PARAGRAPH_ENDS, 1)
+            return True
+        elif e.keyval == gtk.gdk.keyval_from_name('d') \
+             and e.state & gtk.gdk.MOD1_MASK:
+            self.__input.emit('delete-from-cursor', gtk.DELETE_WORD_ENDS, 1)
+            return True                       
+        return False           
 
     def __open_prev_output(self):
         self.__outputs.open_output(do_prev=True)
@@ -662,7 +647,7 @@ for obj in curshell.get_current_output():
                     prev_token = token
                     continue
                 if verb.resolved:
-                    completer = verb.builtin.get_completer(i, self.context)
+                    completer = verb.builtin.get_completer(self.context, cmd, i)
                 else:
                     completer = None
                 if not completer:
@@ -672,10 +657,15 @@ for obj in curshell.get_current_output():
                 break
         if verb and not self.__completion_token:
             _logger.debug("position at end")
+            compl_token = self.__pipeline_tree[-1]
+            compl_idx = len(self.__pipeline_tree[-1])-1
             if verb and verb.resolved:
-                completer = verb.builtin.get_completer(-1, self.context)
-            else: 
-                completer = TokenCompleter.getInstance() 
+                completer = verb.builtin.get_completer(self.context, compl_token, compl_idx)
+            else:
+                # If we're not sure what it is, try assuming it's a system command.
+                completer = BuiltinRegistry.getInstance()['sh'].get_completer(self.context, compl_token, compl_idx)
+                if not completer:
+                    completer = TokenCompleter.getInstance() 
             self.__completion_token = hotwire.command.ParsedToken('', pos)
         completer = completer and CompletionPrefixStripProxy(completer, self.__cwd + os.sep, addprefix=addprefix)
         self.__completer = completer
@@ -722,16 +712,25 @@ for obj in curshell.get_current_output():
 
     def __on_scroll_offset(self, i, offset):
         offset = i.get_property('scroll-offset')
-
-    def show_all(self):
-        super(Hotwire, self).show_all()
-        self.__downloads.hide()
+        
+    def __on_pref_changed(self, prefs, key, value):
+        self.__sync_prefs(prefs)
+        
+    def __sync_prefs(self, prefs):
+        _logger.debug("syncing prefs")
+        emacs = prefs.get_pref('ui.emacs', default=False)
+        if self.__emacs_bindings == emacs:
+            return
+        self.__emacs_bindings = emacs
+        _logger.debug("using Emacs keys: %s", emacs)
             
 class HotWindow(gtk.Window):
     ascii_nums = [long(x+ord('0')) for x in xrange(10)]
 
     def __init__(self, factory=None, is_initial=False, subtitle='', **kwargs):
         super(HotWindow, self).__init__()
+
+        self.__prefs_dialog = None
 
         vbox = gtk.VBox()
         self.add(vbox)
@@ -746,13 +745,14 @@ class HotWindow(gtk.Window):
       <menuitem action='Close'/>
     </menu>
     <menu action='EditMenu'>
+      <placeholder name='EditMenuAdditions'/>
+      <separator/>
+      <menuitem action='Preferences'/>
     </menu>
     <menu action='ViewMenu'>
     </menu>
     <menu action='ControlMenu'>
     </menu>
-    <menu action='PrefsMenu'>
-    </menu>    
     <menu action='ToolsMenu'>
       <menuitem action='PythonWorkpad'/>
       <separator/>
@@ -789,8 +789,17 @@ class HotWindow(gtk.Window):
         
         self.set_default_size(720, 540)
         self.set_title('Hotwire' + subtitle)
-
-        self.set_icon_name('hotwire')
+        if os.getenv("HOTWIRE_UNINSTALLED"):
+            # For some reason set_icon() doesn't work even though we extend the theme path
+            # do it manually.
+            iinf = gtk.icon_theme_get_default().lookup_icon('hotwire', 24, 0)
+            self.set_icon_from_file(iinf.get_filename())
+        else:
+            self.set_icon_name("hotwire")
+        
+        prefs = Preferences.getInstance()
+        prefs.monitor_prefs('ui.', self.__on_pref_changed)
+        self.__sync_prefs(prefs)
 
         self.connect("delete-event", lambda w, e: False)
 
@@ -805,32 +814,55 @@ class HotWindow(gtk.Window):
             self.new_tab_widget(*kwargs['initwidget'])
         else:
             self.new_tab_hotwire(**kwargs)
+            
+    def __on_pref_changed(self, prefs, key, value):
+        self.__sync_prefs(prefs)
+        
+    def __sync_prefs(self, prefs):
+        _logger.debug("syncing prefs")
+        accels = prefs.get_pref('ui.menuaccels', default=True)
+        if self.__using_accels == accels:
+            return
+        self.__using_accels = accels
+        for action in self.__actions:
+            name = action[0]
+            if not name.endswith('Menu'):
+                continue
+            uiname = action[2]
+            menuitem = self.__ui.get_widget('/Menubar/' + name)
+            label = menuitem.get_child()
+            if accels:
+                label.set_text_with_mnemonic(uiname)
+            else:
+                noaccel = uiname.replace('_', '')
+                label.set_text(noaccel)
 
     def get_ui(self):
         return self.__ui
 
     def __create_ui(self):
+        self.__using_accels = True
         self.__ag = ag = gtk.ActionGroup('WindowActions')
-        actions = [
-            ('FileMenu', None, 'File'),
-            ('NewTermTab', gtk.STOCK_NEW, 'New T_erminal Tab', '<control><shift>T',
-             'Open a new terminal tab', self.__new_term_tab_cb),
-            ('Close', gtk.STOCK_CLOSE, '_Close', '<control><shift>W',
-             'Close the current tab', self.__close_cb),
-            ('EditMenu', None, 'Edit'),                
-            ('ViewMenu', None, 'View'),       
-            ('ControlMenu', None, 'Control'),
-            ('PrefsMenu', None, 'Preferences'),                            
-            ('ToolsMenu', None, 'Tools'),
-            ('PythonWorkpad', 'gtk-execute', '_Python Workpad', '<control><alt>s', 'Launch Python evaluator', self.__python_workpad_cb),
-            ('HelpCommand', 'gtk-help', '_Help', '<control><alt>h', 'Display help command', self.__help_cb),                       
-            ('About', gtk.STOCK_ABOUT, '_About', None, 'About Hotwire', self.__help_about_cb),
+        self.__actions = actions = [
+            ('FileMenu', None, _('_File')),
+            ('NewTermTab', gtk.STOCK_NEW, _('New T_erminal Tab'), '<control><shift>T',
+             _('Open a new terminal tab'), self.__new_term_tab_cb),
+            ('Close', gtk.STOCK_CLOSE, _('_Close'), '<control><shift>W',
+             _('Close the current tab'), self.__close_cb),
+            ('EditMenu', None, _('_Edit')),        
+            ('ViewMenu', None, _('_View')),
+            ('ControlMenu', None, _('_Control')),
+            ('Preferences', 'gtk-preferences', _('Preferences'), None, _('Change preferences'), self.__preferences_cb),                                       
+            ('ToolsMenu', None, _('_Tools')),
+            ('PythonWorkpad', 'gtk-execute', _('_Python Workpad'), '<control><shift>p', _('Launch Python evaluator'), self.__python_workpad_cb),
+            ('HelpCommand', 'gtk-help', _('_Help'), None, _('Display help command'), self.__help_cb),                       
+            ('About', gtk.STOCK_ABOUT, _('_About'), None, _('About Hotwire'), self.__help_about_cb),
             ]
         self.__nonterm_actions = [
-            ('NewWindow', gtk.STOCK_NEW, '_New Window', '<control>n',
-             'Open a new window', self.__new_window_cb),
-            ('NewTab', gtk.STOCK_NEW, 'New _Tab', '<control>t',
-             'Open a new tab', self.__new_tab_cb)]
+            ('NewWindow', gtk.STOCK_NEW, _('_New Window'), '<control>n',
+             _('Open a new window'), self.__new_window_cb),
+            ('NewTab', gtk.STOCK_NEW, _('New _Tab'), '<control>t',
+             _('Open a new tab'), self.__new_tab_cb)]
         ag.add_actions(actions)
         ag.add_actions(self.__nonterm_actions)
         self.__ui = gtk.UIManager()
@@ -848,7 +880,7 @@ class HotWindow(gtk.Window):
         self.__pyshell = hotwire_ui.pyshell.CommandShell({'curshell': lambda: locate_current_shell(self)},
                                                          savepath=os.path.join(Filesystem.getInstance().get_conf_dir(), 'pypad.py'))
         self.__pyshell.set_icon_name('hotwire')        
-        self.__pyshell.set_title('Hotwire PyShell')
+        self.__pyshell.set_title(_('Hotwire PyShell'))
         self.__pyshell.show_all()      
 
     def __on_buttonpress(self, s2, e):
@@ -881,6 +913,11 @@ class HotWindow(gtk.Window):
     def __close_cb(self, action):
         self.__remove_page_widget(self.__notebook.get_nth_page(self.__notebook.get_current_page()))         
 
+    def __preferences_cb(self, action):
+        if not self.__prefs_dialog:
+            self.__prefs_dialog = PrefsWindow()
+        self.__prefs_dialog.show_all()
+
     def __python_workpad_cb(self, action):
         self.__show_pyshell()
         
@@ -912,7 +949,7 @@ You should have received a copy of the GNU General Public License
 along with Hotwire; if not, write to the Free Software Foundation, Inc.,
 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA''')
         dialog.set_property('name', "Hotwire")
-        comments = "A Python-based object oriented\ncrossplatform command execution shell\n\n"
+        comments = _("A Python-based object oriented\ncrossplatform command execution shell\n\n")
         if hotwire.version.svn_version_info:
             comments += "changeset: %s\ndate: %s\n" % (hotwire.version.svn_version_info['Revision'], hotwire.version.svn_version_info['Last Changed Date'],)
         dialog.set_property('comments', comments)
@@ -1028,6 +1065,25 @@ along with Hotwire; if not, write to the Free Software Foundation, Inc.,
                     actionitem.disconnect_accelerator()
             self.__nonterm_accels_installed = install_accels
             
+        self.__sync_title(pn)
+            
+    def __sync_title(self, pn=None):
+        if pn is not None:
+            pagenum = pn
+        else:
+            pagenum = self.__notebook.get_current_page()
+        widget = self.__notebook.get_nth_page(pagenum)
+        tl = widget.get_data('hotwire-tab-label')
+        if not tl:
+            return
+        title = _('%s - Hotwire') % (tl.get_text(),)
+        # Totally gross hack; this avoids the current situation of
+        # 'sudo blah' showing up with a title of 'term -w sudo blah'.
+        # Delete this if we revisit the term -w situation.
+        if title.startswith('term -w'):
+            title = title[7:]
+        self.set_title(title)
+            
     def new_tab_hotwire(self, is_initial=False, **kwargs):
         hw = Hotwire(window=self, ui=self.__ui, **kwargs)
         hw.set_data('hotwire-is-hotwire', True)
@@ -1037,8 +1093,11 @@ along with Hotwire; if not, write to the Free Software Foundation, Inc.,
             self.__notebook.set_tab_reorderable(hw, True)
         label = self.__add_widget_title(hw)
 
-        hw.connect('title', lambda h, title: label.set_text(title))
-        label.set_text(hw.get_title())
+        def on_title(h, title):
+            label.set_text(title)
+            self.__sync_title()
+        hw.connect('title', on_title)
+        on_title(hw, hw.get_title())
 
         hw.connect('new-tab-widget', lambda h, *args: self.new_tab_widget(*args))
         hw.connect('new-window-cmd', lambda h, cmd: self.new_win_hotwire(initcmd_widget=cmd))        
@@ -1051,6 +1110,20 @@ along with Hotwire; if not, write to the Free Software Foundation, Inc.,
         self.__tabs_visible = len(self.__notebook.get_children()) > 1
         if self.__tabs_visible != oldvis:
             self.__notebook.set_show_tabs(self.__tabs_visible)
+        self.__sync_command_sensitivity()
+            
+    def __sync_command_sensitivity(self):
+        # This function is a hack - we should really have more of the UI factored up
+        # into here.
+        pagenum = self.__notebook.get_current_page()
+        widget = self.__notebook.get_nth_page(pagenum)
+        if not widget:
+            return    
+        (uistr, actiongroup) = widget.get_ui()
+        action = actiongroup.get_action('ToWindow')
+        if not action:
+            return
+        action.set_sensitive(self.__tabs_visible)          
 
     def __remove_page_widget(self, w):
         savedidx = self.__preautoswitch_index
@@ -1066,7 +1139,17 @@ along with Hotwire; if not, write to the Free Software Foundation, Inc.,
         elif savedidx >= 0:
             if idx < savedidx:
                 savedidx -= 1
-            self.__notebook.set_current_page(savedidx)        
+            self.__notebook.set_current_page(savedidx)
+            
+    def __on_widget_closed(self, w):
+        if w in self.__closesigs:
+            w.disconnect(self.__closesigs[w])
+            del self.__closesigs[w]
+        # If a terminal exits and we're the only window, don't automatically
+        # exit the app.
+        if self.__notebook.get_n_pages() == 1:
+            return
+        self.__remove_page_widget(w)
 
     def __add_widget_title(self, w):
         hbox = gtk.HBox()
@@ -1088,6 +1171,7 @@ along with Hotwire; if not, write to the Free Software Foundation, Inc.,
         hbox.pack_start(close, expand=False)
         hbox.show_all()
         self.__notebook.set_tab_label(w, hbox)
+        w.set_data('hotwire-tab-label', label)
         self.__notebook.set_tab_label_packing(w, True, True, gtk.PACK_START)
         self.__sync_tabs_visible()
         return label
@@ -1106,7 +1190,7 @@ along with Hotwire; if not, write to the Free Software Foundation, Inc.,
         label.set_text(title)
         widget.show_all()
         self.__notebook.set_current_page(idx)
-        self.__closesigs[widget] = widget.connect('closed', self.__remove_page_widget)
+        self.__closesigs[widget] = widget.connect('closed', self.__on_widget_closed)
         _logger.debug("preautoswitch idx: %d", savedidx)
         self.__preautoswitch_index = savedidx
 

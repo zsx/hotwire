@@ -1,130 +1,146 @@
-import os,sys,threading,pty,logging
+# This file is part of the Hotwire Shell project API.
 
-import gtk, gobject, pango
-import vte
+# Copyright (C) 2007 Colin Walters <walters@verbum.org>
 
-try:
-    import gconf
-    gconf_available = True
-except:
-    gconf_available = False
+# Permission is hereby granted, free of charge, to any person obtaining a copy 
+# of this software and associated documentation files (the "Software"), to deal 
+# in the Software without restriction, including without limitation the rights 
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies 
+# of the Software, and to permit persons to whom the Software is furnished to do so, 
+# subject to the following conditions:
+
+# The above copyright notice and this permission notice shall be included in all 
+# copies or substantial portions of the Software.
+
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+# INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A 
+# PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE X CONSORTIUM BE 
+# LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, 
+# TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR 
+# THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+import os,sys,platform,logging
+
+import gtk,gobject,pango
 
 import hotwire_ui.widgets as hotwidgets
-from hotwire.sysdep.term_impl.base_term import BaseTerminal, TerminalWidget
-from hotwire.logutil import log_except
-from hotwire.async import MiniThreadPool
+from hotwire.state import Preferences
+from hotvte.vteterm import VteTerminalWidget 
 
-_logger = logging.getLogger("hotwire.sysdep.Terminal.Vte")
+_logger = logging.getLogger("hotwire.sysdep.VteTerminal")
 
-class VteTerminal(BaseTerminal):
-    def get_terminal_widget(self, stream, title):
-        return VteTerminalWidget(stream=stream, title=title)
-
+class VteTerminalFactory(object):
     def get_terminal_widget_cmd(self, cwd, cmd, title):
-        return VteTerminalWidget(cwd=cwd, cmd=cmd, title=title)
+        return VteTerminal(cwd=cwd, cmd=cmd, title=title)        
 
-class VteTerminalScreen(gtk.Bin):
-    def __init__(self):
-        super(VteTerminalScreen, self).__init__()
-        self.term = vte.Terminal()
-        self.__termbox = gtk.HBox()
-        self.__scroll = gtk.VScrollbar(self.term.get_adjustment())
-        self.__termbox.pack_start(hotwidgets.Border(self.term))
-        self.__termbox.pack_start(self.__scroll, False)
-        self.add(self.__termbox)
+class VteTerminal(gtk.VBox):
+    __gsignals__ = {
+        "closed" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, ()),
+    }
+    def __init__(self, cwd=None, cmd=None, title=''):
+        super(VteTerminal, self).__init__()
+        self.__ui_string = """
+<ui>
+  <menubar name='Menubar'>
+    <menu action='EditMenu'>
+      <placeholder name='EditMenuAdditions'>
+        <menuitem action='Copy'/>
+        <menuitem action='Paste'/>
+      </placeholder>
+    </menu>
+    <menu action='ViewMenu'>
+      <menuitem action='ToWindow'/>
+    </menu>
+    <!-- <menu action='ControlMenu'>
+      <menuitem action='SplitWindow'/>
+    </menu> -->
+  </menubar>
+</ui>"""         
+        self.__actions = [
+            ('Copy', None, '_Copy', '<control><shift>c', 'Copy selected text', self.__copy_cb),
+            ('Paste', None, '_Paste', '<control><shift>V', 'Paste text', self.__paste_cb),
+            ('ToWindow', None, '_To Window', '<control><shift>N', 'Turn into new window', self.__split_cb),
+        ]
+        self.__action_group = gtk.ActionGroup('TerminalActions')
+        self.__action_group.add_actions(self.__actions)
+        self.__title = title
+        self.__header = gtk.HBox()
+        self.__msg = gtk.Label('')
+        self.__pid = None
+        self.__exited = False
+        self.__header.pack_start(hotwidgets.Align(self.__msg, xalign=1.0), expand=False)
+        self.__msg.set_property('xalign', 1.0)
 
-    def do_size_request(self, req):
-        (w,h) = self.__termbox.size_request()
-        req.width = w
-        req.height = h
+        self.pack_start(self.__header, expand=False)
 
-    def do_size_allocate(self, alloc):
-        self.allocation = alloc
-        wid_req = self.__termbox.size_allocate(alloc)
+        prefs = Preferences.getInstance()
+        prefs.monitor_prefs('term.', self.__on_pref_changed)
 
-gobject.type_register(VteTerminalScreen)
-
-class VteTerminalWidget(TerminalWidget):
-    def __init__(self, cwd=None, cmd=None, **kwargs):
-        self.__screen = screen = VteTerminalScreen()
-        self.__term = screen.term        
-        
-        super(VteTerminalWidget, self).__init__(**kwargs)
-
-        self._pack_terminal(screen)
-
-        # Various defaults
-        self.__term.set_emulation('xterm')
-        self.__term.set_allow_bold(True)
-        self.__term.set_size(80, 24)
-        self.__term.set_scrollback_lines(1500)
-        self.__term.set_mouse_autohide(True)
-        self.__term.set_default_colors()
-
-        self.__term.connect('popup_menu', self.__on_popup_menu)
-        self.__term.connect('selection-changed', self.__on_selection_changed)
-
-        # Use Gnome font 
-        if gconf_available:
-            gconf_client = gconf.client_get_default() 
-            mono_font = gconf_client.get_string('/desktop/gnome/interface/monospace_font_name')
-            _logger.debug("Using font '%s'", mono_font)
-            font_desc = pango.FontDescription(mono_font)
-            self.__term.set_font(font_desc)
-
-        self._selection_changed(False)
-
-        self._sync_prefs()
-
-        if self._stream:
-            master, slave = pty.openpty()
-            self.__master = master
-            self.__slave = slave
-            self.__term.set_pty(self.__master)
-            _logger.debug("Created pty master: %d slave: %d", master, slave)
-            MiniThreadPool.getInstance().run(self.__fd_to_stream, args=(self.__slave, self._stream))
-            MiniThreadPool.getInstance().run(self.__stream_to_fd, args=(self._stream, self.__slave))
-        else:
-            self._stream = None
-            # http://code.google.com/p/hotwire-shell/issues/detail?id=35
-            # We do the command in an idle to hopefully have more state set up by then;
-            # For example, "top" seems to be sized correctly on the first display
-            # this way
-            gobject.timeout_add(250, self.__idle_do_cmd_fork, cmd, cwd)
-            
-    @log_except(_logger)
-    def __idle_do_cmd_fork(self, cmd, cwd):
-        _logger.debug("Forking cmd: %s", cmd)
-        self.__term.connect("child-exited", self._on_child_exited)
+        termargs = {}
         if cmd:
-            pid = self.__term.fork_command('/bin/sh', ['/bin/sh', '-c', cmd], directory=cwd)
+            termargs['cmd'] = ['/bin/sh', '-c', cmd]
+        self.__term = term = VteTerminalWidget(cwd=cwd, **termargs)
+        self.pack_start(self.__term, expand=True)
+        self.__term.get_vte().connect('selection-changed', self.__on_selection_changed)
+        self.__term.connect('child-exited', self.__on_child_exited)
+        self.__term.connect('fork-child', self.__on_fork_child)
+         
+        self.__sync_prefs()        
+        
+    def get_ui(self):
+        return (self.__ui_string, self.__action_group)
+
+    def __on_selection_changed(self, *args):
+        have_selection = self.__term.get_vte().get_has_selection()
+        self.__action_group.get_action('Copy').set_sensitive(have_selection)
+
+    def __copy_cb(self, a):
+        _logger.debug("doing copy")
+        self.__term.copy_clipboard()
+
+    def __paste_cb(self, a):
+        _logger.debug("doing paste")        
+        self.__paste_clipboard()
+        
+    def __on_pref_changed(self, prefs, key, value):
+        self.__sync_prefs()    
+    
+    def __sync_prefs(self, *args):
+        prefs = Preferences.getInstance()
+        fg = prefs.get_pref('term.foreground', default='#000')
+        bg = prefs.get_pref('term.background', default='#FFF')
+        _logger.debug("got fg=%s, bg=%s", fg, bg)
+        self.set_color(True, gtk.gdk.color_parse(fg))
+        self.set_color(False, gtk.gdk.color_parse(bg))
+        
+    def set_color(self, is_foreground, color):
+        vteterm = self.__term.get_vte()
+        if is_foreground:
+            vteterm.set_color_foreground(color)
+            vteterm.set_color_bold(color)
+            vteterm.set_color_dim(color)            
         else:
-            pid = self.__term.fork_command(directory=cwd)
-        self._set_pid(pid)
+            vteterm.set_color_background(color)          
+        
+    def __on_fork_child(self, term):
+        self._set_pid(self.__term.pid)
+        
+    def _set_pid(self, pid):
+        self.__pid = pid
+        self.__msg.set_text('Running (pid %s)' % (pid,))
 
-    def __fd_to_stream(self, fd, stream):
-        while True:
-            buf = os.read(fd,4096)
-            if buf == '':
-                break
-            stream.send(buf)
+    def __split_cb(self, a):
+        from hotwire_ui.shell import locate_current_window
+        hwin = locate_current_window(self)        
+        self.emit('closed')
+        hwin.new_win_widget(self, self.__title)
 
-    def __stream_to_fd(self, stream, fd):
-        while True:
-            buf = stream.recv(4096)
-            if buf == '':
-                break
-            os.write(fd, buf)
-        gobject.idle_add(lambda: self.close())
+    def __on_child_exited(self, term):
+        _logger.debug("Caught child exited")
+        self.__exited = True
+        self.__msg.set_markup('Exited')
+        self.emit('closed')
 
-    def close(self):
-        if self._stream:
-            _logger.debug("Closing stream")
-            self._stream.close()
-            os.close(self.__master)
-            os.close(self.__slave)
-            self._stream = None
-            
     # Used as a hack to avoid sizing issues in tabs
     def hide_internals(self):
         self.__term.hide()
@@ -132,43 +148,14 @@ class VteTerminalWidget(TerminalWidget):
     def show_internals(self):
         self.__term.show()
 
-    def do_dispose(self):
-        self.__term = None
-
     def get_term_geometry(self):
-        cw = self.__term.get_char_width()
-        ch = self.__term.get_char_height()
-        return (cw, ch, self.__term.get_padding())
-        
-    def __on_popup_menu(self, *args):
-        menu = gtk.Menu()
-        mi = gtk.MenuItem(label='Copy')
-        mi.connect('activate', self.copy)
-        menu.append(mi)
-        mi = gtk.MenuItem(label='Paste')
-        mi.connect('activate', self.paste)
-        menu.append(mi)
-        menu.show_all()
-        menu.popup(None, None, None, 0, gtk.get_current_event_time())
-        
-    def __on_selection_changed(self, *args):
-        self._selection_changed(self.__term.get_has_selection())
+        vteterm = self.__term.get_vte()
+        cw = vteterm.get_char_width()
+        ch = vteterm.get_char_height()
+        return (cw, ch, vteterm.get_padding())
 
-    def copy(self, *args):
-        _logger.debug("got copy")
-        self.__term.copy_clipboard()
-
-    def paste(self, *args):
-        _logger.debug("got paste")
-        self.__term.paste_clipboard()
-        
-    def set_color(self, is_foreground, color):
-        if is_foreground:
-            self.__term.set_color_foreground(color)
-            self.__term.set_color_bold(color)
-            self.__term.set_color_dim(color)            
-        else:
-            self.__term.set_color_background(color)        
+    def close(self):
+        pass
 
 def getInstance():
-    return VteTerminal()
+    return VteTerminalFactory()

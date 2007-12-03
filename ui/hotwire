@@ -1,5 +1,21 @@
 #!/usr/bin/python
-# -*- tab-width: 4; indent-tabs-mode: nil -*-
+# This file is part of the Hotwire Shell user interface.
+#   
+# Copyright (C) 2007 Colin Walters <walters@verbum.org>
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 import sys, os, getopt, logging, re, string, Queue, locale
 
@@ -19,12 +35,13 @@ if __name__ == '__main__' and hasattr(sys.modules['__main__'], '__file__'):
             if os.access(path, os.R_OK):
                 sys.path.insert(0, path)
         _pathext('externals/pygtk-shell')
-
-		print "Running uninstalled, extending PYTHONPATH with: %s" % (up_basedir,)
+        
+        print "Running uninstalled, extending PYTHONPATH with: %s" % (up_basedir,)
         sys.path.insert(0, up_basedir)
         # Extend PATH so hotwire-editor works correctly
         os.environ['PYTHONPATH'] = os.pathsep.join(sys.path)
-        os.environ['PATH'] = (basedir + os.pathsep + os.environ.get('PATH', ''))
+        hotapps_path = os.path.join(up_basedir, 'hotapps', 'bin')
+        os.environ['PATH'] = (basedir + os.pathsep + hotapps_path + os.pathsep + os.environ.get('PATH', ''))
         os.environ['HOTWIRE_UNINSTALLED'] = up_basedir
 
 try:
@@ -48,8 +65,8 @@ def usage(ver, svnstr):
     sys.stdout.write("%s [--debug] [--debug-modules=mod1,mod2...] [--help]\n" % (sys.argv[0],))
 
 def main():
-	import hotwire
-	from hotwire.version import __version__, svn_version_str
+    import hotwire
+    from hotwire.version import __version__, svn_version_str
     try:
         opts, args = getopt.getopt(sys.argv[1:], "hdsn", ["help", "debug", "debug-modules=", "thread-debug",
                                                           "no-persist",
@@ -86,12 +103,14 @@ def main():
     if debug:
         default_log_level = logging.DEBUG
  
-	import hotwire.logutil
+    import hotwire.logutil
     hotwire.logutil.init(default_log_level, debug_modules, 'hotwire.')
 
     _logger.debug("logging initialized, debug: %s", __debug__)
 
     locale.setlocale(locale.LC_ALL, '')
+    import gettext
+    gettext.install('hotwire')
 
     if thread_debug:
         hotwire.util.start_thread_dump_task(7000, sys.stderr)
@@ -102,18 +121,21 @@ def main():
 
 	# Do all these imports after we've initialized the basics, like logging
 
-	import hotwire.sysdep
-	import hotwire.config
-	import hotwire.pluginsystem
-	import hotwire.util
-	from hotwire_ui.shell import HotWindowFactory
-	from hotwire.persist import Persister
-
-	try:
-    	from hotwire.sysdep.ipc import Ipc
-    	ipc_avail = True
-	except NotImplementedError, e:
-    	ipc_avail = False
+    import hotwire.sysdep
+    import hotwire.config
+    import hotwire.pluginsystem
+    import hotwire.util
+    import hotwire.builtin
+    import hotwire.completion
+    from hotwire_ui.shell import HotWindowFactory
+    from hotwire.persist import Persister
+	
+    hotwire.builtin.load()
+    try:
+        from hotwire.sysdep.ipc import Ipc
+        ipc_avail = True
+    except NotImplementedError, e:
+        ipc_avail = False
 
     ipc = None
     if not ipc_avail:
@@ -138,20 +160,14 @@ def main():
     _logger.debug('initializing threads')
     gobject.threads_init()
 
-	hotwire.sysdep.do_late_init()
+    hotwire.sysdep.do_late_init()
 
     if no_persist:
         Persister.getInstance().disable()
-        
+
     hotwire.pluginsystem.load_plugins()
 
-    w = HotWindowFactory.getInstance().create_initial_window(subtitle=(no_persist and ' (Unshared)' or ''))
-    w.show()
-    if ipc_avail and (not no_persist):
-        ipc.register_window(w)
-
     # Random global GTK+-related initialization
-    gtk.settings_get_default().set_property('gtk-key-theme-name',  'Emacs')
     gtk.about_dialog_set_url_hook(on_about_dialog_url)
     gtk.rc_parse_string('''
 style "hotwire-tab-close" {
@@ -160,6 +176,17 @@ style "hotwire-tab-close" {
 }
 widget "*hotwire-tab-close" style "hotwire-tab-close"
 ''')
+
+    if os.getenv('HOTWIRE_UNINSTALLED'):
+        theme = gtk.icon_theme_get_default()
+        imgpath = os.path.join(os.getenv('HOTWIRE_UNINSTALLED'), 'images')
+        _logger.debug("appending to icon theme: %s", imgpath)
+        theme.append_search_path(imgpath)
+
+    w = HotWindowFactory.getInstance().create_initial_window(subtitle=(no_persist and _(' (Unshared)') or ''))
+    w.show()
+    if ipc_avail and (not no_persist):
+        ipc.register_window(w)
 
     gtk.gdk.notify_startup_complete()
 

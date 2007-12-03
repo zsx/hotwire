@@ -1,3 +1,24 @@
+# This file is part of the Hotwire Shell project API.
+
+# Copyright (C) 2007 Colin Walters <walters@verbum.org>
+
+# Permission is hereby granted, free of charge, to any person obtaining a copy 
+# of this software and associated documentation files (the "Software"), to deal 
+# in the Software without restriction, including without limitation the rights 
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies 
+# of the Software, and to permit persons to whom the Software is furnished to do so, 
+# subject to the following conditions:
+
+# The above copyright notice and this permission notice shall be included in all 
+# copies or substantial portions of the Software.
+
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+# INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A 
+# PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE X CONSORTIUM BE 
+# LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, 
+# TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR 
+# THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
 import os, sys, threading, Queue, logging, string, re, time, shlex, traceback
 import posixpath
 from StringIO import StringIO
@@ -132,7 +153,7 @@ class Command(gobject.GObject):
         "exception" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (gobject.TYPE_PYOBJECT,)),
     }
 
-    def __init__(self, builtin, args, hotwire):
+    def __init__(self, builtin, args, options, hotwire):
         super(Command, self).__init__()
         self.builtin = builtin
         self.context = CommandContext(hotwire) 
@@ -144,6 +165,7 @@ class Command(gobject.GObject):
         self.output = CommandQueue()
         self.map_fn = lambda x: x
         self.args = args
+        self.options = options
         self.__executing_sync = None
         self._cancelled = False
 
@@ -197,35 +219,11 @@ class Command(gobject.GObject):
             self.output.put(self.map_fn(None))
             return
         try:
-            builtin_opts = self.builtin.get_options()
-            def arg_to_opts(arg):
-                if builtin_opts is None:
-                    return False
-                if arg.startswith('-') and len(arg) >= 2:
-                    args = list(arg[1:])
-                elif arg.startswith('--'):
-                    args = [arg[1:]]
-                else:
-                    return False
-                results = []
-                for arg in args:
-                    for aliases in builtin_opts:
-                        if '-'+arg in aliases:
-                            results.append(aliases[0])
-                return results
-        
-            if builtin_opts is not None:
-                options = []
-            else:
-                options = None
+            options = self.options
             if self.builtin.get_parseargs() == 'shglob':
                 matched_files = []
                 oldlen = 0
                 for globarg_in in self.args:
-                    argopts = arg_to_opts(globarg_in)
-                    if argopts:
-                        options.extend(argopts)
-                        continue
                     globarg = os.path.expanduser(globarg_in)
                     matched_files.extend(hotwire.fs.dirglob(self.context.cwd, globarg))
                     _logger.debug("glob on %s matched is: %s", globarg_in, matched_files) 
@@ -236,13 +234,7 @@ class Command(gobject.GObject):
                     oldlen = newlen    
                 target_args = [matched_files]
             else:
-                target_args = []
-                for arg in self.args:
-                    argopts = arg_to_opts(arg)
-                    if argopts:
-                        options.extend(argopts)
-                    else:
-                        target_args.append(arg)
+                target_args = self.args
             _logger.info("Execute '%s' args: %s options: %s", self.builtin, target_args, options)
             kwargs = {}
             if options:
@@ -271,7 +263,12 @@ class Command(gobject.GObject):
         return self.__executing_sync      
 
     def __str__(self):
-        return self.builtin.name + " " + string.join(map(unicode, self.args), " ")
+        def unijoin(args):
+            return ' '.join(map(unicode, args))
+        args = [self.builtin.name]
+        args.extend(self.options)
+        args.extend(self.args)
+        return unijoin(args)
 
 class PipelineParseException(Exception):
     pass
@@ -391,6 +388,9 @@ class Pipeline(gobject.GObject):
             return state in ('undone',) and self.get_undoable()
         assert(False)
         
+    def is_complete(self):
+        return self.__state in ('complete', 'cancelled', 'exception', 'undone')
+        
     def __set_state(self, state):
         trans = self.validate_state_transition(state)
         if trans is None:
@@ -399,9 +399,9 @@ class Pipeline(gobject.GObject):
         elif not trans:
             raise ValueError("Invalid state transition %s to %s", self.__state, state)
         
-        if state in ('complete', 'cancelled'):
-            self.__completion_time = time.time() 
         self.__state = state
+        if self.is_complete():
+            self.__completion_time = time.time()         
         self.emit('state-changed')
 
     def execute(self, **kwargs):
@@ -655,7 +655,31 @@ class Pipeline(gobject.GObject):
 
             b = BuiltinRegistry.getInstance()[verb.text] 
             parseargs = b.get_parseargs()
-            args_text = [x.text for x in cmd_tokens[1:]] 
+            builtin_opts = b.get_options()
+            def arg_to_opts(arg):
+                if builtin_opts is None:
+                    return False
+                if arg.startswith('-') and len(arg) >= 2:
+                    args = list(arg[1:])
+                elif arg.startswith('--'):
+                    args = [arg[1:]]
+                else:
+                    return False
+                results = []
+                for arg in args:
+                    for aliases in builtin_opts:
+                        if '-'+arg in aliases:
+                            results.append(aliases[0])
+                return results
+            options = []
+            args_text = []
+            for arg in cmd_tokens[1:]:
+                argtext = arg.text
+                argopts = arg_to_opts(argtext)
+                if argopts:
+                    options.extend(argopts)
+                else:
+                    args_text.append(argtext)
             if parseargs == 'str':
                 args = [string.join(args_text, " ")] # TODO syntax
             elif parseargs == 'str-shquoted':
@@ -664,7 +688,7 @@ class Pipeline(gobject.GObject):
                 args = args_text 
             else:
                 assert False
-            cmd = Command(b, args, context)
+            cmd = Command(b, args, options, context)
             components.append(cmd)
             if prev:
                 cmd.set_input(prev.output)

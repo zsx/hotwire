@@ -1,3 +1,8 @@
+## This file is a modified version of glob.py from Python 2.5, copyright of its
+## authors.
+
+# Copyright (C) 2007 Colin Walters <walters@verbum.org>
+
 """Filename globbing utility."""
 
 import sys

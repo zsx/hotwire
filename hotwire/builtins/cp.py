@@ -1,3 +1,24 @@
+# This file is part of the Hotwire Shell project API.
+
+# Copyright (C) 2007 Colin Walters <walters@verbum.org>
+
+# Permission is hereby granted, free of charge, to any person obtaining a copy 
+# of this software and associated documentation files (the "Software"), to deal 
+# in the Software without restriction, including without limitation the rights 
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies 
+# of the Software, and to permit persons to whom the Software is furnished to do so, 
+# subject to the following conditions:
+
+# The above copyright notice and this permission notice shall be included in all 
+# copies or substantial portions of the Software.
+
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+# INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A 
+# PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE X CONSORTIUM BE 
+# LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, 
+# TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR 
+# THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
 import os, sys, shutil, stat
 
 import hotwire
@@ -8,7 +29,7 @@ from hotwire.builtin import Builtin, BuiltinRegistry
 from hotwire.builtins.fileop import FileOpBuiltin
 
 class CpBuiltin(FileOpBuiltin):
-    """Copy sources to destination."""
+    _("""Copy sources to destination.""")
     def __init__(self):
         super(CpBuiltin, self).__init__('cp', aliases=['copy'],
                                         parseargs='shglob',
@@ -17,7 +38,7 @@ class CpBuiltin(FileOpBuiltin):
 
     def execute(self, context, args):
         if not args:
-            raise ValueError("Need source and destination")
+            raise ValueError(_("Need source and destination"))
         target = FilePath(args[-1], context.cwd)
         try:
             target_is_dir = stat.S_ISDIR(os.stat(target).st_mode)
@@ -28,9 +49,9 @@ class CpBuiltin(FileOpBuiltin):
         
         sources = args[:-1]
         if not sources:
-            raise ValueError("Need source and destination")
+            raise ValueError(_("Need source and destination"))
         if (not target_is_dir) and len(sources) > 1:
-            raise ValueError("Can't copy multiple items to non-directory")
+            raise ValueError(_("Can't copy multiple items to non-directory"))
         sources_total = len(sources)
         self._status_notify(context, sources_total, 0)
 
