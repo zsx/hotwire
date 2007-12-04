@@ -65,6 +65,7 @@ _URLPATH = "/[" + _PATHCHARS + "]*[^]'.}>) \t\r\n,\\\"]"
 class VteTerminalWidget(gtk.VBox):
     __gsignals__ = {
         "child-exited" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, ()),
+        "fork-child" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, ()),        
     }    
     def __init__(self, cwd=None, cmd=None, **kwargs):
         super(VteTerminalWidget, self).__init__()
@@ -136,6 +137,7 @@ class VteTerminalWidget(gtk.VBox):
         else:
             pid = self.__term.fork_command(directory=cwd)
         self.pid = pid
+        self.emit('fork-child')
         
     def __on_button_press(self, term, event):
         match = self.__term.match_check(int(event.x/term.get_char_width()), int(event.y/term.get_char_height()))
