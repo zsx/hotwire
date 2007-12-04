@@ -81,6 +81,7 @@ else:
     kwargs['scripts'] = ['ui/hotwire', 'ui/hotwire-editor']
     kwargs['data_files'] = [('share/applications', ['hotwire.desktop']), 
                             ('share/icons/hicolor/24x24/apps', ['images/hotwire.png']),
+                            ('share/icons/hicolor/22x22/apps', ['images/hotwire-22.png']),
                             ('share/hotwire/images', ['images/throbber.gif', 'images/throbber-done.gif'])]
 
 setup(name='hotwire',
