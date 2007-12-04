@@ -38,7 +38,7 @@ class Ui(dbus.service.Object):
         pass
 
     @dbus.service.method(UI_IFACE,
-                         in_signature="i")
+                         in_signature="u")
     def NewWindow(self, timestamp):
         _logger.debug("Handling NewWindow method invocation (timestamp=%s)", timestamp)
         newwin = self.__winfactory.create_window()

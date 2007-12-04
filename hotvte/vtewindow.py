@@ -341,7 +341,7 @@ class UiProxy(dbus.service.Object):
                 curwin.present_with_time(timestamp)
             else:
                 curwin.present()         
-        setattr(UiProxy, 'RunCommand', dbus.service.method(ui_iface, in_signature='ibas')(RunCommand))                
+        setattr(UiProxy, 'RunCommand', dbus.service.method(ui_iface, in_signature='ubas')(RunCommand))                
 
 class VteRemoteControl(object):
     def __init__(self, name, bus_name=None, ui_opath=None, ui_iface=None):
