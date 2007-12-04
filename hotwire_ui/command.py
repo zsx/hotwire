@@ -405,10 +405,12 @@ class CommandExecutionControl(gtk.VBox):
       <menuitem action='PreviousCommand'/>
       <menuitem action='NextCommand'/>
     </menu>
-    <menu action='ControlMenu'>
-      <menuitem action='Cancel'/>
-      <menuitem action='Undo'/>
-    </menu>    
+    <placeholder name='WidgetMenuAdditions'>
+      <menu action='ControlMenu'>
+        <menuitem action='Cancel'/>
+        <menuitem action='Undo'/>
+      </menu>
+    </placeholder>          
   </menubar>
   <accelerator action='ScrollHome'/>
   <accelerator action='ScrollEnd'/>
@@ -425,6 +427,8 @@ class CommandExecutionControl(gtk.VBox):
             ('ScrollEnd', None, _('Output _Bottom'), '<control>End', _('Scroll to output bottom'), self.__view_end_cb), 
             ('ScrollPgUp', None, _('Output Page _Up'), 'Page_Up', _('Scroll output up'), self.__view_up_cb),
             ('ScrollPgDown', None, _('Output Page _Down'), 'Page_Down', _('Scroll output down'), self.__view_down_cb),
+            ('ControlMenu', None, _('_Control')),
+            ('GoMenu', None, _('Go')),            
             ('ToWindow', None, _('_To Window'), '<control><shift>N', _('Create window from output'), self.__to_window_cb),                         
             ('PreviousCommand', gtk.STOCK_GO_UP, _('_Previous'), '<control>Up', _('View previous command'), self.__view_previous_cb),
             ('NextCommand', gtk.STOCK_GO_DOWN, _('_Next'), '<control>Down', _('View next command'), self.__view_next_cb),

@@ -87,8 +87,8 @@ class VteTerminal(gtk.VBox):
          
         self.__sync_prefs()        
         
-    def get_ui(self):
-        return (self.__ui_string, self.__action_group)
+    def get_ui_pairs(self):
+        return [(self.__ui_string, self.__action_group)]
 
     def __on_selection_changed(self, *args):
         have_selection = self.__term.get_vte().get_has_selection()

@@ -31,7 +31,7 @@ from hotwire.sysdep.term import Terminal
 from hotwire.builtin import BuiltinRegistry
 from hotwire.gutil import *
 from hotwire.util import markup_for_match, quote_arg
-from hotwire.fs import path_unexpanduser, unix_basename
+from hotwire.fs import path_unexpanduser, path_expanduser, unix_basename
 from hotwire.sysdep.fs import Filesystem
 from hotwire.state import History, Preferences
 from hotwire_ui.command import CommandExecutionDisplay,CommandExecutionControl
@@ -106,6 +106,7 @@ class HotwireClientContext(hotwire.command.HotwireContext):
         return self.__hotwire.get_global_ui()
 
 class Hotwire(gtk.VBox):
+    MAX_RECENTDIR_LEN = 10
     __gsignals__ = {
         "title" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (gobject.TYPE_STRING,)),
         "new-tab-widget" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (gobject.TYPE_PYOBJECT, gobject.TYPE_STRING)),
@@ -118,6 +119,29 @@ class Hotwire(gtk.VBox):
         _logger.debug("Creating Hotwire instance, initcwd=%s", initcwd)
 
         self.__ui = ui
+        
+        self.__ui_string = '''
+<ui>
+  <menubar name='Menubar'>
+    <placeholder name='WidgetMenuAdditions'>  
+      <menu action='GoMenu'>
+        <menuitem action='Up'/>
+        <menuitem action='Back'/>
+        <menuitem action='Forward'/>
+        <separator/>        
+        <menuitem action='Home'/>
+      </menu>
+    </placeholder>
+  </menubar>
+</ui>'''
+        self.__actions = [
+            ('Up', 'gtk-go-up', _('_Up'), '<alt>Up', _('Go to parent directory'), self.__up_cb),
+            ('Back', 'gtk-go-back', _('_Back'), '<alt>Left', _('Go to previous directory'), self.__back_cb),
+            ('Forward', 'gtk-go-forward', _('_Forward'), '<alt>Right', _('Go to next directory'), self.__forward_cb),
+            ('Home', 'gtk-home', _('_Home'), '<alt>Home', _('Go to home directory'), self.__home_cb),
+        ]
+        self.__action_group = gtk.ActionGroup('HotwireActions')
+        self.__action_group.add_actions(self.__actions)
 
         self.context = HotwireClientContext(self, initcwd=initcwd)
         self.context.history = History.getInstance()
@@ -167,10 +191,37 @@ class Hotwire(gtk.VBox):
         self.__statusline = gtk.HBox()
         self.__statusbox.pack_start(hotwidgets.Align(self.__statusline), expand=False)
         self.__doing_recentdir_sync = False
+        self.__doing_recentdir_navigation = False
+        self.__recentdir_navigation_index = None
         self.__recentdirs = gtk.combo_box_new_text()
         self.__recentdirs.set_focus_on_click(False)
         self.__recentdirs.connect('changed', self.__on_recentdir_selected)
         self.__statusline.pack_start(hotwidgets.Align(self.__recentdirs), expand=False)
+        
+        def create_arrow_button(action_name):
+            action = self.__action_group.get_action(action_name)
+            icon = action.create_icon(gtk.ICON_SIZE_MENU)
+            button = gtk.Button(label=action.get_property('label'))
+            button.connect('clicked', lambda *args: action.activate())
+            def on_action_sensitive(a, p):
+                button.set_sensitive(action.get_sensitive())
+            action.connect("notify::sensitive", on_action_sensitive)
+            # There is some bug here causing the GC of on_action_sensitive; avoid it
+            # by attaching a ref to button
+            button.x = on_action_sensitive
+            button.set_property('image', icon)
+            button.set_focus_on_click(False)
+            return button
+        sizegroup = gtk.SizeGroup(gtk.SIZE_GROUP_HORIZONTAL)
+        back = create_arrow_button('Back')
+        sizegroup.add_widget(back)
+        self.__statusline.pack_start(back, expand=False)       
+        fwd = create_arrow_button('Forward')
+        sizegroup.add_widget(fwd)
+        self.__statusline.pack_start(fwd, expand=False)
+        up = create_arrow_button('Up')
+        sizegroup.add_widget(up)
+        self.__statusline.pack_start(up, expand=False)        
 
         self.__idle_parse_id = 0
         self.__parse_stale = False
@@ -201,8 +252,8 @@ class Hotwire(gtk.VBox):
     def get_global_ui(self):
         return self.__ui
 
-    def get_ui(self):
-        return self.__outputs.get_ui()
+    def get_ui_pairs(self):
+        return [self.__outputs.get_ui(), (self.__ui_string, self.__action_group)]
 
     def open_pyshell(self):
         PYCMD_CONTENT = '''## Python Command
@@ -228,8 +279,17 @@ for obj in curshell.get_current_output():
             self.__msgline.set_markup(msg)
 
     def __sync_cwd(self):
-        max_recentdir_len = 10
+        max_recentdir_len = self.MAX_RECENTDIR_LEN
         model = self.__recentdirs.get_model()
+        if self.__doing_recentdir_navigation:
+            self.__doing_recentdir_navigation = False
+            _logger.debug("in recentdir navigation, setting active iter")
+            iter = model.iter_nth_child(None, self.__recentdir_navigation_index)
+            self.__doing_recentdir_sync = True            
+            self.__recentdirs.set_active_iter(iter)
+            self.__doing_recentdir_sync = False
+            self.__sync_recentdir_navigation_sensitivity()            
+            return
         if model.iter_n_children(None) == max_recentdir_len:
             model.remove(model.iter_nth_child(None, max_recentdir_len-1))
         unexpanded = path_unexpanduser(self.__cwd)
@@ -237,6 +297,46 @@ for obj in curshell.get_current_output():
         self.__doing_recentdir_sync = True
         self.__recentdirs.set_active(0)
         self.__doing_recentdir_sync = False
+        _logger.debug("added new recentdir")
+        if not self.__doing_recentdir_navigation:
+            _logger.debug("reset recentdir index")                   
+            self.__recentdir_navigation_index = None
+        self.__sync_recentdir_navigation_sensitivity()
+        
+    def __sync_recentdir_navigation_sensitivity(self):
+        idx = self.__recentdir_navigation_index        
+        self.__action_group.get_action('Forward').set_sensitive(idx is not None and idx > 0)
+        n_total = self.__recentdirs.get_model().iter_n_children(None)
+        self.__action_group.get_action('Back').set_sensitive((idx is None and n_total > 1) or (idx is not None and idx < n_total-1))
+
+    def __up_cb(self, action):
+        _logger.debug("up")
+        self.execute_internal_str("cd ..")
+        
+    def __do_recentdir_cd(self):
+        model = self.__recentdirs.get_model()
+        iter = model.iter_nth_child(None, self.__recentdir_navigation_index)
+        path = path_expanduser(model.get_value(iter, 0))
+        quotedpath = quote_arg(path)
+        self.__doing_recentdir_navigation = True
+        self.execute_internal_str('cd ' + quotedpath)            
+
+    def __back_cb(self, action):
+        _logger.debug("back")
+        if self.__recentdir_navigation_index is None:
+            self.__recentdir_navigation_index = 0
+        self.__recentdir_navigation_index += 1
+        self.__do_recentdir_cd()        
+
+    def __forward_cb(self, action):
+        _logger.debug("forward")
+        assert(self.__recentdir_navigation_index is not None)
+        self.__recentdir_navigation_index -= 1
+        self.__do_recentdir_cd()   
+
+    def __home_cb(self, action):
+        _logger.debug("home")
+        self.execute_internal_str('cd')
 
     def __on_commands_new_window(self, outputs, cmdview):
         _logger.debug("got new window request for %s", cmdview)
@@ -515,10 +615,6 @@ for obj in curshell.get_current_output():
              and e.state & gtk.gdk.CONTROL_MASK:
             self.__open_next_output()
             return True
-        elif e.keyval == gtk.gdk.keyval_from_name('Up') \
-             and e.state & gtk.gdk.MOD1_MASK:
-            tree = Pipeline.parse('cd ..', self.context)
-            self.execute_pipeline(tree, add_history=False, reset_input=False)
         elif e.keyval == gtk.gdk.keyval_from_name('Up'):
             # If the user hits Up with an empty input, just display
             # all history
@@ -751,8 +847,8 @@ class HotWindow(gtk.Window):
     </menu>
     <menu action='ViewMenu'>
     </menu>
-    <menu action='ControlMenu'>
-    </menu>
+    <placeholder name='WidgetMenuAdditions'>
+    </placeholder>
     <menu action='ToolsMenu'>
       <menuitem action='PythonWorkpad'/>
       <separator/>
@@ -851,7 +947,6 @@ class HotWindow(gtk.Window):
              _('Close the current tab'), self.__close_cb),
             ('EditMenu', None, _('_Edit')),        
             ('ViewMenu', None, _('_View')),
-            ('ControlMenu', None, _('_Control')),
             ('Preferences', 'gtk-preferences', _('Preferences'), None, _('Change preferences'), self.__preferences_cb),                                       
             ('ToolsMenu', None, _('_Tools')),
             ('PythonWorkpad', 'gtk-execute', _('_Python Workpad'), '<control><shift>p', _('Launch Python evaluator'), self.__python_workpad_cb),
@@ -868,11 +963,10 @@ class HotWindow(gtk.Window):
         self.__ui = gtk.UIManager()
         self.__ui.insert_action_group(ag, 0)
         self.__ui.add_ui_from_string(self.__ui_string)
-        self.__tab_ui_merge_id = None
-        self.__tab_action_group = None
+        self.__tab_ui_merge_ids = []
+        self.__ui_merge_page_id = None
         self.__nonterm_accels_installed = True
-        self.add_accel_group(self.__ui.get_accel_group())
-        self.__hotwire_ui_mergeid = None        
+        self.add_accel_group(self.__ui.get_accel_group())       
 
     def __show_pyshell(self):
         if self.__pyshell:
@@ -1030,25 +1124,21 @@ along with Hotwire; if not, write to the Free Software Foundation, Inc.,
         
         self.__curtab_is_hotwire = is_hw
                 
-        ## Attempt to change our UI merge; this code is a bit wonky.
-        if hasattr(widget, 'get_ui'):
-            (uistr, actiongroup) = widget.get_ui()
-        else:
-            (uistr, actiongroup) = (None, None)
-        if actiongroup != self.__tab_action_group:    
-            if (self.__tab_ui_merge_id is not None):
-                self.__ui.remove_ui(self.__tab_ui_merge_id)
-                self.__tab_ui_merge_id = None
-                self.__ui.remove_action_group(self.__tab_action_group)
-                self.__tab_action_group = None
+        if pn != self.__ui_merge_page_id:
+            for id,actions in self.__tab_ui_merge_ids:
+                self.__ui.remove_ui(id)
+                self.__ui.remove_action_group(actions)
                 ## Need to call ensure_update here because otherwise accelerators
                 ## from the new UI will not be installed (I believe this is due
                 ## to the way X keyboard grabs work)
                 self.__ui.ensure_update()
-            if uistr is not None:
-                self.__tab_ui_merge_id = self.__ui.add_ui_from_string(uistr)
-                self.__tab_action_group = actiongroup
-                self.__ui.insert_action_group(actiongroup, -1)         
+            self.__ui_merge_page_id = pn
+            self.__tab_ui_merge_ids = []                
+            if hasattr(widget, 'get_ui_pairs'):
+                for uistr,actiongroup in widget.get_ui_pairs():
+                    mergeid = self.__ui.add_ui_from_string(uistr)
+                    self.__ui.insert_action_group(actiongroup, -1)
+                    self.__tab_ui_merge_ids.append((mergeid, actiongroup))
 
         install_accels = is_hw
         _logger.debug("current accel install: %s new: %s", self.__nonterm_accels_installed, install_accels)
@@ -1118,12 +1208,12 @@ along with Hotwire; if not, write to the Free Software Foundation, Inc.,
         pagenum = self.__notebook.get_current_page()
         widget = self.__notebook.get_nth_page(pagenum)
         if not widget:
-            return    
-        (uistr, actiongroup) = widget.get_ui()
-        action = actiongroup.get_action('ToWindow')
-        if not action:
             return
-        action.set_sensitive(self.__tabs_visible)          
+        for uistr, actiongroup in widget.get_ui_pairs():
+            action = actiongroup.get_action('ToWindow')
+            if action:
+                action.set_sensitive(self.__tabs_visible)
+                break          
 
     def __remove_page_widget(self, w):
         savedidx = self.__preautoswitch_index
