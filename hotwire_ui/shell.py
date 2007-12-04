@@ -135,6 +135,7 @@ class Hotwire(gtk.VBox):
   </menubar>
 </ui>'''
         self.__actions = [
+            ('GoMenu', None, _('Go')),
             ('Up', 'gtk-go-up', _('_Up'), '<alt>Up', _('Go to parent directory'), self.__up_cb),
             ('Back', 'gtk-go-back', _('_Back'), '<alt>Left', _('Go to previous directory'), self.__back_cb),
             ('Forward', 'gtk-go-forward', _('_Forward'), '<alt>Right', _('Go to next directory'), self.__forward_cb),
