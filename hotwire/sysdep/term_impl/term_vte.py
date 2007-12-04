@@ -96,11 +96,11 @@ class VteTerminal(gtk.VBox):
 
     def __copy_cb(self, a):
         _logger.debug("doing copy")
-        self.__term.copy_clipboard()
+        self.__term.get_vte().copy_clipboard()
 
     def __paste_cb(self, a):
         _logger.debug("doing paste")        
-        self.__paste_clipboard()
+        self.__term.get_vte().paste_clipboard()
         
     def __on_pref_changed(self, prefs, key, value):
         self.__sync_prefs()    
