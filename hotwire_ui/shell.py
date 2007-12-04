@@ -135,10 +135,10 @@ class Hotwire(gtk.VBox):
   </menubar>
 </ui>'''
         self.__actions = [
-            ('GoMenu', None, _('Go')),
-            ('Up', 'gtk-go-up', _('_Up'), '<alt>Up', _('Go to parent directory'), self.__up_cb),
-            ('Back', 'gtk-go-back', _('_Back'), '<alt>Left', _('Go to previous directory'), self.__back_cb),
-            ('Forward', 'gtk-go-forward', _('_Forward'), '<alt>Right', _('Go to next directory'), self.__forward_cb),
+            ('GoMenu', None, _('_Go')),
+            ('Up', 'gtk-go-up', _('Up'), '<alt>Up', _('Go to parent directory'), self.__up_cb),
+            ('Back', 'gtk-go-back', _('Back'), '<alt>Left', _('Go to previous directory'), self.__back_cb),
+            ('Forward', 'gtk-go-forward', _('Forward'), '<alt>Right', _('Go to next directory'), self.__forward_cb),
             ('Home', 'gtk-home', _('_Home'), '<alt>Home', _('Go to home directory'), self.__home_cb),
         ]
         self.__action_group = gtk.ActionGroup('HotwireActions')
@@ -920,19 +920,31 @@ class HotWindow(gtk.Window):
         accels = prefs.get_pref('ui.menuaccels', default=True)
         if self.__using_accels == accels:
             return
-        self.__using_accels = accels
-        for action in self.__actions:
-            name = action[0]
+        self.__sync_action_acceleration()
+        
+    def __sync_action_acceleration(self):
+        accels = Preferences.getInstance().get_pref('ui.menuaccels', default=True)
+        self.__using_accels = accels                
+        def frob_action(action):
+            name = action.get_name()
             if not name.endswith('Menu'):
-                continue
-            uiname = action[2]
+                return
+            uiname = action.get_property('label')
+            # FIXME this is gross.
             menuitem = self.__ui.get_widget('/Menubar/' + name)
+            if not menuitem:
+                menuitem = self.__ui.get_widget('/Menubar/WidgetMenuAdditions/' + name)
             label = menuitem.get_child()
             if accels:
                 label.set_text_with_mnemonic(uiname)
             else:
                 noaccel = uiname.replace('_', '')
                 label.set_text(noaccel)
+        for action in self.__ag.list_actions():
+            frob_action(action)
+        for uistr,actiongroup in self.__tab_ui_merge_ids:
+            for action in actiongroup.list_actions():
+                frob_action(action)                
 
     def get_ui(self):
         return self.__ui
@@ -1140,6 +1152,7 @@ along with Hotwire; if not, write to the Free Software Foundation, Inc.,
                     mergeid = self.__ui.add_ui_from_string(uistr)
                     self.__ui.insert_action_group(actiongroup, -1)
                     self.__tab_ui_merge_ids.append((mergeid, actiongroup))
+                self.__sync_action_acceleration()
 
         install_accels = is_hw
         _logger.debug("current accel install: %s new: %s", self.__nonterm_accels_installed, install_accels)
