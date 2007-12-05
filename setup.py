@@ -17,13 +17,16 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 import os,sys
-
-from hotwire.version import __version__
-
 from distutils.core import setup
 
-sys.path.insert(0, '.')
-from DistUtilsExtra.command import *
+if __name__ == '__main__' and hasattr(sys.modules['__main__'], '__file__'):
+    basedir = os.path.dirname(os.path.abspath(__file__))
+    up_basedir = os.path.dirname(basedir)
+    if os.path.basename(basedir) == 'hotwire-shell':
+        print "Running uninstalled, extending path"
+        sys.path.insert(0, basedir)
+        os.environ['PYTHONPATH'] = os.pathsep.join(sys.path)
+from hotwire.version import __version__
 
 def svn_info(wd):
     import subprocess,StringIO
@@ -83,6 +86,11 @@ else:
                             ('share/icons/hicolor/24x24/apps', ['images/hotwire.png']),
                             ('share/icons/hicolor/22x22/apps', ['images/hotwire-22.png']),
                             ('share/hotwire/images', ['images/throbber.gif', 'images/throbber-done.gif'])]
+    from DistUtilsExtra.command import *    
+    kwargs['cmdclass'] = { "build_extra" : build_extra.build_extra,
+                           "build_i18n" :  build_i18n.build_i18n,
+                           "build_help" :  build_help.build_help,
+                           "build_icons" :  build_icons.build_icons }    
 
 setup(name='hotwire',
       version=__version__,
@@ -96,9 +104,5 @@ setup(name='hotwire',
                 'hotwire.sysdep.term_impl', 'hotwire.sysdep.ipc_impl',
                 'hotvte', 
                 'hotapps', 'hotapps.hotssh'],
-      cmdclass = { "build" : build_extra.build_extra,
-                   "build_i18n" :  build_i18n.build_i18n,
-                   "build_help" :  build_help.build_help,
-                   "build_icons" :  build_icons.build_icons },
       **kwargs)
 
