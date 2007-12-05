@@ -21,7 +21,7 @@
 
 import os,sys,logging,string
 
-from hotwire.sysdep.proc import Process
+from hotwire.sysdep.proc import BaseProcessManager, Process
 from hotwire.sysdep.win32 import win_exec_re, win_dll_re
 
 import win32process,win32api,win32security,win32con,ntsecuritycon
@@ -52,7 +52,7 @@ class WindowsProcess(Process):
                 exes.append(nondll[0])
         super(WindowsProcess, self).__init__(pid, string.join(exes, ' '), username)
 
-class Win32ProcessManager(object):
+class Win32ProcessManager(BaseProcessManager):
     def get_processes(self):
         for pid in win32process.EnumProcesses():
             if pid > 0:
