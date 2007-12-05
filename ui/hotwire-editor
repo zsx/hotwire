@@ -88,6 +88,8 @@ def main():
     gobject.threads_init()
 
     w = HotEditorWindow(filename=target_filename)
+    w.set_icon_name('gtk-floppy')
+    w.set_title('%s - Hotwire Editor' % (target_filename,))
     w.show_all()
     w.connect('destroy', lambda *args: gtk.main_quit())
     gtk.gdk.notify_startup_complete()
