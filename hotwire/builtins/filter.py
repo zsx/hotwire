@@ -32,7 +32,7 @@ class StringMatch(MarkupText):
         return inst
 
 class FilterBuiltin(Builtin):
-    """Filter input objects by regular expression, matching on a property (or stringification)"""
+    __doc__ = _("""Filter input objects by regular expression, matching on a property (or repr)""")
     def __init__(self):
         super(FilterBuiltin, self).__init__('filter',
                                             input=InputStreamSchema('any'),

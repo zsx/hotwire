@@ -28,7 +28,7 @@ from hotwire.builtin import BuiltinRegistry
 from hotwire.builtins.fileop import FileOpBuiltin
 
 class MvBuiltin(FileOpBuiltin):
-    _("""Rename initial arguments to destination.""")
+    __doc__ = _("""Rename initial arguments to destination.""")
     def __init__(self):
         super(MvBuiltin, self).__init__('mv', aliases=['move'],
                                         parseargs='shglob',

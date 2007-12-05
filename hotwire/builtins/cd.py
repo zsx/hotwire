@@ -26,7 +26,7 @@ from hotwire.fs import FilePath, DirectoryGenerator
 from hotwire.completion import CdCompleter 
 
 class CdBuiltin(Builtin):
-    _("""Change working directory and list its contents.""")
+    __doc__ = _("""Change working directory and list its contents.""")
     def __init__(self):
         super(CdBuiltin, self).__init__('cd',
                                         output=FilePath,

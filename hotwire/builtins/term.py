@@ -22,7 +22,7 @@
 from hotwire.builtin import Builtin, BuiltinRegistry
 
 class TermBuiltin(Builtin):
-    _("""Execute a system command in a new terminal.""")
+    __doc__ = _("""Execute a system command in a new terminal.""")
     def __init__(self):
         super(TermBuiltin, self).__init__('term', nostatus=True,
                                           parseargs='str-shquoted',

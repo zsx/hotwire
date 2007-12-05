@@ -65,7 +65,7 @@ class OpenSshKnownHostCompleter(Singleton, BaseCompleter):
         yield Completion(host, 0, len(text), exact=False, default_icon='gtk-network')
         
 class HotSshBuiltin(Builtin):
-    _("""Open a connection via SSH.""")
+    __doc__ =  _("""Open a connection via SSH.""")
     def __init__(self):
         super(HotSshBuiltin, self).__init__('ssh', nostatus=True,
                                             parseargs='shglob',

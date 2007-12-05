@@ -29,7 +29,7 @@ from hotwire.builtin import Builtin, BuiltinRegistry
 from hotwire.builtins.fileop import FileOpBuiltin
 
 class CpBuiltin(FileOpBuiltin):
-    _("""Copy sources to destination.""")
+    __doc__ = _("""Copy sources to destination.""")
     def __init__(self):
         super(CpBuiltin, self).__init__('cp', aliases=['copy'],
                                         parseargs='shglob',

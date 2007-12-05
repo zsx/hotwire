@@ -25,7 +25,7 @@ from hotwire.text import MarkupText
 from hotwire.builtin import Builtin, BuiltinRegistry, InputStreamSchema
 
 class PropBuiltin(Builtin):
-    _("""Return the property of an object.""")
+    __doc__ = _("""Return the property of an object.""")
     def __init__(self):
         super(PropBuiltin, self).__init__('prop',
                                           input=InputStreamSchema('any'),

@@ -29,7 +29,7 @@ from hotwire.builtin import BuiltinRegistry
 from hotwire.builtins.fileop import FileOpBuiltin
 
 class RmBuiltin(FileOpBuiltin):
-    _("""Move a file to the trash.""")
+    __doc__ = _("""Move a file to the trash.""")
     def __init__(self):
         super(RmBuiltin, self).__init__('rm', aliases=['delete'],
                                         parseargs='shglob',

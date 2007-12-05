@@ -28,7 +28,7 @@ from hotwire.fs import FilePath
 from hotwire.sysdep.fs import Filesystem
 
 class EditBuiltin(Builtin):
-    _("""Launch the text editor.""")
+    __doc__ = _("""Launch the text editor.""")
     def __init__(self):
         super(EditBuiltin, self).__init__('edit',
                                           nostatus=True,

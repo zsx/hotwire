@@ -29,7 +29,7 @@ from hotwire.builtin import Builtin, BuiltinRegistry
 from hotwire.builtins.fileop import FileOpBuiltin
 
 class MkdirBuiltin(FileOpBuiltin):
-    _("""Create directories.""")
+    __doc__ = _("""Create directories.""")
     def __init__(self):
         super(MkdirBuiltin, self).__init__('mkdir',
                                            parseargs='shglob',

@@ -25,7 +25,7 @@ from hotwire.sysdep.proc import ProcessManager, Process
 from hotwire.builtin import Builtin, BuiltinRegistry
 
 class PsBuiltin(Builtin):
-    _("""List processes.""")
+    __doc__ = _("""List processes.""")
     def __init__(self):
         super(PsBuiltin, self).__init__('proc',
                                         output=Process,

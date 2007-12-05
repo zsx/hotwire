@@ -22,7 +22,7 @@
 from hotwire.builtin import Builtin, BuiltinRegistry
 
 class PyBuiltin(Builtin):
-    _("""Process objects using Python code.""")
+    __doc__ = _("""Process objects using Python code.""")
     def __init__(self):
         super(PyBuiltin, self).__init__('py', 
                                         nostatus=True)

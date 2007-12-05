@@ -27,7 +27,7 @@ from hotwire.fs import FilePath
 from hotwire.sysdep.fs import Filesystem
 
 class SecHashBuiltin(Builtin):
-    _("""Create a secure hash (default SHA1) from objects or file arguments.""")
+    __doc__ = _("""Create a secure hash (default SHA1) from objects or file arguments.""")
     def __init__(self):
         super(SecHashBuiltin, self).__init__('sechash', idempotent=True,
                                              input=InputStreamSchema('any', optional=True),

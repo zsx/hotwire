@@ -62,7 +62,7 @@ class BareFdStream(object):
         pass
 
 class ShBuiltin(Builtin):
-    _("""Execute a system shell command, returning output as text.""")
+    __doc__ = _("""Execute a system shell command, returning output as text.""")
     def __init__(self):
         super(ShBuiltin, self).__init__('sh',
                                         input=InputStreamSchema(str, optional=True),

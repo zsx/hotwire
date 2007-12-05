@@ -39,7 +39,7 @@ class FileStringMatch(object):
         self.match_end = end
 
 class FSearchBuiltin(FileOpBuiltin):
-    _("""Search directory tree for files matching a regular expression.""")
+    __doc__ = _("""Search directory tree for files matching a regular expression.""")
     def __init__(self):
         super(FSearchBuiltin, self).__init__('fsearch',
                                              output=FileStringMatch,

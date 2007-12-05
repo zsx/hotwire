@@ -27,7 +27,7 @@ class HelpItem(object):
         self.items = items
 
 class HelpBuiltin(Builtin):
-    _("""Display help.""")
+    __doc__ = _("""Display help.""")
     def __init__(self):
         super(HelpBuiltin, self).__init__('help',
                                           output=HelpItem,
