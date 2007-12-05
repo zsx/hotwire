@@ -48,10 +48,13 @@ class Ui(dbus.service.Object):
             newwin.present()
             
     @dbus.service.method(UI_IFACE,
-                         in_signature="as")            
-    def RunTtyCommand(self, args):
-        win = self.__winfactory.get_active_window()
-        raise NotImplementedError()
+                         in_signature="uas")            
+    def RunTtyCommand(self, timestamp, args):
+        win = self.__winfactory.run_tty_command(args)
+        if timestamp > 0:
+            win.present_with_time(timestamp)
+        else:
+            win.present()        
 
 class IpcDBus(object):
     def __init__(self):
@@ -70,32 +73,32 @@ class IpcDBus(object):
         bus_name = dbus.service.BusName(BUS_NAME, bus=dbus.SessionBus())
         self.__uiproxy = Ui(win.factory, bus_name)
 
+    def __parse_startup_id(self):
+        startup_time = None
+        try:
+            startup_id_env = os.environ['DESKTOP_STARTUP_ID']
+        except KeyError, e:
+            startup_id_env = None
+        if startup_id_env:
+            idx = startup_id_env.find('_TIME')
+            if idx > 0:
+                idx += 5
+                startup_time = int(startup_id_env[idx:])
+        return startup_time        
+
     def new_window(self):
         inst = dbus.SessionBus().get_object(BUS_NAME, UI_OPATH)
         inst_iface = dbus.Interface(inst, UI_IFACE)
         _logger.debug("Sending RaiseNoTimestamp to existing instance")
         try:
-            startup_time = None
-            try:
-                startup_id_env = os.environ['DESKTOP_STARTUP_ID']
-            except KeyError, e:
-                startup_id_env = None
-            if startup_id_env:
-                idx = startup_id_env.find('_TIME')
-                if idx > 0:
-                    idx += 5
-                    startup_time = int(startup_id_env[idx:])
-            if startup_time:
-                inst_iface.NewWindow(startup_time) 
-            else:
-                inst_iface.NewWindow(0)
+            inst_iface.NewWindow(self.__parse_startup_id() or 0) 
         except dbus.DBusException, e:
             _logger.error("Caught exception attempting to send RaiseNoTimestamp", exc_info=True)
             
     def run_tty_command(self, *args):
         inst = dbus.SessionBus().get_object(BUS_NAME, UI_OPATH)
         inst_iface = dbus.Interface(inst, UI_IFACE)
-        inst.RunTtyCommand(*args)        
+        inst.RunTtyCommand(self.__parse_startup_id() or 0, *args)        
 
 def getInstance():
     return IpcDBus()

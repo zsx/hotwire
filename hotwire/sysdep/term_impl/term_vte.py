@@ -77,8 +77,10 @@ class VteTerminal(gtk.VBox):
         prefs.monitor_prefs('term.', self.__on_pref_changed)
 
         termargs = {}
-        if cmd:
+        if isinstance(cmd, basestring):
             termargs['cmd'] = ['/bin/sh', '-c', cmd]
+        else:
+            termargs['cmd'] = cmd
         self.__term = term = VteTerminalWidget(cwd=cwd, **termargs)
         self.pack_start(self.__term, expand=True)
         self.__term.get_vte().connect('selection-changed', self.__on_selection_changed)

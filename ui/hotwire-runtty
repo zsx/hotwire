@@ -76,7 +76,7 @@ def main():
     _logger.debug('initializing threads')
     gobject.threads_init()
     
-	from hotwire.sysdep.ipc import Ipc
+    from hotwire.sysdep.ipc import Ipc
     ipc = Ipc.getInstance()
     ipc.run_tty_command(args)		
 

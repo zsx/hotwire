@@ -1013,9 +1013,7 @@ class HotWindow(gtk.Window):
         self.new_tab_hotwire(initcwd=self.__get_curtab_cwd(), initcmd='ls')
 
     def __new_term_tab_cb(self, action):
-        cwd = self.__get_curtab_cwd()
-        term = Terminal.getInstance().get_terminal_widget_cmd(cwd, None, '')
-        self.new_tab_widget(term, 'term')
+        self.new_tab_term(None)
 
     def __close_cb(self, action):
         self.__remove_page_widget(self.__notebook.get_nth_page(self.__notebook.get_current_page()))         
@@ -1208,6 +1206,11 @@ along with Hotwire; if not, write to the Free Software Foundation, Inc.,
         hw.show_all()
         self.__notebook.set_current_page(idx)
         self.set_focus(hw.get_entry())
+        
+    def new_tab_term(self, cmd):
+        cwd = self.__get_curtab_cwd()
+        term = Terminal.getInstance().get_terminal_widget_cmd(cwd, cmd, '')
+        self.new_tab_widget(term, 'term')        
 
     def __sync_tabs_visible(self):
         oldvis = self.__tabs_visible
@@ -1321,6 +1324,7 @@ class HotWindowFactory(Singleton):
     def __init__(self):
         super(HotWindowFactory, self).__init__()
         self.__windows = set()
+        self.__active_window = None
         self.__sticky_keywords = {'subtitle': ''}
 
     def create_initial_window(self, *args, **kwargs):
@@ -1338,11 +1342,29 @@ class HotWindowFactory(Singleton):
                 kwargs[k] = v
         win = HotWindow(factory=self, is_initial=is_initial, **kwargs)
         win.connect('destroy', self.__on_win_destroy)
+        win.connect('notify::is-active', self.__on_window_active)        
         self.__windows.add(win)
+        if not self.__active_window:
+            self.__active_window = win
+        return win
+    
+    def run_tty_command(self, args):
+        win = self.__active_window
+        if not win:
+            raise ValueError('No recently active window!')
+        win.new_tab_term(args)
         return win
 
     def __on_win_destroy(self, win):
         _logger.debug("got window destroy")
         self.__windows.remove(win)
+        if win == self.__active_window and self.__windows:
+            # Pick one.
+            self.__active_window = self.__windows[0]
         if len(self.__windows) == 0:
             gtk.main_quit()
+
+    def __on_window_active(self, win, *args):
+        active = win.get_property('is-active')
+        if active:
+            self.__active_window = win
