@@ -149,8 +149,15 @@ class VteTerminalWidget(gtk.VBox):
                 url = 'http://' + matchstr
             else:
                 url = matchstr
-            # TODO import pycompat webbrowser
-            import webbrowser
+            # Older webbrowser.py didn't check gconf
+            if sys.version_info[0] == 2 and sys.version_info[1] < 6:
+                try:
+                    import hotwire.pycompat.webbrowser as webbrowser
+                except ImportError, e:
+                    _logger.warn("Couldn't import hotwire.pycompat.webbrowser", exc_info=True)
+                    import webbrowser
+            else:
+                import webbrowser            
             webbrowser.open(url)
             
     def _on_child_exited(self, term):
