@@ -68,7 +68,10 @@ def main():
     locale.setlocale(locale.LC_ALL, '') 
     import gettext
     gettext.install('hotwire')
-           
+ 
+    import hotwire.builtin
+    hotwire.builtin.load()
+          
     import hotwire.test_command
     if platform.system() == 'Linux':
         import hotwire.test_command_unix
