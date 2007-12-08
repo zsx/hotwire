@@ -1358,9 +1358,9 @@ class HotWindowFactory(Singleton):
     def __on_win_destroy(self, win):
         _logger.debug("got window destroy")
         self.__windows.remove(win)
-        if win == self.__active_window and self.__windows:
+        if win == self.__active_window and len(self.__windows) > 0:
             # Pick one.
-            self.__active_window = self.__windows[0]
+            self.__active_window = self.__windows.__iter__().next()
         if len(self.__windows) == 0:
             gtk.main_quit()
 
