@@ -27,6 +27,7 @@ else:
 import gtk, gobject, pango
 
 import hotwire
+from hotwire.sysdep import is_unix, is_windows
 from hotwire.text import MarkupText
 import hotwire_ui.widgets as hotwidgets
 from hotwire_ui.render import ObjectsRenderer, ClassRendererMapping
@@ -347,7 +348,10 @@ class UnicodeRenderer(ObjectsRenderer):
             iter.forward_char()
 
     def get_opt_formats(self):
-        return ['x-filedescriptor/special', 'text/chunked']
+        if is_unix():
+            return ['x-filedescriptor/special', 'text/chunked']
+        else:
+            return ['text/chunked']
 
     def __append_chunk(self, obj):
         buf = self._buf
