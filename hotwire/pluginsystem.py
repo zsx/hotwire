@@ -28,12 +28,18 @@ from hotwire.sysdep.fs import Filesystem
 _logger = logging.getLogger("hotwire.PluginSystem")
 
 def load_plugins():
-    custom_path = Filesystem.getInstance().makedirs_p(os.path.join(Filesystem.getInstance().get_conf_dir(), "plugins"))
+    fs = Filesystem.getInstance()
+    syspath = fs.get_system_conf_dir()
+    if syspath:
+        sys_pluginpath = os.path.join(syspath, 'plugins')
+        _load_plugins_in_dir(sys_pluginpath)
+    custom_path = fs.makedirs_p(os.path.join(fs.get_conf_dir(), "plugins"))
     _load_plugins_in_dir(custom_path)
    
 def _load_plugins_in_dir(dirname):
     if not os.path.isdir(dirname):
        return    
+    _logger.debug("loading from plugin path: %s", dirname)   
     for f in DirectoryGenerator(dirname):
         if f.endswith('.py'):
             fname = os.path.basename(f[:-3])
@@ -41,7 +47,8 @@ def _load_plugins_in_dir(dirname):
                 _logger.debug("Attempting to load plugin: %s", f)
                 (stream, path, desc) = imp.find_module(fname, [dirname])
                 try:
-                    imp.load_module(fname, stream, f, desc)
+                    module = imp.load_module(fname, stream, f, desc)
+                    _logger.debug("Plugin loaded successfully %s", module)                    
                 finally:
                     stream.close()
             except:
