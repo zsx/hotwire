@@ -18,7 +18,7 @@
 
 import os,sys,platform,logging,getopt
 import locale,threading,subprocess,time
-import signal
+import signal,tempfile,shutil
 
 import gtk,gobject,pango
 import dbus,dbus.glib,dbus.service
@@ -29,8 +29,16 @@ from hotvte.vtewindow import VteApp
 
 _logger = logging.getLogger("hotssh.SshWindow")
 
+_CONTROLPATH = None
+def get_controlpath():
+    global _CONTROLPATH
+    if _CONTROLPATH is None:
+        _CONTROLPATH = tempfile.mkdtemp('', 'hotssh')
+    return _CONTROLPATH
+
 # TODO - openssh should really do this out of the box
-_sshcmd = ['ssh', '-oControlMaster=auto', '-oControlPath=' + os.path.expanduser('~/.ssh/') + 'master-%r@%h:%p']
+def get_sshcmd():
+    return ['ssh', '-oControlMaster=auto', '-oControlPath=' + os.path.join(get_controlpath(), 'master-%r@%h:%p')]
 
 class HostConnectionMonitor(gobject.GObject):
     __gsignals__ = {
@@ -61,7 +69,7 @@ class HostConnectionMonitor(gobject.GObject):
     def __check_host(self, host):
         _logger.debug("performing check for %s", host)
         del self.__host_monitor_ids[host]
-        cmd = list(_sshcmd)
+        cmd = list(get_sshcmd())
         starttime = time.time()
         # This is a hack.  Blame Adam Jackson.
         cmd.extend(['-oBatchMode=true', host, '/bin/true'])
@@ -104,7 +112,7 @@ class SshTerminalWidget(gtk.VBox):
         self.__connecting_state = False
         self.__connected = None
         self.__latency = None
-        self.__sshcmd = list(_sshcmd)
+        self.__sshcmd = list(get_sshcmd())
         self.__sshcmd.extend(args)
         self.__host = None
         self.__sshopts = []
@@ -304,4 +312,7 @@ class SshWindow(VteWindow):
 class SshApp(VteApp):
     def __init__(self):
         super(SshApp, self).__init__('HotSSH', SshWindow)
-        
+                
+    def on_shutdown(self):
+        cp = get_controlpath()
+        shutil.rmtree(cp)
