@@ -107,13 +107,14 @@ class HostConnectionMonitor(gobject.GObject):
 _hostmonitor = HostConnectionMonitor()
 
 class SshTerminalWidget(gtk.VBox):
-    def __init__(self, args):
+    def __init__(self, args, cwd):
         super(SshTerminalWidget, self).__init__()
         self.__connecting_state = False
         self.__connected = None
         self.__latency = None
         self.__sshcmd = list(get_sshcmd())
         self.__sshcmd.extend(args)
+        self.__cwd = cwd
         self.__host = None
         self.__sshopts = []
         for arg in args:
@@ -157,7 +158,7 @@ class SshTerminalWidget(gtk.VBox):
         
     def connect(self):
         self.__connecting_state = True        
-        self.__term = term = VteTerminalWidget(cwd=os.path.expanduser('~'), cmd=self.__sshcmd)
+        self.__term = term = VteTerminalWidget(cwd=self.__cwd, cmd=self.__sshcmd)
         term.connect('child-exited', self.__on_child_exited)
         term.show_all()
         self.pack_start(term, expand=True)
@@ -223,9 +224,8 @@ class SshWindow(VteWindow):
         
         self.__merge_ssh_ui()
         
-    def new_tab(self, args):
-        home = os.path.expanduser('~')
-        term = SshTerminalWidget(args=args)
+    def new_tab(self, args, cwd):
+        term = SshTerminalWidget(args=args, cwd=cwd)
         self.append_widget(term)
         
     def __on_nm_state_change(self, *args):

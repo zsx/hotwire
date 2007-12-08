@@ -96,12 +96,12 @@ class VteWindow(gtk.Window):
         
         self.__tabs_visible = self.__notebook.get_show_tabs()
         
-    def new_tab(self, args):
-        widget = TabbedVteWidget(cmd=args)
+    def new_tab(self, args, cwd):
+        widget = TabbedVteWidget(cmd=args, cwd=cwd)
         self.append_widget(widget)
         
-    def remote_new_tab(self, args):
-        self.new_tab(args)
+    def remote_new_tab(self, args, cwd):
+        self.new_tab(args, cwd)
         
     def append_widget(self, term):
         idx = self.__notebook.append_page(term)
@@ -314,8 +314,8 @@ class VteWindowFactory(gobject.GObject):
         self.__windows.add(win)
         return win
     
-    def remote_new_tab(self, cmd):
-        self.__recentwindow.remote_new_tab(cmd)
+    def remote_new_tab(self, cmd, cwd):
+        self.__recentwindow.remote_new_tab(cmd, cwd)
         return self.__recentwindow
     
     def __on_window_active(self, win, *args):
@@ -336,17 +336,17 @@ class UiProxy(dbus.service.Object):
         super(UiProxy, self).__init__(dbus.service.BusName(bus_name, bus=dbus.SessionBus()), ui_opath)
         self.__winfactory = factory
         # This is a disturbing hack.  But it works.
-        def RunCommand(self, timestamp, istab, cmd):
-            _logger.debug("Handling RunCommand method invocation ts=%s cmd=%s)", timestamp, cmd)
+        def RunCommand(self, timestamp, istab, cmd, cwd):
+            _logger.debug("Handling RunCommand method invocation ts=%s cmd=%s cwd=%s)", timestamp, cmd, cwd)
             if istab:
-                curwin = self.__winfactory.remote_new_tab(cmd)
+                curwin = self.__winfactory.remote_new_tab(cmd, cwd)
             else:
                 raise NotImplementedError('can only create new tabs')
             if timestamp > 0:
                 curwin.present_with_time(timestamp)
             else:
-                curwin.present()         
-        setattr(UiProxy, 'RunCommand', dbus.service.method(ui_iface, in_signature='ubas')(RunCommand))                
+                curwin.present()
+        setattr(UiProxy, 'RunCommand', dbus.service.method(ui_iface, in_signature='ubass')(RunCommand))                
 
 class VteRemoteControl(object):
     def __init__(self, name, bus_name=None, ui_opath=None, ui_iface=None):
@@ -366,7 +366,7 @@ class VteRemoteControl(object):
             inst_iface = dbus.Interface(inst, self.__ui_iface)
             _logger.debug("Sending RunCommand to existing instance")
             # TODO support choosing tab/window
-            inst_iface.RunCommand(gtk.get_current_event_time(), True, sys.argv[1:])
+            inst_iface.RunCommand(gtk.get_current_event_time(), True, dbus.Array(sys.argv[1:], signature="s"), os.getcwd())
             sys.exit(0)
             os._exit(0)
         
@@ -436,7 +436,7 @@ widget "*hotwire-tab-close" style "hotwire-tab-close"
         factory = app.get_factory()
         factory.connect('shutdown', app.on_shutdown)
         w = factory.create_initial_window()
-        w.new_tab(sys.argv[1:]) 
+        w.new_tab(sys.argv[1:], os.getcwd())
     
         uiproxy = remote.get_proxy(factory)    
  

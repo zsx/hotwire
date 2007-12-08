@@ -19,29 +19,24 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR 
 # THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import os,sys
+import os,sys,subprocess
 
-from hotwire.cmdalias import AliasRegistry
+from hotwire.builtin import Builtin, BuiltinRegistry
+from hotwire.singletonmixin import Singleton
+from hotwire.completion import BaseCompleter, Completion
+from hotwire.sysdep.fs import Filesystem
 
-default_aliases = {'sudo': 'term -w sudo',
-                   'su': 'term -w su',                   
-                   'vi': 'term vi',
-                   'vim': 'term vim',
-                   'gdb': 'term -w gdb',                   
-                   'ssh': 'term -w ssh',
-                   'man': 'term man',
-                   'info': 'term info',
-                   'less': 'term less',
-                   'more': 'term more',
-                   'ipython': 'term ipython',                     
-                   'top': 'term top',
-                   'iotop': 'term iotop',                   
-                   'powertop': 'term powertop',                   
-                   'nano': 'term nano',
-                   'pico': 'term pico',
-                   'irssi': 'term -w irssi',
-                   'mutt': 'term -w mutt',
-                  }
-aliases = AliasRegistry.getInstance()
-for name,value in default_aliases.iteritems():
-    aliases.insert(name, value)
+class HotSudoBuiltin(Builtin):
+    __doc__ =  _("""Run a command as root.""")
+    def __init__(self):
+        super(HotSudoBuiltin, self).__init__('sudo', nostatus=True,
+                                              parseargs='shglob',
+                                              threaded=True)
+
+    def execute(self, context, args, options=[]):
+        argv = ['hotwire-sudo']
+        argv.extend(args)
+        subprocess.Popen(argv, cwd=context.cwd)
+        return []
+        
+BuiltinRegistry.getInstance().register(HotSudoBuiltin())

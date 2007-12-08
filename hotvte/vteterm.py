@@ -132,10 +132,14 @@ class VteTerminalWidget(gtk.VBox):
     def __idle_do_cmd_fork(self, cmd, cwd):
         _logger.debug("Forking cmd: %s", cmd)
         self.__term.connect("child-exited", self._on_child_exited)
-        if cmd:
-            pid = self.__term.fork_command(cmd[0], cmd, directory=cwd)
+        if cwd:
+            kwargs = {'directory': cwd}
         else:
-            pid = self.__term.fork_command(directory=cwd)
+            kwargs = {}
+        if cmd:
+            pid = self.__term.fork_command(cmd[0], cmd, **kwargs)
+        else:
+            pid = self.__term.fork_command(**kwargs)
         self.pid = pid
         self.emit('fork-child')
         

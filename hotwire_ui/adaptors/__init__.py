@@ -7,6 +7,10 @@ def load():
         fs = Filesystem.getInstance()
         if fs.executable_on_path('hotwire-ssh'):
             import hotwire_ui.adaptors.ssh
+        if fs.executable_on_path('hotwire-sudo'):
+            import hotwire_ui.adaptors.sudo
+        import hotwire.sysdep.unix_completers
+            
         
     
     
