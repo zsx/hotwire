@@ -64,6 +64,9 @@ class HotwireClientContext(hotwire.command.HotwireContext):
         self.__hotwire.execute_pipeline(tree,
                                         add_history=False,
                                         reset_input=False)
+        
+    def get_gtk_event_time(self):
+        return gtk.get_current_event_time()
 
     def push_msg(self, text, **kwargs):
         self.__hotwire.push_msg(text, **kwargs)

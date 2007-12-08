@@ -58,6 +58,9 @@ class HotwireContext(gobject.GObject):
 
     def get_cwd(self):
         return self.__cwd
+    
+    def get_gtk_event_time(self):
+        return 0
 
     def info_msg(self, msg):
         _logger.info("msg: %s", msg)
@@ -77,6 +80,7 @@ class CommandContext(object):
         self.input_is_first = False
         self.pipeline = None
         self.cwd = hotwire.get_cwd()
+        self.gtk_event_time = hotwire.get_gtk_event_time()
         # This is kind of a hack; we need to store a snapshot of the
         # currently displayed output when executing a new command.
         # We should be sure this isn't creating circular references.

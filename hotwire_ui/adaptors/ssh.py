@@ -77,7 +77,9 @@ class HotSshBuiltin(Builtin):
     def execute(self, context, args, options=[]):
         argv = ['hotwire-ssh']
         argv.extend(args)
-        subprocess.Popen(argv)
+        newenv = dict(os.environ)
+        newenv['DESKTOP_STARTUP_ID'] = 'START_TIME%s' % (context.gtk_event_time,)
+        subprocess.Popen(argv, env=newenv)
         return []
         
 BuiltinRegistry.getInstance().register(HotSshBuiltin())

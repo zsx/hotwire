@@ -355,6 +355,19 @@ class VteRemoteControl(object):
         self.__ui_opath = ui_opath or ('/hotvte/' + name + '/ui')
         self.__ui_iface = ui_iface or (self.__bus_name + '.Ui')
         
+    def __parse_startup_id(self):
+        startup_time = None
+        try:
+            startup_id_env = os.environ['DESKTOP_STARTUP_ID']
+        except KeyError, e:
+            startup_id_env = None
+        if startup_id_env:
+            idx = startup_id_env.find('_TIME')
+            if idx > 0:
+                idx += 5
+                startup_time = int(startup_id_env[idx:])
+        return startup_time        
+        
     def single_instance(self, replace=False):
         proxy = dbus.SessionBus().get_object('org.freedesktop.DBus', '/org/freedesktop/DBus')
         flags = 1 | 4 # allow replacement | do not queue
@@ -366,7 +379,8 @@ class VteRemoteControl(object):
             inst_iface = dbus.Interface(inst, self.__ui_iface)
             _logger.debug("Sending RunCommand to existing instance")
             # TODO support choosing tab/window
-            inst_iface.RunCommand(gtk.get_current_event_time(), True, dbus.Array(sys.argv[1:], signature="s"), os.getcwd())
+            starttime = self.__parse_startup_id()
+            inst_iface.RunCommand(dbus.UInt32(starttime or 0), True, dbus.Array(sys.argv[1:], signature="s"), os.getcwd())
             sys.exit(0)
             os._exit(0)
         
@@ -441,8 +455,7 @@ widget "*hotwire-tab-close" style "hotwire-tab-close"
         uiproxy = remote.get_proxy(factory)    
  
         w.show_all()
-        w.present()   
-        gtk.gdk.notify_startup_complete()
+        w.present()
     
         _logger.debug('entering mainloop')
         gtk.gdk.threads_enter()
