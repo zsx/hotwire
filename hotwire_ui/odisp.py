@@ -141,7 +141,7 @@ class ObjectsDisplay(gtk.VBox):
             self.__add_display(object.__class__, force=True)
         self.__display.append_obj(object, **kwargs)
             
-    def __vadjust(self, pos, full):
+    def __vadjust(self, pos, full, forceuser=False):
         adjustment = self.__scroll.get_vadjustment()
         if not full:
             val = self.__scroll.get_vadjustment().page_increment
@@ -154,26 +154,19 @@ class ObjectsDisplay(gtk.VBox):
             else:
                 newval = adjustment.lower
         newval = max(min(newval, adjustment.upper-adjustment.page_size), adjustment.lower)
-        try:
-            self.__doing_autoscroll = True
-            adjustment.value = newval
-        finally:
-            self.__doing_autoscroll = False
-        self.__user_scrolled = True
+        adjustment.value = newval
 
     def __on_scroll_value_changed(self, vadjust):
-        if self.__doing_autoscroll:
-            return
         upper = vadjust.upper - vadjust.page_size
-        if vadjust.value >= upper:
+        if upper - vadjust.value < (vadjust.page_size/3):
             self.__user_scrolled = False
         else:
             self.__user_scrolled = True         
 
-    def scroll_up(self, full):
+    def scroll_up(self, full, forceuser=True):
         self.__vadjust(False, full)
         
-    def scroll_down(self, full):
+    def scroll_down(self, full, forceuser=True):
         self.__vadjust(True, full)
         
     def do_copy(self):
