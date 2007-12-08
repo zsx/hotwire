@@ -274,7 +274,10 @@ along with HotVTE; if not, write to the Free Software Foundation, Inc.,
         win.show_all()
                 
 _factory = None
-class VteWindowFactory(object):
+class VteWindowFactory(gobject.GObject):
+    __gsignals__ = {
+        "shutdown" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, ()),
+    }    
     def __init__(self, klass, window_args):
         super(VteWindowFactory, self).__init__()
         self.__windows = set()
@@ -323,7 +326,9 @@ class VteWindowFactory(object):
     def __on_win_destroy(self, win):
         _logger.debug("got window destroy")
         self.__windows.remove(win)
+        win.get_child().destroy()
         if len(self.__windows) == 0:
+            self.emit('shutdown')
             gtk.main_quit()
 
 class UiProxy(dbus.service.Object):
@@ -368,8 +373,9 @@ class VteRemoteControl(object):
     def get_proxy(self, factory):
         return UiProxy(factory, self.__bus_name, self.__ui_iface, self.__ui_opath)
     
-class VteApp(object):
+class VteApp(object): 
     def __init__(self, name, windowklass):
+        super(VteApp, self).__init__()
         self.__name = name
         self.__windowklass = windowklass
         
@@ -381,6 +387,9 @@ class VteApp(object):
         
     def get_factory(self):
         return VteWindowFactory(self.__windowklass, {})
+    
+    def on_shutdown(self, factory):
+        pass
     
 class VteMain(object):
     def main(self, appklass):
@@ -425,6 +434,7 @@ widget "*hotwire-tab-close" style "hotwire-tab-close"
             theme.append_search_path(imgpath)    
     
         factory = app.get_factory()
+        factory.connect('shutdown', app.on_shutdown)
         w = factory.create_initial_window()
         w.new_tab(sys.argv[1:]) 
     

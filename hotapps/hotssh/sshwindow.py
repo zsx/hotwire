@@ -313,6 +313,10 @@ class SshApp(VteApp):
     def __init__(self):
         super(SshApp, self).__init__('HotSSH', SshWindow)
                 
-    def on_shutdown(self):
+    def on_shutdown(self, factory):
         cp = get_controlpath()
-        shutil.rmtree(cp)
+        try:
+            _logger.debug("removing %s", cp)
+            shutil.rmtree(cp)
+        except:
+            pass
