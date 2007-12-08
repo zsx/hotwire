@@ -25,7 +25,7 @@ from cStringIO import StringIO
 import gobject
 
 import hotwire
-from hotwire.fs import unix_basename
+from hotwire.fs import unix_basename, FilePath
 from hotwire.async import MiniThreadPool
 from hotwire.sysdep import is_windows, is_unix
 import hotwire.sysdep.fs_impl
@@ -72,7 +72,19 @@ class BaseFilesystem(object):
             target = self._get_conf_dir_path()
         return self.makedirs_p(target)
     
+    def get_system_conf_dir(self):
+        if self._override_conf_dir:
+            return None
+        try:
+            syspath = self._get_system_conf_dir_path()
+        except NotImplementedError, e:
+            return None
+        return syspath 
+        
     def _get_conf_dir_path(self):
+        raise NotImplementedError()
+
+    def _get_system_conf_dir_path(self):
         raise NotImplementedError()
     
     def set_override_conf_dir(self, path):
@@ -94,6 +106,14 @@ class BaseFilesystem(object):
 
     def get_executable_filter(self):
         return self._default_x_filter
+
+    def executable_on_path(self, execname):
+        execfilter = self.get_executable_filter()
+        for dpath in self.get_path_generator():
+            epath = FilePath(execname, dpath)
+            if execfilter(epath):
+                return epath
+        return False
 
     def path_inexact_executable_match(self, path):
         """This function is a hack for Windows; essentially we

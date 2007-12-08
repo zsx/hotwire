@@ -139,6 +139,10 @@ def main():
     from hotwire.persist import Persister
 	
     hotwire.builtin.load()
+    
+    import hotwire_ui.adaptors
+    hotwire_ui.adaptors.load()
+    
     try:
         from hotwire.sysdep.ipc import Ipc
         ipc_avail = True
@@ -167,8 +171,6 @@ def main():
 
     _logger.debug('initializing threads')
     gobject.threads_init()
-
-    hotwire.sysdep.do_late_init()
 
     if no_persist:
         Persister.getInstance().disable()
