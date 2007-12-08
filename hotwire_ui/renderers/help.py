@@ -44,9 +44,6 @@ class HelpItemRenderer(UnicodeRenderer):
         self._buf.insert_markup('\n')
         self._buf.insert_markup('  %s\n' % (_('See the menu for other keybindings.'),))
         self._buf.insert_markup('\n')
-        self._buf.insert_markup('  %s\n' % (_('The entry accepts Emacs/readline style input; for example:'),))
-        self._buf.insert_markup('  <b>Ctrl-a</b> %s <b>Ctrl-e</b> - %s\n' % (_('and'), _('Beginning/end of line')))
-        self._buf.insert_markup('\n')
 
         self._buf.insert_markup('<larger>%s:</larger>\n' % (_('Builtin Commands'),))
         builtins = list(BuiltinRegistry.getInstance())
