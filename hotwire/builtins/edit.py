@@ -31,6 +31,7 @@ class EditBuiltin(Builtin):
     __doc__ = _("""Launch the text editor.""")
     def __init__(self):
         super(EditBuiltin, self).__init__('edit',
+                                          aliases=['ed'],
                                           nostatus=True,
                                           parseargs='shglob',
                                           idempotent=True)
