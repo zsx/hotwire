@@ -80,7 +80,6 @@ class SudoTerminalWidget(gtk.VBox):
         msg.set_alignment(0.0, 0.5)
         self.__headerbox.pack_start(msg)
         self.__headerbox.show_all()
-        self.set_sensitive('False')
         
     def get_vte(self):
         return self.__term.get_vte()
