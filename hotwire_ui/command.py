@@ -400,7 +400,7 @@ class CommandExecutionControl(gtk.VBox):
     <menu action='ViewMenu'>
       <menuitem action='Overview'/>
       <separator/>
-      <menuitem action='ToWindow'/>      
+      <menuitem action='ToWindow'/>
       <separator/>
       <menuitem action='PreviousCommand'/>
       <menuitem action='NextCommand'/>
@@ -409,6 +409,9 @@ class CommandExecutionControl(gtk.VBox):
       <menu action='ControlMenu'>
         <menuitem action='Cancel'/>
         <menuitem action='Undo'/>
+        <separator/>
+        <menuitem action='RemovePipeline'/>
+        <menuitem action='UndoRemovePipeline'/>                     
       </menu>
     </placeholder>          
   </menubar>
@@ -422,13 +425,15 @@ class CommandExecutionControl(gtk.VBox):
             ('Cancel', None, _('_Cancel'), '<control><shift>c', _('Cancel current command'), self.__cancel_cb),
             ('Undo', None, _('_Undo'), None, _('Undo current command'), self.__undo_cb),            
             ('Search', None, _('_Search'), '<control>s', _('Search output'), self.__search_cb),
-            ('Input', None, _('_Input'), '<control>i', _('Send input'), self.__input_cb),                         
+            ('Input', None, _('_Input'), '<control>i', _('Send input'), self.__input_cb),
             ('ScrollHome', None, _('Output _Top'), '<control>Home', _('Scroll to output top'), self.__view_home_cb),
             ('ScrollEnd', None, _('Output _Bottom'), '<control>End', _('Scroll to output bottom'), self.__view_end_cb), 
             ('ScrollPgUp', None, _('Output Page _Up'), 'Page_Up', _('Scroll output up'), self.__view_up_cb),
             ('ScrollPgDown', None, _('Output Page _Down'), 'Page_Down', _('Scroll output down'), self.__view_down_cb),
-            ('ControlMenu', None, _('_Control')), 
-            ('ToWindow', None, _('_To Window'), '<control><shift>N', _('Create window from output'), self.__to_window_cb),                         
+            ('ControlMenu', None, _('_Control')),
+            ('ToWindow', None, _('_To Window'), '<control><shift>N', _('Create window from output'), self.__to_window_cb),
+            ('RemovePipeline', None, _('_Remove Pipeline'), '<control><shift>K', _('Remove current pipeline view'), self.__remove_pipeline_cb),
+            ('UndoRemovePipeline', None, _('U_ndo Remove Pipeline'), '<control><shift>J', _('Undo removal of current pipeline view'), self.__undo_remove_pipeline_cb),            
             ('PreviousCommand', gtk.STOCK_GO_UP, _('_Previous'), '<control>Up', _('View previous command'), self.__view_previous_cb),
             ('NextCommand', gtk.STOCK_GO_DOWN, _('_Next'), '<control>Down', _('View next command'), self.__view_next_cb),
         ]
@@ -480,6 +485,8 @@ class CommandExecutionControl(gtk.VBox):
         self.__nextcmd_count = 0
         self.__nextcmd_executing_count = 0
         self.__idle_command_gc_id = 0
+        
+        self.__actively_destroyed_pipeline_box = []
 
         self.__sync_visible()
         self.__sync_cmd_sensitivity()
@@ -534,7 +541,12 @@ class CommandExecutionControl(gtk.VBox):
             if not compl_time:
                 continue
             if curtime - compl_time > self.COMPLETE_CMD_EXPIRATION_SECS:
-                self.remove_pipeline(pipeline)                        
+                self.remove_pipeline(pipeline, destroy=True)
+                
+        for cmdview in self.__actively_destroyed_pipeline_box:
+            cmdview.destroy()
+        self.__actively_destroyed_pipeline_box = []
+        self.__sync_cmd_sensitivity()
 
     def __mark_pipeline_unseen(self, pipeline, unseen):
         (cmdview, overview) = self.__get_widgets_for_pipeline(pipeline)
@@ -553,7 +565,7 @@ class CommandExecutionControl(gtk.VBox):
             overview = child
         return (cmdview, overview)
         
-    def remove_pipeline(self, pipeline, disconnect=True):
+    def remove_pipeline(self, pipeline, disconnect=True, destroy=False):
         if disconnect:
             pipeline.disconnect()
         try:
@@ -563,7 +575,11 @@ class CommandExecutionControl(gtk.VBox):
         (cmdview, overview) = self.__get_widgets_for_pipeline(pipeline)
         self.__cmd_notebook.remove(cmdview)
         self.__cmd_overview.remove_overview(overview)
-        return cmdview
+        if destroy:
+            cmdview.destroy()
+            overview.destroy()
+            return None
+        return (cmdview, overview)
     
     @log_except(_logger)
     def __handle_cmd_complete(self, *args):
@@ -667,9 +683,26 @@ class CommandExecutionControl(gtk.VBox):
         cmd = self.get_current_cmd(full=True)
         pipeline = cmd.cmd_header.get_pipeline()
         #pipeline.disconnect('state-changed', self.__on_pipeline_state_change)                 
-        cmdview = self.remove_pipeline(pipeline, disconnect=False)
+        (cmdview, overview) = self.remove_pipeline(pipeline, disconnect=False)
         self.emit('new-window', cmdview)
         self.__sync_display()
+        
+    def __remove_pipeline_cb(self, a):
+        cmd = self.get_current_cmd(full=True)
+        pipeline = cmd.cmd_header.get_pipeline()
+        _logger.debug("doing remove of %s", pipeline)
+        (cmdview, overview) = self.remove_pipeline(pipeline, disconnect=False)
+        overview.destroy()
+        self.__actively_destroyed_pipeline_box.append(cmdview)        
+        self.__sync_display()
+        
+    def __undo_remove_pipeline_cb(self, a):
+        cmd = self.__actively_destroyed_pipeline_box.pop()
+        _logger.debug("undoing remove of %s", cmd)        
+        pgnum = self.__cmd_notebook.append_page(cmd)
+        self.__cmd_notebook.set_current_page(pgnum)
+        self.__cmd_overview.add_pipeline(cmd.cmd_header.get_pipeline(), cmd.odisp)
+        self.__sync_display(pgnum)
 
     def __overview_cb(self, a): 
         self.__toggle_history_expanded()
@@ -730,18 +763,19 @@ class CommandExecutionControl(gtk.VBox):
         self.__sync_display()
             
     def __sync_cmd_sensitivity(self, curpage=None):
-        actions = map(self.__action_group.get_action, ['Copy', 'Cancel', 'PreviousCommand', 'NextCommand', 'Undo', 'Input'])
+        actions = map(self.__action_group.get_action, ['Copy', 'Cancel', 'PreviousCommand', 'NextCommand', 'Undo', 'Input', 'RemovePipeline', 'UndoRemovePipeline'])
         if self.__history_visible:
             for action in actions:
                 action.set_sensitive(False)
             cmd = None
             return
-        else:            
+        else:
+            actions[7].set_sensitive(len(self.__actively_destroyed_pipeline_box) > 0)             
             cmd = self.get_current_cmd(full=True, curpage=curpage)
             if not cmd:
-                for action in actions:
-                    action.set_sensitive(False)
-                    return
+                for action in actions[:7]:
+                    action.set_sensitive(False)                  
+                return
             pipeline = cmd.cmd_header.get_pipeline()   
             _logger.debug("sync sensitivity page %s pipeline: %s", curpage, cmd.cmd_header.get_pipeline().get_state())                
             cancellable = not not (pipeline.validate_state_transition('cancelled'))
@@ -750,8 +784,9 @@ class CommandExecutionControl(gtk.VBox):
             actions[1].set_sensitive(cancellable)
             actions[4].set_sensitive(undoable)
             actions[5].set_sensitive(pipeline.get_state() == 'executing' and cmd.odisp.supports_input() or False)
+            actions[6].set_sensitive(pipeline.is_complete())
         actions[2].set_sensitive(self.__prevcmd_count > 0)
-        actions[3].set_sensitive(self.__nextcmd_count > 0)
+        actions[3].set_sensitive(self.__nextcmd_count > 0)       
         
     def __sync_display(self, nth=None):
         def set_label(container, label, n, label_exec, n_exec, n_done):
