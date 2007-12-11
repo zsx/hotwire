@@ -81,7 +81,7 @@ if 'py2exe' in sys.argv:
                                     'includes': 'cairo, pango, pangocairo, atk, gobject'}
                          }
 else:
-    kwargs['scripts'] = ['ui/hotwire', 'ui/hotwire-editor']
+    kwargs['scripts'] = ['ui/hotwire', 'ui/hotwire-editor', 'ui/hotwire-mimeopen']
     kwargs['data_files'] = [('share/applications', ['hotwire.desktop']), 
                             ('share/icons/hicolor/24x24/apps', ['images/hotwire.png']),
                             ('share/icons/hicolor/22x22/apps', ['images/hotwire-22.png']),
