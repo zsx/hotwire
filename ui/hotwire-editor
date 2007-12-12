@@ -36,7 +36,6 @@ if __name__ == '__main__' and hasattr(sys.modules['__main__'], '__file__'):
         sys.path.insert(0, up_basedir)
 import hotwire
 import hotwire.sysdep
-import hotwire.config
 import hotwire.logutil
 import hotwire.util
 from hotwire_ui.editor import HotEditorWindow

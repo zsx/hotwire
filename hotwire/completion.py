@@ -25,7 +25,6 @@ import posixpath
 import gobject
 
 import hotwire
-import hotwire.config
 from hotwire.builtin import BuiltinRegistry
 from hotwire.cmdalias import AliasRegistry
 from hotwire.generator import CompoundGenerator, GeneratorFilter, GeneratorPureFilter

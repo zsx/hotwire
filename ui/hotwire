@@ -130,7 +130,6 @@ def main():
 	# Do all these imports after we've initialized the basics, like logging
 
     import hotwire.sysdep
-    import hotwire.config
     import hotwire.pluginsystem
     import hotwire.util
     import hotwire.builtin
