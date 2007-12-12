@@ -1307,7 +1307,7 @@ along with Hotwire; if not, write to the Free Software Foundation, Inc.,
     def new_win_hotwire(self, **kwargs):
         widget = self.__notebook.get_nth_page(self.__notebook.get_current_page())
         is_hw = widget.get_data('hotwire-is-hotwire')
-        if is_hw:
+        if is_hw and 'initcwd' not in kwargs:
             kwargs['initcwd'] = widget.context.get_cwd()
         win = HotWindowFactory.getInstance().create_window(**kwargs)
         win.show()

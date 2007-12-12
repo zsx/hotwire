@@ -188,10 +188,30 @@ class FilePathRenderer(TreeObjectsRenderer):
         fobj = self._file_for_iter(self._model, iter)
         items = self.__fs.get_file_menuitems(fobj, context=self.context)
         items.append(gtk.SeparatorMenuItem())
-        menuitem = gtk.MenuItem('Move to Trash')
+        if fobj.is_directory():
+            menuitem = gtk.MenuItem(_('Open Folder in New Tab'))
+            menuitem.connect('activate', self.__on_new_tab_activated, fobj.path)
+            items.append(menuitem)
+            menuitem = gtk.MenuItem(_('Open Folder in New Window'))
+            menuitem.connect('activate', self.__on_new_window_activated, fobj.path)
+            items.append(menuitem)            
+            items.append(gtk.SeparatorMenuItem())
+        menuitem = gtk.MenuItem(_('Move to Trash'))
         menuitem.connect("activate", self.__on_remove_activated, fobj.path)
         items.append(menuitem)
         return items
+       
+    def __on_new_tab_activated(self, menu, path):
+        _logger.debug("got new tab for %s", path)
+        from hotwire_ui.shell import locate_current_window
+        hwin = locate_current_window(self._table)
+        hwin.new_tab_hotwire(initcwd=path, initcmd='ls')  
+        
+    def __on_new_window_activated(self, menu, path):
+        _logger.debug("got new window for %s", path)
+        from hotwire_ui.shell import locate_current_window
+        hwin = locate_current_window(self._table)
+        hwin.new_win_hotwire(initcwd=path, initcmd='ls')
         
     def __on_remove_activated(self, menu, path):
         _logger.debug("got remove for %s", path)
