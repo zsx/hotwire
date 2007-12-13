@@ -48,9 +48,6 @@ class VteTerminal(gtk.VBox):
         <menuitem action='Paste'/>
       </placeholder>
     </menu>
-    <menu action='ViewMenu'>
-      <menuitem action='ToWindow'/>
-    </menu>
     <!-- <menu action='ControlMenu'>
       <menuitem action='SplitWindow'/>
     </menu> -->
@@ -59,7 +56,6 @@ class VteTerminal(gtk.VBox):
         self.__actions = [
             ('Copy', None, '_Copy', '<control><shift>c', 'Copy selected text', self.__copy_cb),
             ('Paste', None, '_Paste', '<control><shift>V', 'Paste text', self.__paste_cb),
-            ('ToWindow', None, '_To Window', '<control><shift>N', 'Turn into new window', self.__split_cb),
         ]
         self.__action_group = gtk.ActionGroup('TerminalActions')
         self.__action_group.add_actions(self.__actions)
@@ -131,17 +127,14 @@ class VteTerminal(gtk.VBox):
         self.__pid = pid
         self.__msg.set_text('Running (pid %s)' % (pid,))
 
-    def __split_cb(self, a):
-        from hotwire_ui.shell import locate_current_window
-        hwin = locate_current_window(self)        
-        self.emit('closed')
-        hwin.new_win_widget(self, self.__title)
-
     def __on_child_exited(self, term):
         _logger.debug("Caught child exited")
         self.__exited = True
         self.__msg.set_markup('Exited')
         self.emit('closed')
+        
+    def handle_detach(self):
+        self.emit('closed')        
 
     # Used as a hack to avoid sizing issues in tabs
     def hide_internals(self):

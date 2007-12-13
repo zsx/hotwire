@@ -389,6 +389,11 @@ class CommandExecutionControl(gtk.VBox):
         self.__ui_string = """
 <ui>
   <menubar name='Menubar'>
+    <menu action='FileMenu'>
+      <placeholder name='FileDetachAdditions'>
+        <menuitem action='DetachCommand'/>
+      </placeholder>
+    </menu>
     <menu action='EditMenu'>
       <placeholder name='EditMenuAdditions'>
         <menuitem action='Copy'/>
@@ -399,8 +404,6 @@ class CommandExecutionControl(gtk.VBox):
     </menu>
     <menu action='ViewMenu'>
       <menuitem action='Overview'/>
-      <separator/>
-      <menuitem action='ToWindow'/>
       <separator/>
       <menuitem action='PreviousCommand'/>
       <menuitem action='NextCommand'/>
@@ -421,6 +424,7 @@ class CommandExecutionControl(gtk.VBox):
   <accelerator action='ScrollPgDown'/>  
 </ui>"""         
         self.__actions = [
+            ('DetachCommand', None, _('Detach _Command'), '<control><shift>N', _('Create window from output'), self.__to_window_cb),                          
             ('Copy', None, _('_Copy'), '<control>c', _('Copy output'), self.__copy_cb),                          
             ('Cancel', None, _('_Cancel'), '<control><shift>c', _('Cancel current command'), self.__cancel_cb),
             ('Undo', None, _('_Undo'), None, _('Undo current command'), self.__undo_cb),            
@@ -431,7 +435,6 @@ class CommandExecutionControl(gtk.VBox):
             ('ScrollPgUp', None, _('Output Page _Up'), 'Page_Up', _('Scroll output up'), self.__view_up_cb),
             ('ScrollPgDown', None, _('Output Page _Down'), 'Page_Down', _('Scroll output down'), self.__view_down_cb),
             ('ControlMenu', None, _('_Control')),
-            ('ToWindow', None, _('_To Window'), '<control><shift>N', _('Create window from output'), self.__to_window_cb),
             ('RemovePipeline', None, _('_Remove Pipeline'), '<control><shift>K', _('Remove current pipeline view'), self.__remove_pipeline_cb),
             ('UndoRemovePipeline', None, _('U_ndo Remove Pipeline'), '<control><shift>J', _('Undo removal of current pipeline view'), self.__undo_remove_pipeline_cb),            
             ('PreviousCommand', gtk.STOCK_GO_UP, _('_Previous'), '<control>Up', _('View previous command'), self.__view_previous_cb),
@@ -763,7 +766,8 @@ class CommandExecutionControl(gtk.VBox):
         self.__sync_display()
             
     def __sync_cmd_sensitivity(self, curpage=None):
-        actions = map(self.__action_group.get_action, ['Copy', 'Cancel', 'PreviousCommand', 'NextCommand', 'Undo', 'Input', 'RemovePipeline', 'UndoRemovePipeline'])
+        actions = map(self.__action_group.get_action, ['Copy', 'Cancel', 'PreviousCommand', 'NextCommand', 'Undo', 
+                                                       'Input', 'RemovePipeline', 'DetachCommand', 'UndoRemovePipeline'])
         if self.__history_visible:
             for action in actions:
                 action.set_sensitive(False)
@@ -773,7 +777,7 @@ class CommandExecutionControl(gtk.VBox):
             actions[7].set_sensitive(len(self.__actively_destroyed_pipeline_box) > 0)             
             cmd = self.get_current_cmd(full=True, curpage=curpage)
             if not cmd:
-                for action in actions[:7]:
+                for action in actions[:8]:
                     action.set_sensitive(False)                  
                 return
             pipeline = cmd.cmd_header.get_pipeline()   
@@ -785,6 +789,7 @@ class CommandExecutionControl(gtk.VBox):
             actions[4].set_sensitive(undoable)
             actions[5].set_sensitive(pipeline.get_state() == 'executing' and cmd.odisp.supports_input() or False)
             actions[6].set_sensitive(pipeline.is_complete())
+            actions[7].set_sensitive(True)
         actions[2].set_sensitive(self.__prevcmd_count > 0)
         actions[3].set_sensitive(self.__nextcmd_count > 0)       
         

@@ -842,6 +842,10 @@ class HotWindow(gtk.Window):
       <menuitem action='NewTab'/>
       <menuitem action='NewTermTab'/>
       <separator/>
+      <menuitem action='DetachTab'/>
+      <placeholder name='FileDetachAdditions'>
+      </placeholder>
+      <separator/>
       <menuitem action='Close'/>
     </menu>
     <menu action='EditMenu'>
@@ -963,6 +967,8 @@ class HotWindow(gtk.Window):
             ('FileMenu', None, _('_File')),
             ('NewTermTab', gtk.STOCK_NEW, _('New T_erminal Tab'), '<control><shift>T',
              _('Open a new terminal tab'), self.__new_term_tab_cb),
+            ('DetachTab', None, _('_Detach Tab'), '<control><shift>D',
+             _('Deatch current tab'), self.__detach_tab_cb),
             ('Close', gtk.STOCK_CLOSE, _('_Close'), '<control><shift>W',
              _('Close the current tab'), self.__close_cb),
             ('EditMenu', None, _('_Edit')),        
@@ -1025,6 +1031,12 @@ class HotWindow(gtk.Window):
 
     def __new_term_tab_cb(self, action):
         self.new_tab_term(None)
+        
+    def __detach_tab_cb(self, action):
+        widget = self.__notebook.get_nth_page(self.__notebook.get_current_page())
+        title = self.__get_title(widget)
+        self.__on_widget_closed(widget)
+        self.new_win_widget(widget, title)
 
     def __close_cb(self, action):
         self.__remove_page_widget(self.__notebook.get_nth_page(self.__notebook.get_current_page()))
@@ -1188,21 +1200,27 @@ along with Hotwire; if not, write to the Free Software Foundation, Inc.,
             
         self.__sync_title(pn)
             
-    def __sync_title(self, pn=None):
-        if pn is not None:
-            pagenum = pn
-        else:
-            pagenum = self.__notebook.get_current_page()
-        widget = self.__notebook.get_nth_page(pagenum)
+    def __get_title(self, widget):
         tl = widget.get_data('hotwire-tab-label')
         if not tl:
-            return
+            return None
         title = _('%s - Hotwire') % (tl.get_text(),)
         # Totally gross hack; this avoids the current situation of
         # 'sudo blah' showing up with a title of 'term -w sudo blah'.
         # Delete this if we revisit the term -w situation.
         if title.startswith('term -w'):
             title = title[7:]
+        return title    
+            
+    def __sync_title(self, pn=None):
+        if pn is not None:
+            pagenum = pn
+        else:
+            pagenum = self.__notebook.get_current_page()
+        widget = self.__notebook.get_nth_page(pagenum)
+        title = self.__get_title(widget)
+        if not title:
+            return
         self.set_title(title)
             
     def new_tab_hotwire(self, is_initial=False, **kwargs):
@@ -1236,20 +1254,7 @@ along with Hotwire; if not, write to the Free Software Foundation, Inc.,
         self.__tabs_visible = len(self.__notebook.get_children()) > 1
         if self.__tabs_visible != oldvis:
             self.__notebook.set_show_tabs(self.__tabs_visible)
-        self.__sync_command_sensitivity()
-            
-    def __sync_command_sensitivity(self):
-        # This function is a hack - we should really have more of the UI factored up
-        # into here.
-        pagenum = self.__notebook.get_current_page()
-        widget = self.__notebook.get_nth_page(pagenum)
-        if not widget:
-            return
-        for uistr, actiongroup in widget.get_ui_pairs():
-            action = actiongroup.get_action('ToWindow')
-            if action:
-                action.set_sensitive(self.__tabs_visible)
-                break          
+        self.__ag.get_action('DetachTab').set_sensitive(self.__tabs_visible)    
 
     def __remove_page_widget(self, w):
         savedidx = self.__preautoswitch_index
