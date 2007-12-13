@@ -850,6 +850,8 @@ class HotWindow(gtk.Window):
       <menuitem action='Preferences'/>
     </menu>
     <menu action='ViewMenu'>
+      <menuitem action='Fullscreen'/>
+      <separator/>
     </menu>
     <placeholder name='WidgetMenuAdditions'>
     </placeholder>
@@ -867,6 +869,8 @@ class HotWindow(gtk.Window):
 
         self.__pyshell = None
         self.factory = factory
+        
+        self.__fullscreen_mode = False
 
         self.__notebook = gtk.Notebook()
         self.__notebook.connect('switch-page', lambda n, p, pn: self.__focus_page(pn))
@@ -974,8 +978,12 @@ class HotWindow(gtk.Window):
              _('Open a new window'), self.__new_window_cb),
             ('NewTab', gtk.STOCK_NEW, _('New _Tab'), '<control>t',
              _('Open a new tab'), self.__new_tab_cb)]
+        self.__toggle_actions = [
+            ('Fullscreen', gtk.STOCK_FULLSCREEN, _('Fullscreen'), 'F11', _('Switch to full screen mode'), self.__fullscreen_cb)
+            ]
         ag.add_actions(actions)
         ag.add_actions(self.__nonterm_actions)
+        ag.add_toggle_actions(self.__toggle_actions)
         self.__ui = gtk.UIManager()
         self.__ui.insert_action_group(ag, 0)
         self.__ui.add_ui_from_string(self.__ui_string)
@@ -1019,7 +1027,15 @@ class HotWindow(gtk.Window):
         self.new_tab_term(None)
 
     def __close_cb(self, action):
-        self.__remove_page_widget(self.__notebook.get_nth_page(self.__notebook.get_current_page()))         
+        self.__remove_page_widget(self.__notebook.get_nth_page(self.__notebook.get_current_page()))
+        
+    def __fullscreen_cb(self, action):
+        mode = self.__fullscreen_mode
+        self.__fullscreen_mode = not self.__fullscreen_mode
+        if mode:
+            self.unfullscreen()
+        else:
+            self.fullscreen()         
 
     def __preferences_cb(self, action):
         if not self.__prefs_dialog:
