@@ -88,7 +88,8 @@ class VteWindow(gtk.Window):
             self.set_icon_from_file(iinf.get_filename())
         else:
             self.set_icon_name(icon_name)
-        self.connect("delete-event", lambda w, e: False)                        
+        self.connect("delete-event", lambda w, e: False)
+        self.__tips = gtk.Tooltips()             
         self.__notebook = gtk.Notebook()
         vbox.pack_start(self.__notebook)
         self.__notebook.connect('switch-page', self.__on_page_switch)
@@ -109,7 +110,9 @@ class VteWindow(gtk.Window):
         if hasattr(self.__notebook, 'set_tab_reorderable'):
             self.__notebook.set_tab_reorderable(term, True)
         label = self.__add_widget_title(term)
-        label.set_text(term.get_title())
+        title = term.get_title()
+        label.set_text(title)
+        self.__tips.set_tip(label, title)
         term.show_all()
         self.__notebook.set_current_page(idx)
         term.get_vte().grab_focus()
@@ -186,7 +189,7 @@ class VteWindow(gtk.Window):
         hbox = gtk.HBox()
         label = gtk.Label('<notitle>')
         label.set_selectable(False)
-        #label.set_ellipsize(pango.ELLIPSIZE_END)
+        label.set_ellipsize(pango.ELLIPSIZE_END)
         hbox.pack_start(label, expand=True)
 
         close = gtk.Button()
@@ -203,7 +206,7 @@ class VteWindow(gtk.Window):
         hbox.show_all()
         self.__notebook.set_tab_label(w, hbox)
         w.set_data('hotwire-tab-label', label)
-        self.__notebook.set_tab_label_packing(w, False, True, gtk.PACK_START)
+        self.__notebook.set_tab_label_packing(w, True, True, gtk.PACK_START)
         self.__sync_tabs_visible()
         return label
     
@@ -242,7 +245,9 @@ along with HotVTE; if not, write to the Free Software Foundation, Inc.,
         dialog.destroy()                
         
     def __sync_tabs_visible(self):
-        self.__ag.get_action('ToWindow').set_sensitive(self.__notebook.get_n_pages() > 1)        
+        multitab = self.__notebook.get_n_pages() > 1
+        self.__ag.get_action('ToWindow').set_sensitive(multitab)
+        self.__notebook.set_show_tabs(multitab)        
         
     def __remove_page_widget(self, w):
         idx = self.__notebook.page_num(w)

@@ -296,7 +296,7 @@ class SshWindow(VteWindow):
         opts = widget.get_options()
         args = list(opts)
         args.append(host)
-        self.new_tab(args)
+        self.new_tab(args, None)
         
     def __open_sftp_cb(self, action):
         notebook = self._get_notebook()        

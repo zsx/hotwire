@@ -29,36 +29,43 @@ from hotvte.vtewindow import VteApp
 
 _logger = logging.getLogger("hotsudo.SudoWindow")
 
-#class AnimatedBorderBox(gtk.Bin):
-#    def __init__(self, color, width):
-#        super(AnimatedBorderBox, self).__init__()
-#        self.__animate_id = 0
-#        self.color = color
-#        self.width = width
-#        
-#    def do_expose(self, event):
-#        flags = self.get_flags()
-#        if (flags & gtk.VISIBLE) and (flags & gtk.MAPPED):
-#            self.paint(event.area)
-#        return False 
-#    
-#    def do_size_request(self, req):
-#        req.width = 0
-#        req.height = 0
-#        if self.child and (self.child.get_flags() & gtk.VISIBLE):
-#            child_req = child.size_request()
-#            req.width = child_req.width
-#            req.height = child_req.height
-#            
-#        req.width += self.border_width + self.style.xthickness * 2;
-#        req.height += self.border_width + self.style.ythickness * 2;
-#        
-#    def do_size_allocate(self, alloc):
-#        self.allocation = alloc
-#        childalloc = self.__get_child_alloc()
-#        
-#    def __get_child_alloc(self):
-#        topmargin = self.style.ythickness
+class AnimatedBorderBox(gtk.Bin):
+    def __init__(self, color, width):
+        super(AnimatedBorderBox, self).__init__()
+        self.__animate_id = 0
+        self.color = color
+        self.width = width
+        
+    def do_expose(self, event):
+        flags = self.get_flags()
+        if (flags & gtk.VISIBLE) and (flags & gtk.MAPPED):
+            self.paint(event.area)
+        return False 
+    
+    def do_size_request(self, req):
+        req.width = 0
+        req.height = 0
+        if self.child and (self.child.get_flags() & gtk.VISIBLE):
+            child_req = child.size_request()
+            req.width = child_req.width
+            req.height = child_req.height
+            
+        req.width += self.border_width + self.style.xthickness * 2;
+        req.height += self.border_width + self.style.ythickness * 2;
+        
+    def do_size_allocate(self, alloc):
+        self.allocation = alloc
+        childalloc = self.__get_child_alloc()
+        
+    def __get_child_alloc(self):
+        topmargin = self.style.ythickness
+        x = self.border_width + self.style.xthickness
+        width = max(1, self.allocation.width - x*2)
+        y = self.border_width + topmargin
+        height = max(1, self.allocation.height - y - self.border_width - self.style.ythickness)
+        x += self.allocation.x
+        y += self.allocation.y
+        return (x,y,width,height)
 
 class SudoTerminalWidget(gtk.VBox):
     def __init__(self, args, cwd):
