@@ -45,7 +45,7 @@ class WalkBuiltin(FileOpBuiltin):
         if len(args) > 1:
             raise ValueError(_("Too many arguments given"))
         elif len(args) == 1:
-            path = args[0]
+            path = path_join(context.cwd, args[0])
         else:
             path = context.cwd
         if '-a' not in options:
