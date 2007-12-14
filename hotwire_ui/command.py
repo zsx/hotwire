@@ -774,10 +774,11 @@ class CommandExecutionControl(gtk.VBox):
             cmd = None
             return
         else:
-            actions[7].set_sensitive(len(self.__actively_destroyed_pipeline_box) > 0)             
+            undoidx = 8
+            actions[undoidx].set_sensitive(len(self.__actively_destroyed_pipeline_box) > 0)             
             cmd = self.get_current_cmd(full=True, curpage=curpage)
             if not cmd:
-                for action in actions[:8]:
+                for action in actions[:undoidx]:
                     action.set_sensitive(False)                  
                 return
             pipeline = cmd.cmd_header.get_pipeline()   
