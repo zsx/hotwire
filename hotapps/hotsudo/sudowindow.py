@@ -55,7 +55,12 @@ class AnimatedBorderBox(gtk.Bin):
         
     def do_size_allocate(self, alloc):
         self.allocation = alloc
+        flags = self.get_flags()        
         childalloc = self.__get_child_alloc()
+        if flags & gtk.MAPPED and \
+            (childalloc != self.child_allocation):
+            self.window.invalidate_rect(self.allocation, False)
+        self.child_allocation = childalloc
         
     def __get_child_alloc(self):
         topmargin = self.style.ythickness
