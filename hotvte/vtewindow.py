@@ -53,7 +53,9 @@ class VteWindow(gtk.Window):
   <menubar name='Menubar'>
     <menu action='FileMenu'>
       <placeholder name='FileAdditions'/>
-      <separator/>    
+      <separator/>
+      <menuitem action='DetachTab'/>      
+      <separator/>
       <menuitem action='Close'/>
     </menu>
     <menu action='EditMenu'>
@@ -63,7 +65,6 @@ class VteWindow(gtk.Window):
       <placeholder name='EditAdditions'/>      
     </menu>
     <menu action='ViewMenu'>
-      <menuitem action='ToWindow'/>
       <separator/>
       <placeholder name='ViewAdditions'/>        
     </menu>
@@ -164,14 +165,14 @@ class VteWindow(gtk.Window):
         self.__using_accels = True
         self.__ag = ag = gtk.ActionGroup('WindowActions')
         self.__actions = actions = [
-            ('FileMenu', None, 'File'),           
+            ('FileMenu', None, 'File'),
+            ('DetachTab', None, '_Detach Tab', '<control><shift>D', 'Move tab into new window', self.__detach_cb),                       
             ('Close', gtk.STOCK_CLOSE, '_Close', '<control><shift>W',
              'Close the current tab', self.__close_cb),
             ('EditMenu', None, 'Edit'),
             ('Copy', None, '_Copy', '<control><shift>c', 'Copy selected text', self.__copy_cb),
             ('Paste', None, '_Paste', '<control><shift>V', 'Paste text', self.__paste_cb),                   
             ('ViewMenu', None, 'View'),
-            ('ToWindow', None, '_To Window', '<control><shift>N', 'Turn into new window', self.__split_cb),
             ('ToolsMenu', None, 'Tools'),                    
             ('About', gtk.STOCK_ABOUT, '_About', None, 'About HotVTE', self.__help_about_cb),
             ]
@@ -246,7 +247,7 @@ along with HotVTE; if not, write to the Free Software Foundation, Inc.,
         
     def __sync_tabs_visible(self):
         multitab = self.__notebook.get_n_pages() > 1
-        self.__ag.get_action('ToWindow').set_sensitive(multitab)
+        self.__ag.get_action('DetachTab').set_sensitive(multitab)
         self.__notebook.set_show_tabs(multitab)        
         
     def __remove_page_widget(self, w):
@@ -271,7 +272,7 @@ along with HotVTE; if not, write to the Free Software Foundation, Inc.,
         widget = self.__notebook.get_nth_page(self.__notebook.get_current_page())
         widget.get_vte().paste_clipboard()
 
-    def __split_cb(self, a):
+    def __detach_cb(self, a):
         widget = self.__notebook.get_nth_page(self.__notebook.get_current_page())
         self.__remove_page_widget(widget)               
         win = self.__factory.create_window()
