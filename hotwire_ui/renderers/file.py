@@ -26,7 +26,7 @@ import hotwire_ui.widgets as hotwidgets
 from hotwire.command import Pipeline
 from hotwire.fs import FilePath, unix_basename
 from hotwire_ui.render import TreeObjectsRenderer, ClassRendererMapping, menuitem
-from hotwire.sysdep.fs import Filesystem
+from hotwire.sysdep.fs import Filesystem, File
 from hotwire_ui.pixbufcache import PixbufCache
 from hotwire.util import format_file_size, quote_arg
 
@@ -158,6 +158,8 @@ class FilePathRenderer(TreeObjectsRenderer):
         cell.set_property('text', mime or '')                 
 
     def _get_row(self, obj):
+        if isinstance(obj, File):
+            return (obj.path, obj)
         file_obj = self.__fs.get_file(obj)
         file_obj.connect("changed", self._signal_obj_changed, 1)
         return (obj, file_obj)
@@ -239,4 +241,5 @@ class FilePathRenderer(TreeObjectsRenderer):
         hw = locate_current_shell(self._table)
         hw.do_copy_url_drag_to_dir(sel_data, self.context.get_cwd())
 
+ClassRendererMapping.getInstance().register(File, FilePathRenderer)
 ClassRendererMapping.getInstance().register(FilePath, FilePathRenderer)

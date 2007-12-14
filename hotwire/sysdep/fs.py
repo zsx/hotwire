@@ -244,6 +244,9 @@ class File(gobject.GObject):
 
     def _get_stat_async(self):
         MiniThreadPool.getInstance().run(self.__get_stat_signal)
+        
+    def get_stat_sync(self):
+        self._do_get_stat()
 
     def _do_get_stat(self):
         try:

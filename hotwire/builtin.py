@@ -209,4 +209,5 @@ def load():
     import hotwire.builtins.sechash
     import hotwire.builtins.sh
     import hotwire.builtins.term
+    import hotwire.builtins.walk    
     import hotwire.builtins.write

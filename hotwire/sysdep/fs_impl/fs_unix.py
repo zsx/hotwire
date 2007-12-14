@@ -50,7 +50,10 @@ class UnixFilesystem(BaseFilesystem):
     def supports_group(self):
         return True
         
-class UnixFile(File):   
+class UnixFile(File): 
+    def __init__(self, *args, **kwargs):
+        super(UnixFile, self).__init__(*args, **kwargs)
+  
     def get_uid(self):
         return self.stat and self.stat.st_uid
     
