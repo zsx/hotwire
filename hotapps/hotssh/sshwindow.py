@@ -282,7 +282,7 @@ class SshWindow(VteWindow):
         self.__actions = actions = [
             ('CopyConnection', gtk.STOCK_NEW, 'New tab for connection', '<control><shift>t',
              'Open a new tab for the same remote computer', self.__copy_connection_cb),              
-            ('OpenSFTP', gtk.STOCK_NEW, 'Open SFTP', None,
+            ('OpenSFTP', gtk.STOCK_NEW, 'Open SFTP', '<control><shift>S',
              'Open a SFTP connection', self.__open_sftp_cb),            
             ('ConnectionMenu', None, 'Connection'),
             ('Reconnect', None, '_Reconnect', None, 'Reset connection to server', self.__reconnect_cb),
