@@ -94,6 +94,7 @@ class VteWindow(gtk.Window):
         self.__notebook = gtk.Notebook()
         vbox.pack_start(self.__notebook)
         self.__notebook.connect('switch-page', self.__on_page_switch)
+        self.__notebook.set_scrollable(True)
         self.__notebook.show()
         
         self.__tabs_visible = self.__notebook.get_show_tabs()
