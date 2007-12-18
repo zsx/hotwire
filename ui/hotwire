@@ -76,8 +76,8 @@ def main():
     import hotwire
     from hotwire.version import __version__, svn_version_str
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "hdsn", ["help", "debug", "debug-modules=", "thread-debug",
-                                                          "no-persist",
+        opts, args = getopt.getopt(sys.argv[1:], "hdsnu", ["help", "debug", "debug-modules=", "thread-debug",
+                                                          "no-persist", "unsaved",
                                                           "minion-debug",
                                                           "minion-thread-debug"])
     except getopt.GetoptError:
@@ -89,7 +89,8 @@ def main():
     thread_debug = False
     minion_debug = False
     minion_thread_debug = False
-    no_persist = False
+    new_process = False
+    unsaved = False
     for o, v in opts:
         if o in ('-d', '--debug'):
             debug = True
@@ -99,7 +100,9 @@ def main():
             usage()
             sys.exit()
         elif o in ('-n', '--no-persist'):
-            no_persist = True
+            new_process = True
+        elif o in ('-u', '--unsaved'):
+            unsaved = True            
         elif o in ('--thread-debug',):
             thread_debug = True
         elif o in ('--minion-debug',):
@@ -151,7 +154,7 @@ def main():
     ipc = None
     if not ipc_avail:
         _logger.warn("No IPC subsystem available for this platform")
-    elif not no_persist:
+    elif not new_process:
         ipc = Ipc.getInstance()
         try:
             hotw_exists = ipc.singleton()
@@ -171,8 +174,12 @@ def main():
     _logger.debug('initializing threads')
     gobject.threads_init()
 
-    if no_persist:
+    if new_process:
         Persister.getInstance().disable()
+        
+    if unsaved:
+        import hotwire.state
+        hotwire.state.History.getInstance().set_no_save()
 
     hotwire.pluginsystem.load_plugins()
 
@@ -192,9 +199,9 @@ widget "*hotwire-tab-close" style "hotwire-tab-close"
         _logger.debug("appending to icon theme: %s", imgpath)
         theme.append_search_path(imgpath)
 
-    w = HotWindowFactory.getInstance().create_initial_window(subtitle=(no_persist and _(' (Unshared)') or ''))
+    w = HotWindowFactory.getInstance().create_initial_window(subtitle=(new_process and _(' (Unshared)') or ''))
     w.show()
-    if ipc_avail and (not no_persist):
+    if ipc_avail and (not new_process):
         ipc.register_window(w)
 
     gtk.gdk.notify_startup_complete()

@@ -39,6 +39,7 @@ def _get_state_path(name):
 class History(Singleton):
     def __init__(self):
         super(History, self).__init__()
+        self.__no_save = False
         path = _get_state_path('history.sqlite')
         _logger.debug("opening connection to history db: %s", path)
         self.__conn = sqlite3.connect(path, isolation_level=None)
@@ -55,7 +56,10 @@ class History(Singleton):
         self.__convert_from_persist('autoterm', 'Autoterm', '(NULL, ?, 0)')
         freqconvert = lambda x: (x[0], x[1].freq, x[1].usetime)
         self.__convert_from_persist('cwd_history', 'Directories', '(NULL, ?, ?, ?)', freqconvert)
-        self.__convert_from_persist('token_history', 'Tokens', '(NULL, ?, ?, ?)', freqconvert)        
+        self.__convert_from_persist('token_history', 'Tokens', '(NULL, ?, ?, ?)', freqconvert) 
+        
+    def set_no_save(self):
+        self.__no_save = True       
         
     def __convert_from_persist(self, persistkey, tablename, valuefmt, mapfunc=lambda x: (x,)):
         cursor = self.__conn.cursor()
@@ -80,6 +84,8 @@ class History(Singleton):
         _logger.debug("conversion successful")        
 
     def append_command(self, cmd, cwd):
+        if self.__no_save:
+            return
         cursor = self.__conn.cursor()
         cursor.execute('''BEGIN TRANSACTION''')
         vals = (cmd, datetime.datetime.now(), cwd)
@@ -168,6 +174,8 @@ class History(Singleton):
         return getattr(self, 'search_%s_usage' % (colkey,))(*args, **kwargs)        
         
     def record_pipeline(self, cwd, pipeline_tree):
+        if self.__no_save:
+            return
         self.append_dir_usage(cwd)
         for cmd in pipeline_tree:
             verb = cmd[0]
