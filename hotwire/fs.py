@@ -20,7 +20,7 @@
 # THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import os, sys, fnmatch, stat, shutil, platform
-import posixpath
+import posixpath, locale
 
 import hotwire
 from hotwire.async import MiniThreadPool
@@ -106,6 +106,20 @@ class FilePath(str):
 
     def path_join(self, path):
         return posixpath.join(self, path)
+    
+def iterd(dpath, fpath=False):
+    """Generate full path names of files in directory named by dpath."""
+    entries = os.listdir(dpath)
+    if fpath:
+        for fname in entries:
+            yield FilePath(fname, dpath)
+    else:
+        for fname in entries:
+            yield path_join(dpath, fname)
+        
+def iterd_sorted(dpath, **kwargs):
+    for v in sorted(iterd(dpath, **kwargs), locale.strcoll):
+        yield v
 
 class DirectoryGenerator(object):
     def __init__(self, dir):
