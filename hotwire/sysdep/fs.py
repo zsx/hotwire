@@ -50,7 +50,7 @@ class BaseFilesystem(object):
         f.get_stat()
         return f
     
-    def get_file_sync(self):
+    def get_file_sync(self, path):
         f = self.fileklass(path)
         f.get_stat_sync()
         return f
@@ -103,21 +103,12 @@ class BaseFilesystem(object):
     def get_path_generator(self):
         raise NotImplementedError()
 
-    def _default_x_filter(self, path, stbuf=None):
-        try:
-            buf = stbuf or os.stat(path)
-        except OSError, e:
-            return False
-        return stat.S_ISREG(buf.st_mode) and os.access(path, os.X_OK)
-
-    def get_executable_filter(self):
-        return self._default_x_filter
-
     def executable_on_path(self, execname):
         execfilter = self.get_executable_filter()
         for dpath in self.get_path_generator():
             epath = FilePath(execname, dpath)
-            if execfilter(epath):
+            fobj = self.get_file_sync(path)            
+            if fobj.is_executable():
                 return epath
         return False
 
@@ -160,7 +151,12 @@ class BaseFilesystem(object):
         return False
     
     def supports_group(self):
-        return False   
+        return False
+    
+class FileStatError(Exception):
+    def __init__(self, cause):
+        super(FileStatError, self).__init__()
+        self.cause = cause
 
 class File(gobject.GObject):
     __gsignals__ = {
@@ -171,6 +167,7 @@ class File(gobject.GObject):
         super(File, self).__init__()
         self.path = path
         self.stat = None
+        self.xaccess = None
         self.__permstring = None
         self.target_stat = None
         self.stat_error = None
@@ -183,6 +180,9 @@ class File(gobject.GObject):
         else:
             stbuf = self.stat
         return stbuf and stat.S_ISDIR(stbuf.st_mode)
+    
+    def is_executable(self):
+        return self.xaccess
 
     def get_size(self):
         if self.stat and stat.S_ISREG(self.stat.st_mode):
@@ -252,9 +252,10 @@ class File(gobject.GObject):
         MiniThreadPool.getInstance().run(self.__get_stat_signal)
         
     def get_stat_sync(self):
-        self._do_get_stat()
+        self._do_get_stat(rethrow=True)
+        self._do_get_xaccess()        
 
-    def _do_get_stat(self):
+    def _do_get_stat(self, rethrow=False):
         try:
             self.stat = hasattr(os, 'lstat') and os.lstat(self.path) or os.stat(self.path)
             if stat.S_ISLNK(self.stat.st_mode):
@@ -265,9 +266,15 @@ class File(gobject.GObject):
         except OSError, e:
             _logger.debug("Failed to stat '%s': %s", self.path, e)
             self.stat_error = str(e)
+            if rethrow:
+                raise FileStatError(e)
+            
+    def _do_get_xaccess(self):
+        self.xaccess = os.access(self.path, os.X_OK)        
 
     def __get_stat_signal(self):
         self._do_get_stat()
+        self._do_get_xaccess()
         gobject.idle_add(lambda: self.emit("changed"), priority=gobject.PRIORITY_LOW)
 
 _module = None

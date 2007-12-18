@@ -24,6 +24,7 @@ import os,sys,subprocess,logging
 import gtk, gnomevfs, gobject
 import gnome.ui
 
+from hotwire.sysdep.fs import FileStatError
 from hotwire.sysdep.fs_impl.fs_unix import UnixFilesystem, UnixFile
 
 _logger = logging.getLogger("hotwire.fs.GnomeVfs")
@@ -33,6 +34,7 @@ class GnomeVfsFile(UnixFile):
         super(GnomeVfsFile, self).__init__(path)
         self.vfsstat = None
         self.target_vfsstat = None
+        self.target_vfsstat_error = None
         self.uri = gnomevfs.get_uri_from_local_path(path) 
 
     def is_directory(self, follow_link=False):
@@ -76,16 +78,20 @@ class GnomeVfsFile(UnixFile):
         else:
             return '?'       
             
-    def _do_get_stat(self):
+    def _do_get_stat(self, rethrow=False):
         try:
             self.vfsstat = gnomevfs.get_file_info(self.uri, gnomevfs.FILE_INFO_GET_MIME_TYPE | gnomevfs.FILE_INFO_FORCE_FAST_MIME_TYPE)
             if self.vfsstat.type == gnomevfs.FILE_TYPE_SYMBOLIC_LINK:
                 try:
                     self.target_vfsstat = gnomevfs.get_file_info(self.uri, gnomevfs.FILE_INFO_GET_MIME_TYPE | gnomevfs.FILE_INFO_FOLLOW_LINKS)
-                except gnomevfs.NotFoundError, e:
+                except Exception, e:
                     _logger.debug("Failed to get file info for target of '%s'", self.uri, exc_info=True)
-        except gnomevfs.NotFoundError, e:
+                    self.target_vfsstat_error = str(e)
+        except Exception, e:
             _logger.debug("Failed to get file info for '%s'", self.uri, exc_info=True)
+            self.stat_error = str(e)
+            if rethrow:
+                raise FileStatError(e)
 
 class GnomeVfsMonitor(object):
     """Avoid some locking oddities in gnomevfs monitoring"""

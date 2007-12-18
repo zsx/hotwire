@@ -21,10 +21,8 @@
 
 import os,sys,subprocess
 
-import gtk
-
 from hotwire.fs import path_normalize
-from hotwire.sysdep.fs import BaseFilesystem
+from hotwire.sysdep.fs import File, BaseFilesystem
 from hotwire.sysdep.win32 import win_exec_re
 
 # TODO - implement native "Recycle Bin" trash functionality.
@@ -32,6 +30,7 @@ from hotwire.sysdep.win32 import win_exec_re
 class Win32Filesystem(BaseFilesystem):
     def __init__(self):
         super(Win32Filesystem, self).__init__()
+        self.fileklass = Win32File
             
     def _get_conf_dir_path(self):
         return os.path.expanduser('~/Application Data/hotwire')
@@ -40,11 +39,16 @@ class Win32Filesystem(BaseFilesystem):
         for d in os.environ['PATH'].split(';'):
             yield path_normalize(d)
 
-    def get_executable_filter(self):
-        return lambda path, stbuf=None: os.access(path, os.X_OK) and win_exec_re.search(path) 
-
     def path_inexact_executable_match(self, path):
         return win_exec_re.search(path)
+    
+class Win32File(File):
+    def __init__(self, *args, **kwargs):
+        super(Win32File, self).__init__(*args, **kwargs)
+        
+    def _do_get_xaccess(self):
+        super(Win32File, self)._do_get_xaccess()
+        self.xaccess = self.xaccess and win_exec_re.search(self.path)
 
 def getInstance():
     return Win32Filesystem()
