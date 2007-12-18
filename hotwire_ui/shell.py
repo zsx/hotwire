@@ -616,6 +616,9 @@ for obj in curshell.get_current_output():
     @log_except(_logger)
     def __on_input_keypress(self, e):
         curtext = self.__input.get_property("text")
+        
+        self.__requeue_parse()
+        
         if self.__completion_async_blocking:
             return True
 
@@ -679,7 +682,7 @@ for obj in curshell.get_current_output():
 
     def __requeue_parse(self):
         self.__unqueue_parse()
-        self.__idle_parse_id = gobject.timeout_add(350, self.__idle_do_parse_and_complete)        
+        self.__idle_parse_id = gobject.timeout_add(450, self.__idle_do_parse_and_complete)        
 
     def __queue_parse(self):
         self.__parse_stale = True
