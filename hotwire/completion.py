@@ -137,7 +137,7 @@ class VerbCompleter(Completer):
             for dpath in fs.get_path_generator():
                 if not os.access(dpath, os.X_OK):
                     continue
-                for fpath in iterd(dpath):
+                for fpath in iterd_sorted(dpath):
                     fname = unix_basename(fpath)
                     if not fname.startswith(text):
                         continue
