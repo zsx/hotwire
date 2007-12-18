@@ -28,11 +28,7 @@ from hotwire.sysdep.unix import getpwuid_cached, getgrgid_cached
 class UnixFilesystem(BaseFilesystem):
     def __init__(self):
         super(UnixFilesystem, self).__init__()
-        
-    def get_file(self, path):
-        fobj = UnixFile(path)
-        fobj.get_stat()
-        return fobj           
+        self.fileklass = UnixFile         
         
     def _get_conf_dir_path(self):
         return os.path.expanduser('~/.hotwire')

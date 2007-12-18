@@ -78,7 +78,7 @@ class GnomeVfsFile(UnixFile):
             
     def _do_get_stat(self):
         try:
-            self.vfsstat = gnomevfs.get_file_info(self.uri, gnomevfs.FILE_INFO_GET_MIME_TYPE)
+            self.vfsstat = gnomevfs.get_file_info(self.uri, gnomevfs.FILE_INFO_GET_MIME_TYPE | gnomevfs.FILE_INFO_FORCE_FAST_MIME_TYPE)
             if self.vfsstat.type == gnomevfs.FILE_TYPE_SYMBOLIC_LINK:
                 try:
                     self.target_vfsstat = gnomevfs.get_file_info(self.uri, gnomevfs.FILE_INFO_GET_MIME_TYPE | gnomevfs.FILE_INFO_FOLLOW_LINKS)
@@ -117,17 +117,13 @@ class GnomeVfsMonitor(object):
 class GnomeVFSFilesystem(UnixFilesystem):
     def __init__(self):
         super(GnomeVFSFilesystem, self).__init__()
+        self.fileklass = GnomeVfsFile        
         self.__thumbnails = gnome.ui.ThumbnailFactory(gnome.ui.THUMBNAIL_SIZE_NORMAL)
         self.__itheme = gtk.icon_theme_get_default() 
         _logger.debug("gnomevfs initialized")
 
     def get_monitor(self, path, cb):
         return GnomeVfsMonitor(path, gnomevfs.MONITOR_EVENT_CHANGED, cb)
-
-    def get_file(self, path):
-        fobj = GnomeVfsFile(path)
-        fobj.get_stat()
-        return fobj
     
     def get_file_icon_name(self, file_obj):
         if not file_obj.vfsstat:

@@ -34,6 +34,7 @@ _logger = logging.getLogger("hotwire.sysdep.Filesystem")
 
 class BaseFilesystem(object):
     def __init__(self):
+        self.fileklass = File
         self._override_conf_dir = None
         self._trashdir = os.path.expanduser('~/.Trash')
         self.makedirs_p(self._trashdir)
@@ -45,8 +46,13 @@ class BaseFilesystem(object):
         raise NotImplementedError()
 
     def get_file(self, path):
-        f = File(path)
+        f = self.fileklass(path)
         f.get_stat()
+        return f
+    
+    def get_file_sync(self):
+        f = self.fileklass(path)
+        f.get_stat_sync()
         return f
         
     def get_file_icon_name(self, file_obj):
