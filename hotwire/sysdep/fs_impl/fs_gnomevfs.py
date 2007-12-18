@@ -131,13 +131,13 @@ class GnomeVFSFilesystem(UnixFilesystem):
     def get_monitor(self, path, cb):
         return GnomeVfsMonitor(path, gnomevfs.MONITOR_EVENT_CHANGED, cb)
     
-    def get_file_icon_name(self, file_obj):
+    def _load_file_icon(self, file_obj):
         if not file_obj.vfsstat:
             return None
         try:
             (result, flags) = gnome.ui.icon_lookup(self.__itheme, self.__thumbnails, file_obj.uri, file_info=file_obj.vfsstat, mime_type=file_obj.vfsstat.mime_type)
-        except gnomevfs.NotFoundError, e:
-            _logger.debug("Failed to get file info for '%s'", file_obj.uri, exc_info=True)
+        except Exception, e:
+            _logger.debug("Failed to get file icon for '%s'", file_obj.uri, exc_info=True)
             return None
         return result
     

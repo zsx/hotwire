@@ -56,11 +56,21 @@ class BaseFilesystem(object):
         return f
         
     def get_file_icon_name(self, file_obj):
-        if file_obj.stat_error or not file_obj.stat:
+        if file_obj.icon:
+            return file_obj.icon
+        if file_obj.icon_error:
             return None
-        elif stat.S_ISDIR(file_obj.stat.st_mode):
-            return 'gtk-directory'
-        return 'gtk-file'
+        icon = self._load_file_icon(file_obj)
+        if not icon:
+            file_obj.set_icon_error(True)
+            return None
+        file_obj.set_icon(icon)
+        return file_obj.icon
+        
+    def _load_file_icon(self, fobj):
+        if stat.S_ISDIR(fobj.stat.st_mode):
+            fobj.icon = 'gtk-directory'
+        fobj.icon = 'gtk-file'
 
     def launch_open_file(self, path, cwd=None):
         raise NotImplementedError()
@@ -104,10 +114,12 @@ class BaseFilesystem(object):
         raise NotImplementedError()
 
     def executable_on_path(self, execname):
-        execfilter = self.get_executable_filter()
         for dpath in self.get_path_generator():
             epath = FilePath(execname, dpath)
-            fobj = self.get_file_sync(path)            
+            try:
+                fobj = self.get_file_sync(epath)
+            except FileStatError, e:
+                continue            
             if fobj.is_executable():
                 return epath
         return False
@@ -168,6 +180,8 @@ class File(gobject.GObject):
         self.path = path
         self.stat = None
         self.xaccess = None
+        self.icon = None
+        self.icon_error = False
         self.__permstring = None
         self.target_stat = None
         self.stat_error = None
@@ -276,6 +290,12 @@ class File(gobject.GObject):
         self._do_get_stat()
         self._do_get_xaccess()
         gobject.idle_add(lambda: self.emit("changed"), priority=gobject.PRIORITY_LOW)
+        
+    def set_icon(self, icon):
+        self.icon = icon
+        
+    def set_icon_error(self, err):
+        self.icon_error = err
 
 _module = None
 if is_unix():
