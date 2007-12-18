@@ -23,7 +23,17 @@ import os, sys, stat
 
 from hotwire.builtin import Builtin, BuiltinRegistry
 from hotwire.fs import FilePath, DirectoryGenerator
-from hotwire.completion import CdCompleter 
+from hotwire.completion import PathCompleter
+
+class CdCompleter(PathCompleter):
+    def __init__(self):
+        super(CdCompleter, self).__init__()
+        
+    def completions(self, text, cwd, **kwargs):
+        for completion in super(CdCompleter, self).completions(text, cwd, **kwargs):
+            fobj = completion.target
+            if fobj.is_directory(follow_link=True):
+                yield completion
 
 class CdBuiltin(Builtin):
     __doc__ = _("""Change working directory and list its contents.""")
@@ -35,7 +45,7 @@ class CdBuiltin(Builtin):
                                         threaded=True)
 
     def get_completer(self, context, args, i):
-        return CdCompleter.getInstance()
+        return CdCompleter()
 
     def execute(self, context, dir=None):
         if not dir:

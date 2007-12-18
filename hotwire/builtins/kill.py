@@ -26,7 +26,7 @@ import hotwire
 from hotwire.sysdep.proc import ProcessManager, Process
 from hotwire.builtin import Builtin, BuiltinRegistry
 from hotwire.singletonmixin import Singleton
-from hotwire.completion import BaseCompleter, Completion
+from hotwire.completion import Completer, Completion
 
 _signals = []
 for sym in dir(signal):
@@ -39,11 +39,11 @@ for sym,num in _signals:
     _sigsym_to_value[sym] = num
     _sigvalue_to_sym[num] = sym
 
-class ProcessCompleter(Singleton, BaseCompleter):
+class ProcessCompleter(Completer):
     def __init__(self):
         super(ProcessCompleter, self).__init__() 
 
-    def search(self, text, **kwargs):
+    def completions(self, text, cwd, **kwargs):
         proclist = ProcessManager.getInstance().get_cached_processes()         
         try:
             textint = int(text)
@@ -53,22 +53,13 @@ class ProcessCompleter(Singleton, BaseCompleter):
             for proc in proclist:
                 pidstr = str(proc.pid)
                 if pidstr.startswith(text):
-                    #try:
-                    #    cmd,args = proc.cmd.split(' ')
-                    #except ValueError, e:
-                    #    cmd = proc.cmd
-                    #    args = []
-                    #if len(cmd) > 40:
-                    #    context_str = '...' + cmd[-37:]
-                    #else:
-                    #    context_str = cmd[-40:]
-                    #pidstr_context = pidstr + ' ' + context_str
-                    yield Completion(pidstr, 0, len(text), exact=False, default_icon='gtk-execute')
+                    yield Completion(pidstr, text, proc)
         else:
-            for proc in proclist:
-                idx = proc.cmd.find(text)
-                if idx >= 0:
-                    yield Completion(proc.cmd, idx, len(text), exact=False, default_icon='gtk-execute')
+            pass
+#            for proc in proclist:
+#                idx = proc.cmd.find(text)
+#                if idx >= 0:
+#                    yield Completion(proc.cmd, idx, len(text), exact=False, default_icon='gtk-execute')
 
 class KillBuiltin(Builtin):
     __doc__ = _("""Send a signal to a process.""")
@@ -84,7 +75,7 @@ class KillBuiltin(Builtin):
                                           threaded=True)
         
     def get_completer(self, context, args, i):
-        return ProcessCompleter.getInstance()        
+        return ProcessCompleter()        
 
     def execute(self, context, args, options=[]):
         signum = signal.SIGTERM

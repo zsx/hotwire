@@ -21,7 +21,7 @@ import os, sys, re, logging, string
 import gtk, gobject, pango
 
 from hotwire.command import Pipeline,Command,HotwireContext
-from hotwire.completion import Completion, VerbCompleter, TokenCompleter, CompletionContext, CompletionPrefixStripProxy
+from hotwire.completion import Completion, VerbCompleter, TokenCompleter, CompletionContext
 import hotwire.command
 import hotwire.version
 import hotwire_ui.widgets as hotwidgets

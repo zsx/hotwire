@@ -29,6 +29,9 @@ from hotwire.sysdep import is_windows, is_unix
 class CompletionTests(unittest.TestCase):
     def setUp(self):
         self._tmpd = None
+        self.vc = VerbCompleter()
+        self.tc = TokenCompleter()
+        self.pc = PathCompleter()        
 
     def tearDown(self):
         if self._tmpd:
@@ -65,7 +68,7 @@ class CompletionTests(unittest.TestCase):
             search='cmd'
         else:
             search='true'
-            verbs = list(VerbCompleter(".").search(search))
+            verbs = list(self.vc.completions(search, "."))
             self.assertNotEqual(len(verbs), 0)
 
     def testNoCompletion(self):
@@ -73,35 +76,23 @@ class CompletionTests(unittest.TestCase):
             search='cmd'
         else:
             search='true'
-            verbs = list(VerbCompleter(".").search('this does not exist'))
+            verbs = list(self.vc.completions('this does not exist', "."))
             self.assertEquals(len(verbs), 0)
 
     def testCwd(self):
         self._setupTree1()
-        cwd = CwdExecutableCompleter(self._tmpd)
-        results = list(cwd.search('testf'))
+        results = list(self.pc.completions('testf', self._tmpd))
         self.assertEquals(len(results), 1)
-        (mstr, start, mlen) = results[0].get_matchdata()
-        self.assertEquals(mstr, self._test_exe_path)
-        if is_unix():
-            self.assertEquals(results[0].exact, True)
-            self.assertEquals(mlen, 5)
-        self.assertEquals(start, len(self._tmpd)+1)
+        self.assertEquals(results[0].target.path, self._test_exe_path)
 
     def testCwd2(self):
         self._setupTree1()
-        cwd = CwdExecutableCompleter(self._tmpd)
-        results = list(cwd.search('no such thing'))
+        results = list(self.pc.completions('no such thing', self._tmpd))
         self.assertEquals(len(results), 0)
 
     def testCwd3(self):
         self._setupTree1()
-        cwd = CwdExecutableCompleter(self._tmpd)
-        results = list(cwd.search('test'))
+        results = list(self.pc.completions('test', self._tmpd))
         self.assertEquals(len(results), 2)
-        (mstr, start, mlen) = results[0].get_matchdata()
-        self.assertEquals(mstr, path_join(self._tmpd, 'testdir'))
-        self.assertEquals(results[0].exact, False)
-        (mstr, start, mlen) = results[1].get_matchdata()
-        self.assertEquals(mstr, self._test_exe_path)
-        self.assertEquals(results[1].exact, False)
+        self.assertEquals(results[0].target.path, path_join(self._tmpd, 'testdir'))
+        self.assertEquals(results[1].target.path, self._test_exe_path)

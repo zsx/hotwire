@@ -24,6 +24,7 @@ import os, sys, unittest, tempfile, shutil, platform
 import hotwire
 from hotwire.command import HotwireContext
 from hotwire.completion import *
+from hotwire.builtins.cd import CdCompleter
 
 class CompletionTestsUnix(unittest.TestCase):
     def setUp(self):
@@ -45,18 +46,14 @@ class CompletionTestsUnix(unittest.TestCase):
 
     def testCd1(self):
         self._setupTree1()
-        cds = CdCompleter.getInstance()
-        results = list(cds.search('test', context=self._context))
+        cds = CdCompleter()
+        results = list(cds.completions('test', self._tmpd))
         self.assertEquals(len(results), 1)
-        (mstr, start, mlen) = results[0].get_matchdata()
-        self.assertEquals(mstr, os.path.join(self._tmpd, 'testdir/'))
-        self.assertEquals(results[0].exact, False)
+        self.assertEquals(results[0].target.path, os.path.join(self._tmpd, 'testdir'))
         
     def testCd2(self):
         self._setupTree1()
-        cds = CdCompleter.getInstance()        
-        results = list(cds.search('foo', context=self._context))
+        cds = CdCompleter()        
+        results = list(cds.completions('foo', self._tmpd))
         self.assertEquals(len(results), 1)        
-        (mstr, start, mlen) = results[0].get_matchdata()
-        self.assertEquals(mstr, os.path.join(self._tmpd, 'foolink/'))
-        self.assertEquals(results[0].exact, False)
+        self.assertEquals(results[0].target.path, os.path.join(self._tmpd, 'foolink'))

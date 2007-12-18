@@ -20,7 +20,6 @@
 # THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 from hotwire.builtin import Builtin, BuiltinRegistry
-from hotwire.completion import BuiltinCompleter
 
 class HelpItem(object):
     def __init__(self, items):
@@ -35,7 +34,7 @@ class HelpBuiltin(Builtin):
                                           idempotent=True)
 
     def get_completer(self, context, args, i):
-        return BuiltinCompleter.getInstance()
+        return BuiltinCompleter()
 
     def execute(self, context, args):    
         yield HelpItem(args)
