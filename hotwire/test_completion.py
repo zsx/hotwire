@@ -62,6 +62,8 @@ class CompletionTests(unittest.TestCase):
         open(path_join(self._tmpd, 'otherfile'), 'w').close()
         os.mkdir(path_join(self._tmpd, 'testdir2'))
         open(path_join(self._tmpd, 'testdir2', 'blah'), 'w').close()
+        open(path_join(self._tmpd, 'testdir2', 'moo'), 'w').close()
+        os.mkdir(path_join(self._tmpd, 'testdir2', 'moodir'))    
 
     def testCmdOrShell(self):
         if is_windows():
@@ -96,3 +98,20 @@ class CompletionTests(unittest.TestCase):
         self.assertEquals(len(results), 2)
         self.assertEquals(results[0].target.path, path_join(self._tmpd, 'testdir'))
         self.assertEquals(results[1].target.path, self._test_exe_path)
+
+    def testCwd4(self):
+        self._setupTree2()
+        results = list(self.pc.completions('testdir2/', self._tmpd))
+        self.assertEquals(len(results), 3)
+        self.assertEquals(results[0].target.path, path_join(self._tmpd, 'testdir2', 'blah'))        
+        self.assertEquals(results[0].suffix, 'blah')
+        self.assertEquals(results[1].suffix, 'moo')
+        self.assertEquals(results[2].suffix, 'moodir/')
+
+    def testCwd5(self):
+        self._setupTree2()
+        results = list(self.pc.completions('testdir2/m', self._tmpd))
+        self.assertEquals(len(results), 2)
+        self.assertEquals(results[0].target.path, path_join(self._tmpd, 'testdir2', 'moo'))           
+        self.assertEquals(results[0].suffix, 'oo')
+        self.assertEquals(results[1].suffix, 'oodir/')

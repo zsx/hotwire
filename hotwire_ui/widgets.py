@@ -110,6 +110,7 @@ class TransientPopup(gtk.Window):
         self.set_screen(ref_widget.get_screen())
 
         self.__shown = False
+        self.__idle_reposition_id = 0        
         self.__configure_connected = False
 
         if ref_window:
@@ -146,6 +147,17 @@ class TransientPopup(gtk.Window):
                       cur_x, cur_y)
         if (cur_x != move_x) or (cur_y != move_y):
             self.move(move_x, move_y)
+            
+
+    def queue_reposition(self):
+        if self.__idle_reposition_id > 0:
+            return
+        self.__idle_reposition_id = gobject.idle_add(self.__idle_reposition)
+
+    def __idle_reposition(self):
+        self.reposition()
+        self.__idle_reposition_id = 0
+        return False            
 
     def __on_ref_configure(self, refw, event):
         _logger.debug("got ref configure")

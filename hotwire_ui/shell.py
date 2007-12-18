@@ -230,13 +230,17 @@ class Hotwire(gtk.VBox):
         self.__idle_parse_id = 0
         self.__parse_stale = False
         self.__pipeline_tree = None
+        self.__verb_completer = VerbCompleter()
+        self.__token_completer = TokenCompleter()
         self.__completion_active = False
         self.__completion_active_position = False
         self.__completion_chosen = None
         self.__completion_suppress = False
+        self.__completion_async_blocking = False
         self.__completions = CompletionStatusDisplay(self.__input, window, context=self.context,
                                                      tabhistory=self.__tabhistory)
         self.__completions.connect('completion-selected', self.__on_completion_selected)
+        self.__completions.connect('completions-loaded', self.__on_completions_loaded)
         self.__completion_token = None
         self.__history_suppress = False
 
@@ -438,7 +442,7 @@ for obj in curshell.get_current_output():
         self.__welcome_align = None        
 
     def __execute(self):
-        self.__completions.hide()
+        self.__completions.hide_all()
         if self.__parse_stale:
             try:
                 self.__do_parse(throw=True)
@@ -454,7 +458,7 @@ for obj in curshell.get_current_output():
         self.push_msg('')
 
         resolutions = []
-        vc = VerbCompleter()
+        vc = self.__verb_completer
         fs = Filesystem.getInstance()
         for cmd in self.__pipeline_tree:
             verb = cmd[0]
@@ -499,97 +503,56 @@ for obj in curshell.get_current_output():
         completion = self.__completions.select_tab_next()        
         self.__insert_completion(completion, False, True)
 
-    def __do_completion(self, back):
-        curtext = self.__input.get_property("text") 
-        _logger.debug("doing completion, back=%s", back)
-        if not self.__completion_active:
-            valid_parse = self.__do_parse()
-            if not valid_parse:
-                _logger.debug("invalid parse, not completing")
-                return        
-        if not back:
-            if not self.__completion_active:
-                self.__idle_do_parse_and_complete()
-            completion_do_recomplete = self.__completions.completion_is_singleton() 
-            tab_prefix = self.__completions.tab_get_prefix()    
-            if tab_prefix:
-                completion_do_recomplete = True
-                completion = tab_prefix
-            else:      
-                completion = self.__completions.select_tab_next()
-        else:
-            completion_do_recomplete = False
-            completion = self.__completions.select_tab_prev()
-        _logger.debug("selected completion: %s", completion)
-        if not completion:
-            return True
-        if back and not self.__completion_active:
-            _logger.debug("ignoring completion reverse when not in completion context")
-            return True
-        self.__insert_completion(completion, back, completion_do_recomplete)
-        
-    def __insert_completion(self, completion, back, completion_do_recomplete):
-        curtext = self.__input.get_property("text")         
-        pos = self.__input.get_position() 
-        if not self.__completion_active:
-            start = self.__completion_token.start
-            if self.__input.get_position() < start: 
-                _logger.debug("ignoring completion after edit reverse")
-                return True
-            target_text = curtext[self.__completion_token.start:pos]
-            pre_completion = self.__completion_token.text
-            if not target_text.startswith(pre_completion):
-                _logger.debug("current text '%s' differs from pre-completion text '%s', requeuing parse" % (target_text, pre_completion))
-                self.__do_parse_requeue()
-                return True
-            if target_text == pre_completion:
-                # we win, keep this completion
-                pass
-            else:
-                _logger.debug("target text differs pre-completion, bailing")
-                # need to refine the results to take into account the extra text the user typed
-                return True
-            self.__completion_active_position = start
-        else:
-            start = self.__completion_active_position
+    def __on_completions_loaded(self, compls):
+        assert self.__completion_async_blocking
+        self.__do_completion()
 
-        #FIXME this is broken - verb completions should return two tokens or something
-        if self.__completion_token and (not isinstance(self.__completion_token, hotwire.command.ParsedVerb)) \
-           and not self.__completion_token.was_unquoted: 
-            completion = hotwire.command.quote_arg(completion) 
-
-        _logger.debug("old text: %s", curtext)            
-        curtext = curtext[:start] \
-                  + completion \
-                  + curtext[pos:] \
-                  + ' '
-        _logger.debug("new text: %s", curtext)
-        self.__completion_chosen = completion
+    def __do_completion(self):
+        _logger.debug("requesting completion")
+        try:
+            self.__do_parse(throw=True)
+        except hotwire.command.PipelineParseException, e:
+            self.push_msg('Failed to parse pipeline: %s' % (e.args[0],))
+            return
+        self.__idle_do_parse_and_complete()
+        results = self.__completions.completion_request()
+        if results is None:
+            self.__completion_async_blocking = True
+            self.__completions.hide_all()            
+            return
+        if self.__completion_async_blocking:
+            self.__completion_async_blocking = False
+        if len(results.results) == 0:
+            _logger.debug("no completions")
+            return
+        curtext = self.__input.get_property("text")
+        if len(results.results) == 1:
+            target = results.results[0].suffix
+            # FIXME move this into CompletionSystem
+            if not results.results[0].target.is_directory():
+                target += " "
+        elif results.common_prefix:
+            target = results.common_prefix
+        else:
+            return
+        pos = self.__input.get_position()
         self.__completion_suppress = True
-        self.__input.set_text(curtext)
+        self.__input.set_property('text', curtext + target)
+        self.__input.set_position(pos + len(target))
         self.__completion_suppress = False
-        self.__parse_stale = True
-        # Record that we're in TAB mode basically, so we can un-TAB
-        if (not back) and (not completion_do_recomplete):
-            _logger.debug("activating completion mode")
-            self.__completion_active = True
-            self.__unqueue_parse()
-        elif completion_do_recomplete:
-            _logger.debug("no further completions, requeuing parse")
-            self.__queue_parse()
-        insert_end = start + len(completion)
-        self.__input.set_position(insert_end)
-        self.__completions.reposition()
+        self.__completions.invalidate()
+        self.__completions.hide_all()
+        self.__queue_parse()
 
     def __handle_completion_key(self, e):
         if e.keyval == gtk.gdk.keyval_from_name('Tab'):
-            self.__completions.completion_request()
+            self.__do_completion()
             return True
         else:
             return False
 
     def __on_entry_focus_lost(self, entry, e):
-        self.__completions.hide()
+        self.__completions.hide_all()
         
     @log_except(_logger)
     def __on_toplevel_keypress(self, s2, e):
@@ -600,7 +563,9 @@ for obj in curshell.get_current_output():
 
     @log_except(_logger)
     def __on_input_keypress(self, e):
-        curtext = self.__input.get_property("text") 
+        curtext = self.__input.get_property("text")
+        if self.__completion_async_blocking:
+            return True
 
         if e.keyval == gtk.gdk.keyval_from_name('Return'):
             self.__execute()
@@ -636,7 +601,7 @@ for obj in curshell.get_current_output():
                 self.__history_suppress = False
             return True
         elif e.keyval == gtk.gdk.keyval_from_name('Escape'):
-            self.__completions.hide()
+            self.__completions.hide_all()
             return True
         elif self.__emacs_bindings and self.__handle_emacs_binding(e):
             return True     
@@ -732,7 +697,7 @@ for obj in curshell.get_current_output():
             verb = cmd[0]
             if pos >= verb.start and pos <= verb.end :
                 _logger.debug("generating verb completions for '%s'", verb.text)
-                completer = VerbCompleter()
+                completer = self.__verb_completer
                 self.__completion_token = verb
                 break
             prev_token = verb.text
@@ -746,7 +711,7 @@ for obj in curshell.get_current_output():
                 else:
                     completer = None
                 if not completer:
-                    completer = TokenCompleter()
+                    completer = self.__token_completer
                 _logger.debug("generating token completions from %s for '%s'", completer, token.text)
                 self.__completion_token = token
                 break
@@ -760,7 +725,7 @@ for obj in curshell.get_current_output():
                 # If we're not sure what it is, try assuming it's a system command.
                 completer = BuiltinRegistry.getInstance()['sh'].get_completer(self.context, compl_token, compl_idx)
                 if not completer:
-                    completer = TokenCompleter()
+                    completer = self.__token_completer
             self.__completion_token = hotwire.command.ParsedToken('', pos)
         self.__completer = completer
         if self.__completer:
@@ -788,6 +753,7 @@ for obj in curshell.get_current_output():
         if self.__completion_suppress:
             _logger.debug("Suppressing completion change")
             return
+        self.__completions.invalidate()
         if self.__completion_active:
             self.__completion_active = False
         curvalue = self.__input.get_property("text")

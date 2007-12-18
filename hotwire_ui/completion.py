@@ -21,8 +21,7 @@ import os, sys, re, logging
 import gtk, gobject, pango
 
 import hotwire_ui.widgets as hotwidgets
-from hotwire.completion import Completion
-from hotwire.async import MiniThreadPool
+from hotwire.completion import Completion, CompletionSystem, CompletionResults
 from hotwire.util import markup_for_match
 from hotwire_ui.pixbufcache import PixbufCache
 from hotwire.state import History
@@ -31,43 +30,12 @@ from hotwire.sysdep.proc import Process
 
 _logger = logging.getLogger("hotwire.ui.Completion")
 
-class CompletionResults(object):
-    def __init__(self, resultlist):
-        super(CompletionResults, self).__init__()
-        self.results = resultlist
-        self.common_prefix = self.__get_common_prefix(self.results)
- 
-    def __get_common_prefix(self, completions):
-        if len(completions) <= 1:
-            return None
-        min_item = completions[0]
-        max_item = completions[-1]
-        n = min(len(min_item.suffix), len(max_item.suffix))
-        for i in xrange(n):
-            if min_item.suffix[i] != max_item.suffix[i]:
-                return min_item.suffix[:i]
-        return min_item.suffix[:n]       
-    
-class CompletionSystem(object):
-    def __init__(self):
-        self.__completion_ids = 0
-
-    def async_complete(self, *args):
-        return MiniThreadPool.getInstance().run(self.__do_async_complete, args=args)
-
-    def __do_async_complete(self, completer, text, cwd, cb):
-        result = CompletionResults(list(completer.completions(text, cwd)))
-        def do_cb(*args):
-            cb(*args)
-            return False
-        gobject.idle_add(do_cb, completer, text, result)
-
-class CompletionDisplay(gtk.VBox):
+class CompletionDisplay(hotwidgets.TransientPopup):
     __gsignals__ = {
         "match-selected" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, []),
     }     
-    def __init__(self, completions, context=None):
-        super(CompletionDisplay, self).__init__()
+    def __init__(self, entry, window, context=None, **kwargs):
+        super(CompletionDisplay, self).__init__(entry, window, **kwargs)
         self.__context = context
         self.__fs = Filesystem.getInstance()
         self.__maxcount = 10
@@ -76,18 +44,33 @@ class CompletionDisplay(gtk.VBox):
         self.__view.get_selection().set_mode(gtk.SELECTION_SINGLE)
         self.__view.connect("row-activated", self.__on_row_activated)
         self.__view.set_headers_visible(False)
-        self.add(self.__view)
+        self.get_box().add(self.__view)
         colidx = self.__view.insert_column_with_data_func(-1, '',
                                                           gtk.CellRendererPixbuf(),
                                                           self.__render_icon)
         colidx = self.__view.insert_column_with_data_func(-1, '',
-                                                          hotwidgets.CellRendererText(ellipsize=True),
+                                                          hotwidgets.CellRendererText(),
                                                           self.__render_match)
         col = self.__view.get_column(colidx-1)
         col.set_expand(True)
-        model = self.__model
-        for completion in completions:
+        self.__morelabel = gtk.Label()
+        self.get_box().pack_start(self.__morelabel, expand=False)
+        
+    def set_results(self, results):
+        model = gtk.ListStore(gobject.TYPE_PYOBJECT)
+        overmax = False
+        for i,completion in enumerate(results.results):
+            if i >= self.__maxcount:
+                overmax = True
+                break
             iter = model.append([completion])
+        self.__view.set_model(model)
+        if overmax:
+            self.__morelabel.set_text('%d more...' % (len(results.results)-self.__maxcount,))
+            self.__morelabel.show_all()
+        else:
+            self.__morelabel.set_text('')
+            self.__morelabel.hide()
         
     def __get_icon_func_for_klass(self, klass):
         if isinstance(klass, File):
@@ -99,8 +82,11 @@ class CompletionDisplay(gtk.VBox):
 
     def __render_icon(self, col, cell, model, iter):
         compl = model.get_value(iter, 0)
-        ifunc = self.__get_icon_func_for_klass(compl.target)
-        icon_name = ifunc(compl.target)
+        icon_name = None
+        if compl.target:
+            ifunc = self.__get_icon_func_for_klass(compl.target)
+            if ifunc:
+                icon_name = ifunc(compl.target)
         if icon_name:
             if icon_name.startswith(os.sep):
                 pixbuf = PixbufCache.getInstance().get(icon_name)
@@ -125,22 +111,29 @@ class CompletionDisplay(gtk.VBox):
         self.emit('match-selected')
 
     def __render_match(self, col, cell, model, iter):
-        compl = model.get_value(iter, 0) 
-        cell.set_property('text', compl.suffix)
+        compl = model.get_value(iter, 0)
+        if compl.matchbase:
+            cell.set_property('text', compl.matchbase)
+        else:
+            cell.set_property('text', compl.suffix)
 
 class CompletionStatusDisplay(hotwidgets.TransientPopup):
     __gsignals__ = {
         "completion-selected" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, []),
+        "completions-loaded" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, []),        
     }    
     def __init__(self, entry, window, context=None, tabhistory=[], **kwargs):
         super(CompletionStatusDisplay, self).__init__(entry, window, **kwargs)
+        self.__entry = entry
+        self.__window = window
         self.__context = context
         self.__tabhistory = tabhistory
         self.__token = None
-        self.__idle_reposition_id = 0
+        self.__completer = None
         self.__complsys = CompletionSystem()
         self.__current_completion = None
-        self.__pending_completion_popup = False
+        self.__pending_completion_load = False
+        self.__completion_display = CompletionDisplay(self.__entry, self.__window, self.__context)
         
         self.__completions_label = gtk.Label('No completions')
         self.__history_label = gtk.Label('No history')
@@ -150,35 +143,38 @@ class CompletionStatusDisplay(hotwidgets.TransientPopup):
     def __on_completion_match_selected(self, tm):
         self.emit('completion-selected')
 
-    def __queue_reposition(self):
-        if self.__idle_reposition_id > 0:
-            return
-        self.__idle_reposition_id = gobject.idle_add(self.__idle_reposition)
-
-    def __idle_reposition(self):
-        self.reposition()
-        self.__idle_reposition_id = 0
-        return False
-
     def invalidate(self):
         self.__completions_label.set_text(' ')
-        self.__current_completions = None
-        self.__pending_completion_popup = False
+        self.__token = None
+        self.__completer = None
+        self.__current_completion = None
+        self.__pending_completion_load = False
+        self.__completion_display.hide()
+
+    def hide_all(self):
+        self.__completion_display.hide()
+        super(CompletionStatusDisplay, self).hide()
 
     def set_completion(self, completer, text, context):
+        if text == self.__token and completer == self.__completer:
+            return
         _logger.debug("new completion: %s", text)
+        self.invalidate()
         self.__token = text
+        self.__completer = completer
         self.__completions_label.set_text('Loading...')
         self.__complsys.async_complete(completer, text, context.get_cwd(), self.__completions_result)
         
     def completion_request(self):
-        if self.__current_completion:
-            w = gtk.Window(gtk.WINDOW_TOPLEVEL)
-            w.add(CompletionDisplay(self.__current_completion.results, self.__context))
-            w.show_all()
-            self.hide()
-            return
-        self.__pending_completion_popup = True
+        self.hide()        
+        if self.__current_completion is not None:
+            self.__completion_display.set_results(self.__current_completion)
+            self.__completion_display.show_all()
+            self.__completion_display.reposition()
+            self.__completion_display.queue_reposition()
+            return self.__current_completion
+        self.__pending_completion_load = True
+        return None
         
     def completion_is_singleton(self):
         return False
@@ -187,13 +183,17 @@ class CompletionStatusDisplay(hotwidgets.TransientPopup):
         pass
         
     def __completions_result(self, completer, text, results):
+        if not (text == self.__token and completer == self.__completer):
+            _logger.debug("stale completion result")
+            return
         self.__current_completion = results
         self.__completions_label.set_text('Completions: %d' % (len(results.results),))
-        if self.__pending_completion_popup:
-            self.completion_request()
+        if self.__pending_completion_load:
+            self.emit('completions-loaded')
+            self.__pending_completion_load = False           
         else:
             self.show()
-            self.__queue_reposition()
+            self.queue_reposition()
 
 #    def set_history_search(self, search, now=False):
 #        self.__search = search

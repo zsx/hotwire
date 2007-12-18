@@ -22,9 +22,12 @@
 import os,sys,re,stat,logging
 import posixpath
 
+import gobject
+
 import hotwire
 from hotwire.builtin import BuiltinRegistry
 from hotwire.cmdalias import Alias, AliasRegistry
+from hotwire.async import MiniThreadPool
 from hotwire.fs import FilePath,iterd,iterd_sorted,path_normalize,path_expanduser,unix_basename
 from hotwire.sysdep.fs import Filesystem
 from hotwire.singletonmixin import Singleton
@@ -58,11 +61,15 @@ class Completer(object):
         return None
 
 def _mkfile_completion(text, fpath, fileobj=None):
-    fs = Filesystem.getInstance()    
-    fname = unix_basename(fpath)            
+    fs = Filesystem.getInstance()
+    fname = unix_basename(fpath)
+    if text.endswith('/'):
+        textbase = ''
+    else:
+        textbase = unix_basename(text)
     fobj = fileobj or fs.get_file_sync(fpath)
-    startidx = fpath.rfind(fname)
-    suffix = fpath[startidx+len(text):]
+    startidx = fpath.rindex(fname)
+    suffix = fpath[startidx+len(textbase):]
     if fobj.is_directory(follow_link=True):
         suffix += '/'
     return Completion(suffix, fobj, fname)     
@@ -84,10 +91,16 @@ class PathCompleter(Completer):
                 yield _mkfile_completion(text, fpath)
             return
         (src_dpath, src_prefix) = os.path.split(fullpath)
-        for fpath in iterd_sorted(src_dpath, fpath=True):
-            fname = unix_basename(fpath)
-            if fname.startswith(src_prefix):
-                yield _mkfile_completion(text, fpath)
+        try:
+            for fpath in iterd_sorted(src_dpath, fpath=True):
+                fname = unix_basename(fpath)
+                if fname.startswith(src_prefix):
+                    try:
+                        yield _mkfile_completion(text, fpath)
+                    except OSError, e:
+                        pass
+        except OSError, e:
+            pass
 
 class BuiltinCompleter(Completer):
     def __init__(self):
@@ -140,3 +153,40 @@ class TokenCompleter(Completer):
         pathcompleter = PathCompleter()
         for completion in pathcompleter.completions(text, cwd):
             yield completion
+
+class CompletionResults(object):
+    def __init__(self, resultlist):
+        super(CompletionResults, self).__init__()
+        self.results = resultlist
+        self.common_prefix = self.__get_common_prefix(self.results)
+ 
+    def __get_common_prefix(self, completions):
+        if len(completions) <= 1:
+            return None
+        min_item = completions[0]
+        max_item = completions[-1]
+        n = min(len(min_item.suffix), len(max_item.suffix))
+        for i in xrange(n):
+            if min_item.suffix[i] != max_item.suffix[i]:
+                return min_item.suffix[:i]
+        return min_item.suffix[:n]       
+    
+class CompletionSystem(object):
+    def __init__(self):
+        self.__completion_ids = 0
+        
+    def sync_complete(self, *args):
+        return self.__get_completions(*args)
+
+    def async_complete(self, *args):
+        return MiniThreadPool.getInstance().run(self.__do_async_complete, args=args)
+    
+    def __get_completions(self, completer, text, cwd):
+        return CompletionResults(list(completer.completions(text, cwd)))
+
+    def __do_async_complete(self, completer, text, cwd, cb):
+        result = self.__get_completions(completer, text, cwd)
+        def do_cb(*args):
+            cb(*args)
+            return False
+        gobject.idle_add(do_cb, completer, text, result)
