@@ -21,7 +21,7 @@ import os, sys, re, logging, string
 import gtk, gobject, pango
 
 from hotwire.command import Pipeline,Command,HotwireContext
-from hotwire.completion import Completion, VerbCompleter, TokenCompleter, CompletionContext
+from hotwire.completion import Completion, VerbCompleter, TokenCompleter
 import hotwire.command
 import hotwire.version
 import hotwire_ui.widgets as hotwidgets
@@ -35,7 +35,7 @@ from hotwire.fs import path_unexpanduser, path_expanduser, unix_basename
 from hotwire.sysdep.fs import Filesystem
 from hotwire.state import History, Preferences
 from hotwire_ui.command import CommandExecutionDisplay,CommandExecutionControl
-from hotwire_ui.completion import PopupDisplay
+from hotwire_ui.completion import CompletionStatusDisplay
 from hotwire_ui.prefs import PrefsWindow
 from hotwire.logutil import log_except
 
@@ -234,8 +234,8 @@ class Hotwire(gtk.VBox):
         self.__completion_active_position = False
         self.__completion_chosen = None
         self.__completion_suppress = False
-        self.__completions = PopupDisplay(self.__input, window, context=self.context,
-                                          tabhistory=self.__tabhistory)
+        self.__completions = CompletionStatusDisplay(self.__input, window, context=self.context,
+                                                     tabhistory=self.__tabhistory)
         self.__completions.connect('completion-selected', self.__on_completion_selected)
         self.__completion_token = None
         self.__history_suppress = False
@@ -416,8 +416,7 @@ for obj in curshell.get_current_output():
         if reset_input:
             self.__input.set_text("")
             self.__completion_token = None
-            self.__completions.set_history_search(None)
-            self.__completions.set_tab_completion(None, None)
+            self.__completions.invalidate()
 
         self.__update_status()
 
@@ -455,19 +454,19 @@ for obj in curshell.get_current_output():
         self.push_msg('')
 
         resolutions = []
-        vc = CompletionContext(VerbCompleter(self.__cwd))
+        vc = VerbCompleter()
         fs = Filesystem.getInstance()
         for cmd in self.__pipeline_tree:
             verb = cmd[0]
             if not verb.resolved:
                 vc.set_search(verb.text, hotwire=self)
                 resolution_match = None
-                for match in vc.search():
-                    if match.exact or fs.path_inexact_executable_match(match.mstr):
-                        resolution_match = match
+                for completion in vc.completions(verb.text, self.get_cwd()):
+                    if verb.text == completion.matchbase or fs.path_inexact_executable_match(completion.matchbase):
+                        resolution_match = completion
                     break
-                if resolution_match:
-                    resolutions.append((cmd, verb.text, resolution_match.get_matchdata()[0]))
+                if resolution_match:                   
+                    resolutions.append((cmd, verb.text, 'sh ' + verb.text))
                 else:
                     self.push_msg(_('No matches for <b>%s</b>') % (gobject.markup_escape_text(verb.text),), markup=True)
                     return
@@ -511,7 +510,7 @@ for obj in curshell.get_current_output():
         if not back:
             if not self.__completion_active:
                 self.__idle_do_parse_and_complete()
-            completion_do_recomplete = self.__completions.tab_is_singleton() 
+            completion_do_recomplete = self.__completions.completion_is_singleton() 
             tab_prefix = self.__completions.tab_get_prefix()    
             if tab_prefix:
                 completion_do_recomplete = True
@@ -584,10 +583,7 @@ for obj in curshell.get_current_output():
 
     def __handle_completion_key(self, e):
         if e.keyval == gtk.gdk.keyval_from_name('Tab'):
-            self.__do_completion(False)
-            return True
-        elif e.keyval == gtk.gdk.keyval_from_name('ISO_Left_Tab'):
-            self.__do_completion(True)
+            self.__completions.completion_request()
             return True
         else:
             return False
@@ -730,15 +726,14 @@ for obj in curshell.get_current_output():
         # can happen when input is empty
         if not self.__pipeline_tree:
             _logger.debug("no tree, disabling completion")
-            self.__completions.set_tab_completion(None, None)
+            self.__completions.invalidate()
             return
         for cmd in self.__pipeline_tree:
             verb = cmd[0]
             if pos >= verb.start and pos <= verb.end :
                 _logger.debug("generating verb completions for '%s'", verb.text)
-                completer = VerbCompleter(self.__cwd)
+                completer = VerbCompleter()
                 self.__completion_token = verb
-                addprefix='./'
                 break
             prev_token = verb.text
             for i,token in enumerate(cmd[1:]):
@@ -751,7 +746,7 @@ for obj in curshell.get_current_output():
                 else:
                     completer = None
                 if not completer:
-                    completer = TokenCompleter.getInstance()
+                    completer = TokenCompleter()
                 _logger.debug("generating token completions from %s for '%s'", completer, token.text)
                 self.__completion_token = token
                 break
@@ -765,22 +760,14 @@ for obj in curshell.get_current_output():
                 # If we're not sure what it is, try assuming it's a system command.
                 completer = BuiltinRegistry.getInstance()['sh'].get_completer(self.context, compl_token, compl_idx)
                 if not completer:
-                    completer = TokenCompleter.getInstance() 
+                    completer = TokenCompleter()
             self.__completion_token = hotwire.command.ParsedToken('', pos)
-        completer = completer and CompletionPrefixStripProxy(completer, self.__cwd + os.sep, addprefix=addprefix)
         self.__completer = completer
         if self.__completer:
-            self.__completer_ctx = CompletionContext(self.__completer)
-            self.__completer_ctx.set_search(self.__completion_token.text, hotwire=self)
-            common_prefix = self.__completer_ctx.get_common_prefix()
-            _logger.debug("determined common completion prefix %s", common_prefix)
-            if common_prefix and (len(self.__completion_token.text) >= len(common_prefix)):
-                common_prefix = None
-            self.__completions.set_tab_completion(common_prefix, self.__completer_ctx.search())
+            self.__completions.set_completion(completer, self.__completion_token.text, self.context)
         else:
             _logger.debug("no valid completions found")
-            self.__completer_ctx = None
-            self.__completions.set_tab_completion(None, None)
+            self.__completions.invalidate()
 
     def __do_parse(self, throw=False):
         if not self.__parse_stale:

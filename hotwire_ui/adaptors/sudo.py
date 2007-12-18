@@ -23,7 +23,6 @@ import os,sys,subprocess
 
 from hotwire.builtin import Builtin, BuiltinRegistry
 from hotwire.singletonmixin import Singleton
-from hotwire.completion import BaseCompleter, Completion
 from hotwire.sysdep.fs import Filesystem
 
 class HotSudoBuiltin(Builtin):

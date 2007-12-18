@@ -50,6 +50,7 @@ class CompletionTestsUnix(unittest.TestCase):
         results = list(cds.completions('test', self._tmpd))
         self.assertEquals(len(results), 1)
         self.assertEquals(results[0].target.path, os.path.join(self._tmpd, 'testdir'))
+        self.assertEquals(results[0].suffix, 'dir/')
         
     def testCd2(self):
         self._setupTree1()
@@ -57,3 +58,5 @@ class CompletionTestsUnix(unittest.TestCase):
         results = list(cds.completions('foo', self._tmpd))
         self.assertEquals(len(results), 1)        
         self.assertEquals(results[0].target.path, os.path.join(self._tmpd, 'foolink'))
+        self.assertEquals(results[0].suffix, 'link/')
+        

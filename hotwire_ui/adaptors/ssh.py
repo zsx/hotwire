@@ -23,10 +23,10 @@ import os,sys,subprocess
 
 from hotwire.builtin import Builtin, BuiltinRegistry
 from hotwire.singletonmixin import Singleton
-from hotwire.completion import BaseCompleter, Completion
+from hotwire.completion import Completer, Completion
 from hotwire.sysdep.fs import Filesystem
 
-class OpenSSHKnownHosts(object):
+class OpenSSHKnownHosts(Singleton):
     def __init__(self):
         self.__path = os.path.expanduser('~/.ssh/known_hosts')
         self.__monitor = None
@@ -54,16 +54,16 @@ class OpenSSHKnownHosts(object):
             self.__on_hostchange()
         return self.__hostcache            
         
-class OpenSshKnownHostCompleter(Singleton, BaseCompleter):
-  def __init__(self):
-    super(OpenSshKnownHostCompleter, self).__init__()
-    self.__hosts = OpenSSHKnownHosts()    
+class OpenSshKnownHostCompleter(Completer):
+    def __init__(self):
+        super(OpenSshKnownHostCompleter, self).__init__()
+        self.__hosts = OpenSSHKnownHosts.getInstance()    
 
-  def search(self, text, **kwargs):
-    for host in self.__hosts.get_hosts():
-      if host.startswith(text):
-        yield Completion(host, 0, len(text), exact=False, default_icon='gtk-network')
-        
+    def completions(self, text, **kwargs):
+        for host in self.__hosts.get_hosts():
+            compl = self._match(host, text, None)
+            if compl: yield compl
+
 class HotSshBuiltin(Builtin):
     __doc__ =  _("""Open a connection via SSH.""")
     def __init__(self):

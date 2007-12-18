@@ -35,54 +35,37 @@ from hotwire.sysdep.fs import Filesystem
 _logger = logging.getLogger("hotwire.Completion")
 
 class Completion(object):
-    """Represents a match of an string by some text input."""
-    __slots__ = ['token', 'base', 'target', 'hint']
+    """Represents a match of a string by some text input."""
+    __slots__ = ['suffix', 'target', 'matchbase']
     def __init__(self, 
-                  token,
-                  base,
+                  suffix,
                   target,
-                  hint=None):
-        self.token = token
-        self.base = base
+                  matchbase):
+        self.suffix = suffix
+        self.matchbase = matchbase
         self.target = target
-        self.hint = hint
 
     def __cmp__(self, other):
-        return cmp(self.token,other.token)
-
-class CompletionContext(object):
-    def __init__(self, source):
-        self.__source = source
-
-    def get_common_prefix(self):
-        if len(self.__sorted_items) <= 1:
-            return None
-        for item in self.__sorted_items:
-            if item.start > 0:
-                return None
-        min_item = self.__sorted_items[0]
-        max_item = self.__sorted_items[-1]
-        n = min(len(min_item.mstr), len(max_item.mstr))
-        for i in xrange(n):
-            if min_item.mstr[i] != max_item.mstr[i]:
-                return min_item.mstr[:i]
-        return min_item.mstr[:n]
-
-    def load_completions(self, text, find_common_prefix=False, **kwargs):
-        self.__sorted_items = sorted(self.__source.search(text, **kwargs))
-
-    def search(self):
-        for item in self.__sorted_items:
-            yield item
+        return cmp(self.suffix,other.suffix)
 
 class Completer(object):
     def __init__(self):
         super(Completer, self).__init__()
         
-    def _match(self, target, text, complclass=Completion, **kwargs):
-        if target.startswith(text):
-            return complclass(target, text, **kwargs)
+    def _match(self, name, text, target):
+        if name.startswith(text):
+            return Completion(name[len(text):], target, name)
         return None
+
+def _mkfile_completion(text, fpath, fileobj=None):
+    fs = Filesystem.getInstance()    
+    fname = unix_basename(fpath)            
+    fobj = fileobj or fs.get_file_sync(fpath)
+    startidx = fpath.rfind(fname)
+    suffix = fpath[startidx+len(text):]
+    if fobj.is_directory(follow_link=True):
+        suffix += '/'
+    return Completion(suffix, fobj, fname)     
 
 class PathCompleter(Completer):
     def __init__(self):
@@ -90,27 +73,21 @@ class PathCompleter(Completer):
 
     def completions(self, text, cwd):
         textpath = FilePath(text, cwd)
-        srcpath = path_expanduser(textpath)
+        fullpath = path_expanduser(textpath)
         try:
             isdir = stat.S_ISDIR(os.stat(srcpath).st_mode)
         except:
             isdir = False
-        def mkfile_completion(fpath, text):
-            fobj = fs.get_file_sync(fpath)
-            if fobj.is_directory(follow_link=True):
-                fpath += '/'
-            return Completion(fpath, text, fobj)            
         fs = Filesystem.getInstance()
-        if isdir and targetpath.endswith('/'):
-            for fpath in iterd_sorted(targetpath, fpath=True):
-                fname = unix_basename(fpath)
-                yield mkfile_completion(fpath, text)
+        if isdir and fullpath.endswith('/'):
+            for fpath in iterd_sorted(fullpath, fpath=True):
+                yield _mkfile_completion(text, fpath)
             return
-        (src_dpath, src_prefix) = os.path.split(srcpath)
+        (src_dpath, src_prefix) = os.path.split(fullpath)
         for fpath in iterd_sorted(src_dpath, fpath=True):
             fname = unix_basename(fpath)
             if fname.startswith(src_prefix):
-                yield mkfile_completion(fpath, text)
+                yield _mkfile_completion(text, fpath)
 
 class BuiltinCompleter(Completer):
     def __init__(self):
@@ -124,7 +101,7 @@ class BuiltinCompleter(Completer):
                 compl = self._match(alias, text, builtin)
                 if compl: yield compl
 
-class VerbCompleter(object):
+class VerbCompleter(Completer):
     def __init__(self):
         super(VerbCompleter, self).__init__()
 
@@ -153,11 +130,9 @@ class VerbCompleter(object):
                         continue
                     fobj = fs.get_file_sync(fpath)
                     if fobj.is_executable():
-                        yield Completion(fpath, text, fobj)
-                    else:
-                        print "%s is not executable" % (fobj.path,)
+                        yield _mkfile_completion(text, fpath, fobj)
 
-class TokenCompleter(object):
+class TokenCompleter(Completer):
     def __init__(self):
         super(TokenCompleter, self).__init__()
 
