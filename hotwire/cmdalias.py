@@ -27,6 +27,11 @@ _logger = logging.getLogger("hotwire.CmdAlias")
 
 ## TODO: Kill this class in favor of better autoterm integration.
 
+class Alias(object):
+    def __init__(self, name, target):
+        self.name = name
+        self.target = target
+
 class AliasRegistry(Singleton):
     def __init__(self):
         self.__aliases = {}
@@ -35,12 +40,14 @@ class AliasRegistry(Singleton):
         del self.__aliases[name]
     
     def insert(self, name, value):
+        if not isinstance(value, Alias):
+            value = Alias(name, value)
         self.__aliases[name] = value
 
     def __getitem__(self, item):
         return self.__aliases[item]
 
     def __iter__(self):
-        for x in self.__aliases.iterkeys():
+        for x in self.__aliases.itervalues():
             yield x
-    
+ 
