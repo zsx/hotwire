@@ -37,13 +37,6 @@ class HelpItemRenderer(UnicodeRenderer):
         self._buf.insert_markup(' ')
         self.append_link(_('View Tutorial'), 'http://hotwire-shell.org/trac/wiki/GettingStarted')
         self._buf.insert_markup('\n\n')
-        self._buf.insert_markup('<larger>%s:</larger>\n' % (_('Important Keybindings'),))
-        self._buf.insert_markup('  <b>TAB</b> %s <b>Shift-TAB</b> - %s\n' % (_('and'), _('Choose completions'))) 
-        self._buf.insert_markup('  <b>Up/Down</b> - %s\n' % (_('Search history'),))
-        self._buf.insert_markup('  <b>Ctrl-1</b>, <b>Ctrl-2</b>, ... %s <b>Ctrl-PageUp</b> %s <b>Ctrl-PageDown</b> - %s\n' % (_('or'), _('and'), _('Switch tabs'))) 
-        self._buf.insert_markup('\n')
-        self._buf.insert_markup('  %s\n' % (_('See the menu for other keybindings.'),))
-        self._buf.insert_markup('\n')
 
         self._buf.insert_markup('<larger>%s:</larger>\n' % (_('Builtin Commands'),))
         builtins = list(BuiltinRegistry.getInstance())
