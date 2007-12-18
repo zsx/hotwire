@@ -241,8 +241,11 @@ class Hotwire(gtk.VBox):
                                                      tabhistory=self.__tabhistory)
         self.__completions.connect('completion-selected', self.__on_completion_selected)
         self.__completions.connect('completions-loaded', self.__on_completions_loaded)
+        self.__completions.connect('histitem-selected', self.__on_histitem_selected)
         self.__completion_token = None
         self.__history_suppress = False
+        self.__history_search_saved = None
+        self.__history_search_active = False
 
         self.__sync_cwd()
         self.__update_status()
@@ -500,6 +503,10 @@ for obj in curshell.get_current_output():
         self.execute_pipeline(pipeline)
 
     @log_except(_logger)
+    def __on_histitem_selected(self, popup, histitem):
+        _logger.debug("got history item selected: %s", histitem)
+
+    @log_except(_logger)
     def __on_completion_selected(self, popup):
         _logger.debug("got completion selected")
         completion = self.__completions.select_tab_next()        
@@ -537,7 +544,8 @@ for obj in curshell.get_current_output():
         if len(results.results) == 1:
             target = results.results[0].suffix
             # FIXME move this into CompletionSystem
-            if not results.results[0].target.is_directory():
+            tobj = results.results[0].target
+            if not (isinstance(tobj, File) and tobj.is_directory()):
                 target += " "
         elif results.common_prefix:
             target = results.common_prefix
@@ -591,24 +599,18 @@ for obj in curshell.get_current_output():
         elif e.keyval == gtk.gdk.keyval_from_name('Up'):
             # If the user hits Up with an empty input, just display
             # all history
-            if curtext == '' and self.__completions.get_history_search() != '':
+            if curtext == '' and not self.__history_search_active:
                 self.__completions.set_history_search('', now=True)
-            histitem = self.__completions.select_history_next(curtext)
-            if histitem is not None:
-                self.__history_suppress = True
-                self.__input.set_property("text", histitem)
-                self.__input.set_position(-1)
-                self.__history_suppress = False
+                self.__history_search_active = True
+            elif self.__history_search_active:
+                self.__completions.select_history_next()
             return True
         elif e.keyval == gtk.gdk.keyval_from_name('Down'):
-            histitem = self.__completions.select_history_prev()
-            if histitem is not None:
-                self.__history_suppress = True
-                self.__input.set_property("text", histitem)
-                self.__input.set_position(-1)
-                self.__history_suppress = False
+            if self.__history_search_active:
+                self.__completions.select_history_prev()
             return True
         elif e.keyval == gtk.gdk.keyval_from_name('Escape'):
+            self.__history_search_active = False
             self.__completions.hide_all()
             return True
         elif self.__emacs_bindings and self.__handle_emacs_binding(e):
@@ -770,6 +772,7 @@ for obj in curshell.get_current_output():
         self.__completions.invalidate()
         if self.__completion_active:
             self.__completion_active = False
+        self.__history_search_active = False
         curvalue = self.__input.get_property("text")
         if not self.__history_suppress:
             # Change '' to None, because '' has special value to mean

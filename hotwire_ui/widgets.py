@@ -174,11 +174,12 @@ class TransientPopup(gtk.Window):
         if not self.__configure_connected:
             self.__configure_connected = True
             self.__ref_widget.get_toplevel().connect("configure-event", self.__on_ref_configure)
-        (ref_x, ref_y, ref_w, ref_h, bits) = self.__ref_widget.get_parent_window().get_geometry()
-        _logger.debug("setting size request width to %d*0.75", ref_w)
-        self.set_size_request((int(ref_w*0.75)), -1)
+        self._set_size_request()
         self.reposition()
-        self.show_all()
+        self.show_all()        
+            
+    def _set_size_request(self):
+        pass
 
     def get_box(self):
         return self.__box
