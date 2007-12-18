@@ -59,7 +59,7 @@ class OpenSshKnownHostCompleter(Completer):
         super(OpenSshKnownHostCompleter, self).__init__()
         self.__hosts = OpenSSHKnownHosts.getInstance()    
 
-    def completions(self, text, **kwargs):
+    def completions(self, text, cwd, **kwargs):
         for host in self.__hosts.get_hosts():
             compl = self._match(host, text, None)
             if compl: yield compl
@@ -72,7 +72,7 @@ class HotSshBuiltin(Builtin):
                                             threaded=True)
 
     def get_completer(self, context, args, i):
-        return OpenSshKnownHostCompleter.getInstance()
+        return OpenSshKnownHostCompleter()
 
     def execute(self, context, args, options=[]):
         argv = ['hotwire-ssh']
