@@ -663,7 +663,7 @@ for obj in curshell.get_current_output():
 
     def __requeue_parse(self):
         self.__unqueue_parse()
-        self.__idle_parse_id = gobject.timeout_add(250, self.__idle_do_parse_and_complete)        
+        self.__idle_parse_id = gobject.timeout_add(350, self.__idle_do_parse_and_complete)        
 
     def __queue_parse(self):
         self.__parse_stale = True

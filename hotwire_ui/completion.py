@@ -61,12 +61,16 @@ class CompletionPopup(hotwidgets.TransientPopup):
     def _get_selection(self):
         return self.__selection
     
-    def set_content(self, results, uniquify=False):
+    def set_content(self, results, uniquify=False, reverse=True):
         model = gtk.ListStore(gobject.TYPE_PYOBJECT)
         overmax = False
         uniqueresults = set()
         i = 0
-        for completion in reversed(results):
+        if reverse:
+            src = reversed(results)
+        else:
+            src = results
+        for completion in src:
             if i >= self.__maxcount:
                 overmax = True
                 break
@@ -146,7 +150,7 @@ class AllCompletionPopup(CompletionPopup):
         super(AllCompletionPopup, self).__init__(_('Completions'), entry, window, **kwargs)
         self.__context = context
         self.__fs = Filesystem.getInstance()
-        colidx = self._get_view().insert_column_with_data_func(-1, '',
+        colidx = self._get_view().insert_column_with_data_func(0, '',
                                                                gtk.CellRendererPixbuf(),
                                                                self.__render_icon)
         
@@ -209,7 +213,9 @@ class CompletionStatusDisplay(hotwidgets.TransientPopup):
         self.__completion_display = AllCompletionPopup(self.__entry, self.__window, self.__context)
         self.__completion_display.connect('item-selected', self.__on_completion_selected)
         self.__completions_label = gtk.Label('No completions')
+        self.__completions_label.set_alignment(0.0, 0.5)
         self.__history_label = gtk.Label('No history')
+        self.__history_label.set_alignment(0.0, 0.5)
         
         self.__tab_history_display = TabHistoryPopup(self.__entry, self.__window, self.__context) 
         self.__tab_history_display.connect('item-selected', self.__on_histitem_selected)
@@ -290,8 +296,22 @@ class CompletionStatusDisplay(hotwidgets.TransientPopup):
             self.__current_completion = results            
             self.emit('completions-loaded')
             self.__pending_completion_load = False
-        else:        
-            self.__completions_label.set_text('Completions: %d' % (len(results.results),))
+        else:
+            if self.__current_completion.common_prefix:
+                pfx = gobject.markup_escape_text(self.__current_completion.common_prefix)
+                self.__completions_label.set_markup(_('Completion <b>[TAB]</b>: %s <b>(%d more)</b>') 
+                                                    % (pfx,len(self.__current_completion.results)))
+            elif self.__current_completion.results:
+                first = self.__current_completion.results[0]
+                # FIXME kill matchbase replace with handling of object
+                if first.matchbase:
+                    firsttext = gobject.markup_escape_text(first.matchbase)
+                else:
+                    firsttext = gobject.markup_escape_text(first.suffix)
+                self.__completions_label.set_markup(_('Completion <b>[TAB]</b>: %s <b>(%d more)</b>') 
+                                                    % (firsttext,len(self.__current_completion.results)-1))
+            else:
+                self.__completions_label.set_markup(_('Completion: (no matches)'))
             self.show()
             self.queue_reposition()
 
@@ -300,16 +320,21 @@ class CompletionStatusDisplay(hotwidgets.TransientPopup):
         _logger.debug("setting size request width to %d*0.75", ref_w)
         self.set_size_request((int(ref_w*0.75)), -1)
         
-    def set_history_search(self, histsearch):
-        self.__tab_history_display.set_content(self.__tabhistory, uniquify=True)            
+    def set_history_search(self, histsearch):           
         histitems = list(self.__context.history.search_commands(histsearch, distinct=True))
-        self.__history_label.set_text('%d matching' % (len(histitems),))
+        if histitems:
+            histmatch = gobject.markup_escape_text(histitems[0])
+            self.__history_label.set_markup(_('History items <b>[Ctrl-r]</b>: <span font_family="Monospace">%s</span> <b>%d more</b>') 
+                                            % (histmatch, len(histitems)-1,))
+        else:
+            self.__history_label.set_text(_('History items: (no matches)'))
         self.__global_history_display.set_content(histitems, uniquify=True)
             
     def popup_tab_history(self):
         if self.__tab_history_visible:
             return
         self.hide()
+        self.__tab_history_display.set_content(self.__tabhistory, uniquify=True) # already reversed         
         self.__tab_history_display.reposition()
         self.__tab_history_display.queue_reposition()
         self.__tab_history_visible = True
