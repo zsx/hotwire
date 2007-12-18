@@ -603,11 +603,11 @@ for obj in curshell.get_current_output():
                 self.__completions.set_history_search('', now=True)
                 self.__history_search_active = True
             elif self.__history_search_active:
-                self.__completions.select_history_next()
+                self.__completions.select_tab_history_next()
             return True
         elif e.keyval == gtk.gdk.keyval_from_name('Down'):
             if self.__history_search_active:
-                self.__completions.select_history_prev()
+                self.__completions.select_tab_history_prev()
             return True
         elif e.keyval == gtk.gdk.keyval_from_name('Escape'):
             self.__history_search_active = False
