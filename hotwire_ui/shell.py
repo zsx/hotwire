@@ -32,7 +32,7 @@ from hotwire.builtin import BuiltinRegistry
 from hotwire.gutil import *
 from hotwire.util import markup_for_match, quote_arg
 from hotwire.fs import path_unexpanduser, path_expanduser, unix_basename
-from hotwire.sysdep.fs import Filesystem
+from hotwire.sysdep.fs import File, Filesystem
 from hotwire.state import History, Preferences
 from hotwire_ui.command import CommandExecutionDisplay,CommandExecutionControl
 from hotwire_ui.completion import CompletionStatusDisplay
@@ -463,14 +463,16 @@ for obj in curshell.get_current_output():
         for cmd in self.__pipeline_tree:
             verb = cmd[0]
             if not verb.resolved:
-                vc.set_search(verb.text, hotwire=self)
                 resolution_match = None
-                for completion in vc.completions(verb.text, self.get_cwd()):
-                    if verb.text == completion.matchbase or fs.path_inexact_executable_match(completion.matchbase):
+                for completion in vc.completions(verb.text, self.__cwd):
+                    target = completion.target
+                    if not isinstance(target, File):
+                        continue
+                    if verb.text == unix_basename(target.path) or fs.path_inexact_executable_match(completion.matchbase):
                         resolution_match = completion
-                    break
-                if resolution_match:                   
-                    resolutions.append((cmd, verb.text, 'sh ' + verb.text))
+                        break
+                if resolution_match:
+                    resolutions.append((cmd, verb.text, 'sh ' + quote_arg(completion.target.path)))
                 else:
                     self.push_msg(_('No matches for <b>%s</b>') % (gobject.markup_escape_text(verb.text),), markup=True)
                     return
@@ -505,22 +507,28 @@ for obj in curshell.get_current_output():
 
     def __on_completions_loaded(self, compls):
         assert self.__completion_async_blocking
-        self.__do_completion()
+        self.__insert_completion()
 
     def __do_completion(self):
         _logger.debug("requesting completion")
-        try:
-            self.__do_parse(throw=True)
-        except hotwire.command.PipelineParseException, e:
-            self.push_msg('Failed to parse pipeline: %s' % (e.args[0],))
-            return
-        self.__idle_do_parse_and_complete()
+        if self.__parse_stale:
+            try:
+                self.__do_parse(throw=True)
+            except hotwire.command.PipelineParseException, e:
+                self.push_msg('Failed to parse pipeline: %s' % (e.args[0],))
+                return
+            self.__do_complete()
+        self.__insert_completion()
+            
+    def __insert_completion(self):
         results = self.__completions.completion_request()
         if results is None:
             self.__completion_async_blocking = True
+            _logger.debug("results pending, setting blocking=TRUE")
             self.__completions.hide_all()            
             return
         if self.__completion_async_blocking:
+            _logger.debug("setting blocking=FALSE")            
             self.__completion_async_blocking = False
         if len(results.results) == 0:
             _logger.debug("no completions")
@@ -678,11 +686,16 @@ for obj in curshell.get_current_output():
         self.__requeue_parse()
 
     def __idle_do_parse_and_complete(self):
-        ### TODO: move more of this stuff into hotwire_ui/completion.py
-        self.__completion_token = None
         self.__idle_parse_id = 0
+        if not self.__parse_stale:
+            return
         if not self.__do_parse():
             return
+        self.__do_complete()
+        
+    def __do_complete(self):
+        ### TODO: move more of this stuff into hotwire_ui/completion.py
+        self.__completion_token = None        
         pos = self.__input.get_position()
         prev_token = None
         completer = None
@@ -747,6 +760,7 @@ for obj in curshell.get_current_output():
             return False
         _logger.debug("parse tree: %s", self.__pipeline_tree)
         self.__parse_stale = False
+        self.__unqueue_parse()
         return True
 
     def __on_input_changed(self):

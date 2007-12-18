@@ -165,14 +165,14 @@ class CompletionStatusDisplay(hotwidgets.TransientPopup):
         self.__completions_label.set_text('Loading...')
         self.__complsys.async_complete(completer, text, context.get_cwd(), self.__completions_result)
         
-    def completion_request(self):
-        self.hide()        
+    def completion_request(self):      
         if self.__current_completion is not None:
             self.__completion_display.set_results(self.__current_completion)
             self.__completion_display.show_all()
             self.__completion_display.reposition()
             self.__completion_display.queue_reposition()
             return self.__current_completion
+        self.hide()
         self.__pending_completion_load = True
         return None
         
@@ -187,11 +187,12 @@ class CompletionStatusDisplay(hotwidgets.TransientPopup):
             _logger.debug("stale completion result")
             return
         self.__current_completion = results
-        self.__completions_label.set_text('Completions: %d' % (len(results.results),))
         if self.__pending_completion_load:
+            self.__current_completion = results            
             self.emit('completions-loaded')
-            self.__pending_completion_load = False           
-        else:
+            self.__pending_completion_load = False
+        else:        
+            self.__completions_label.set_text('Completions: %d' % (len(results.results),))
             self.show()
             self.queue_reposition()
 
