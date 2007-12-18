@@ -106,7 +106,6 @@ class CompletionPopup(hotwidgets.TransientPopup):
         if previdx < 0:
             return
         previter = self.__model.iter_nth_child(None, previdx)
-        print previter
         if not previter:
             return
         self.__selection.select_iter(previter)
@@ -115,7 +114,6 @@ class CompletionPopup(hotwidgets.TransientPopup):
         path = self.get_selected_path()
         seliter = self.__model.get_iter(path)
         iternext = self.__model.iter_next(seliter)
-        print iternext
         if not iternext:
             return
         self.__selection.select_iter(iternext)
