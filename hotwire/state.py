@@ -93,7 +93,7 @@ class History(Singleton):
         cursor.execute('''INSERT INTO Commands VALUES (NULL, ?, ?, ?)''', vals)
         cursor.execute('''COMMIT''')
         
-    def __search_limit_query(self, tablename, column, orderval, searchterm, limit, countmin=0, filters=[]):
+    def __search_limit_query(self, tablename, column, orderval, searchterm, limit, countmin=0, filters=[], distinct=False):
         queryclauses = []
         args = []        
         if searchterm:
@@ -107,15 +107,15 @@ class History(Singleton):
             queryclause = ' WHERE ' + ' AND '.join(queryclauses)
         else:
             queryclause = ''
-        sql = ((('SELECT * FROM %s' % (tablename,)) + queryclause + 
+        sql = ((('SELECT %s * FROM %s' % (distinct and 'DISTINCT' or '', tablename,)) + queryclause + 
                   (' ORDER BY %s DESC LIMIT %d' % (orderval, limit,))),
                 args)
         _logger.debug("generated search query: %s", sql)
         return sql
         
-    def search_commands(self, searchterm, limit=20):
+    def search_commands(self, searchterm, limit=20, **kwargs):
         cursor = self.__conn.cursor()
-        (sql, args) = self.__search_limit_query('Commands', 'cmd', 'exectime', searchterm, limit)         
+        (sql, args) = self.__search_limit_query('Commands', 'cmd', 'exectime', searchterm, limit, **kwargs)         
         _logger.debug("execute using args %s: %s", args, sql)
         for v in cursor.execute(sql, args):
             yield v[1]  
