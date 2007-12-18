@@ -505,7 +505,7 @@ for obj in curshell.get_current_output():
     @log_except(_logger)
     def __on_histitem_selected(self, popup, histitem):
         _logger.debug("got history item selected: %s", histitem)
-        if not histiem:
+        if not histitem:
             _logger.debug("no history item, doing popdown")
             self.__completions.hide_all()
             return
