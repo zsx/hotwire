@@ -53,7 +53,7 @@ class ProcessCompleter(Completer):
             for proc in proclist:
                 pidstr = str(proc.pid)
                 if pidstr.startswith(text):
-                    yield Completion(pidstr, text, proc)
+                    yield Completion(pidstr[len(text):], proc, pidstr)
         else:
             pass
 #            for proc in proclist:
