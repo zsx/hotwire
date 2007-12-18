@@ -30,14 +30,15 @@ from hotwire.sysdep.proc import Process
 
 _logger = logging.getLogger("hotwire.ui.Completion")
 
-class HistoryPopup(hotwidgets.TransientPopup):
+class CompletionPopup(hotwidgets.TransientPopup):
     __gsignals__ = {
         "item-selected" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (gobject.TYPE_PYOBJECT,)),
     }     
     def __init__(self, title, entry, window, context=None, **kwargs):
-        super(HistoryPopup, self).__init__(entry, window, **kwargs)
+        super(CompletionPopup, self).__init__(entry, window, **kwargs)
         self.__entry = entry
         self.__window = window
+        self.__maxcount = 10        
         self.__label = gtk.Label()
         self.__label.set_markup('<b>%s</b>' % (title,))
         self.get_box().pack_start(self.__label, expand=False)      
@@ -45,37 +46,51 @@ class HistoryPopup(hotwidgets.TransientPopup):
         self.__view = gtk.TreeView(self.__model)
         self.__selection = self.__view.get_selection()
         self.__selection.set_mode(gtk.SELECTION_SINGLE)
-        self.__selection.connect('changed', self.__on_selection_changed)
-        self.__selection_suppress = False
         self.__view.connect("row-activated", self.__on_row_activated)
         self.__view.set_headers_visible(False)
         self.get_box().add(self.__view)
         colidx = self.__view.insert_column_with_data_func(-1, '',
                                                           hotwidgets.CellRendererText(ellipsize=True),
-                                                          self._render_histitem)             
-
-    def set_content(self, histitems):
-        self.__selection_suppress = True        
-        self.__model.clear()        
-        for i,histitem in enumerate(reversed(histitems)):
-            iter = self.__model.append([histitem])
-        self.__selection_suppress = False            
-        if histitems:
+                                                          self._render_item)
+        self.__morelabel = gtk.Label()
+        self.get_box().pack_start(self.__morelabel, expand=False)        
+        
+    def _get_view(self):
+        return self.__view   
+    
+    def _get_selection(self):
+        return self.__selection
+    
+    def set_content(self, results, uniquify=False):
+        model = gtk.ListStore(gobject.TYPE_PYOBJECT)
+        overmax = False
+        uniqueresults = set()
+        i = 0
+        for completion in reversed(results):
+            if i >= self.__maxcount:
+                overmax = True
+                break
+            if uniquify and completion in uniqueresults:
+                continue
+            i += 1
+            uniqueresults.add(completion)
+            iter = model.append([completion])
+        self.__model = model
+        self._get_view().set_model(model)
+        if results:
             self.__selection.select_iter(self.__model.iter_nth_child(None, self.__model.iter_n_children(None)-1))
+        if overmax:
+            self.__morelabel.set_text('%d more...' % (len(results)-self.__maxcount,))
+            self.__morelabel.show_all()
+        else:
+            self.__morelabel.set_text('')
+            self.__morelabel.hide()
             
     def __on_row_activated(self, tv, path, vc):
         _logger.debug("row activated: %s", path)
-        iter = self.__model.get_iter(path)        
-        self.__view.get_selection().select_iter(iter)
+        iter = self.__model.get_iter(path)
+        self.emit('histitem-selected', self.__model.get_value(iter, 0))         
     
-    def __on_selection_changed(self, sel):
-        if self.__selection_suppress:
-            return
-        (model, iter) = self.__selection.get_selected()
-        if not iter:
-            return        
-        self.emit('histitem-selected', self.__model.get_value(iter, 0))        
-            
     def _set_size_request(self):            
         (ref_x, ref_y, ref_w, ref_h, bits) = self.__entry.get_parent_window().get_geometry()
         _logger.debug("setting size request width to %d*0.75", ref_w)
@@ -104,71 +119,38 @@ class HistoryPopup(hotwidgets.TransientPopup):
         if not iternext:
             return
         self.__selection.select_iter(iternext)
+        
+    def emit_itemselected(self):
+        (model, iter) = self.__selection.get_selected()        
+        self.emit('item-selected', model.get_value(iter, 0))
 
-class TabHistoryPopup(HistoryPopup):
-    __gsignals__ = {
-        "histitem-selected" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (gobject.TYPE_PYOBJECT,)),
-    }     
+class TabHistoryPopup(CompletionPopup): 
     def __init__(self, entry, window, context=None, **kwargs):
         super(TabHistoryPopup, self).__init__(_('Tab History'), entry, window, **kwargs)
  
-    def _render_histitem(self, col, cell, model, iter):
+    def _render_item(self, col, cell, model, iter):
         histitem = model.get_value(iter, 0)
         cell.set_property('text', histitem)
         
-class GlobalHistoryPopup(HistoryPopup):
-    __gsignals__ = {
-        "histitem-selected" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (gobject.TYPE_PYOBJECT,)),
-    }     
+class GlobalHistoryPopup(CompletionPopup):   
     def __init__(self, entry, window, context=None, **kwargs):
-        super(GlobalHistoryPopup, self).__init__(_('Global History'), entry, window, **kwargs)
+        super(GlobalHistoryPopup, self).__init__(_('History Search'), entry, window, **kwargs)
  
-    def _render_histitem(self, col, cell, model, iter):
+    def _render_item(self, col, cell, model, iter):
         histitem = model.get_value(iter, 0)
         cell.set_property('text', histitem)        
 
-class CompletionDisplay(hotwidgets.TransientPopup):
+class AllCompletionPopup(CompletionPopup):
     __gsignals__ = {
         "match-selected" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, []),
     }     
     def __init__(self, entry, window, context=None, **kwargs):
-        super(CompletionDisplay, self).__init__(entry, window, **kwargs)
+        super(AllCompletionPopup, self).__init__(_('Completions'), entry, window, **kwargs)
         self.__context = context
         self.__fs = Filesystem.getInstance()
-        self.__maxcount = 10
-        self.__model = gtk.ListStore(gobject.TYPE_PYOBJECT)
-        self.__view = gtk.TreeView(self.__model)
-        self.__view.get_selection().set_mode(gtk.SELECTION_SINGLE)
-        self.__view.connect("row-activated", self.__on_row_activated)
-        self.__view.set_headers_visible(False)
-        self.get_box().add(self.__view)
-        colidx = self.__view.insert_column_with_data_func(-1, '',
-                                                          gtk.CellRendererPixbuf(),
-                                                          self.__render_icon)
-        colidx = self.__view.insert_column_with_data_func(-1, '',
-                                                          hotwidgets.CellRendererText(),
-                                                          self.__render_match)
-        col = self.__view.get_column(colidx-1)
-        col.set_expand(True)
-        self.__morelabel = gtk.Label()
-        self.get_box().pack_start(self.__morelabel, expand=False)
-        
-    def set_results(self, results):
-        model = gtk.ListStore(gobject.TYPE_PYOBJECT)
-        overmax = False
-        for i,completion in enumerate(results.results):
-            if i >= self.__maxcount:
-                overmax = True
-                break
-            iter = model.append([completion])
-        self.__model = model
-        self.__view.set_model(model)
-        if overmax:
-            self.__morelabel.set_text('%d more...' % (len(results.results)-self.__maxcount,))
-            self.__morelabel.show_all()
-        else:
-            self.__morelabel.set_text('')
-            self.__morelabel.hide()
+        colidx = self._get_view().insert_column_with_data_func(-1, '',
+                                                               gtk.CellRendererPixbuf(),
+                                                               self.__render_icon)
         
     def __get_icon_func_for_klass(self, klass):
         if isinstance(klass, File):
@@ -201,24 +183,18 @@ class CompletionDisplay(hotwidgets.TransientPopup):
             if val is obj:
                 return iter
             iter = self.__model.iter_next(iter)
-            
-    def __on_row_activated(self, tv, path, vc):
-        _logger.debug("row activated: %s", path)
-        iter = self.__model.get_iter(path)        
-        self.__view.get_selection().select_iter(iter)
-        self.emit('match-selected')
 
-    def __render_match(self, col, cell, model, iter):
+    def _render_item(self, col, cell, model, iter):
         compl = model.get_value(iter, 0)
         if compl.matchbase:
             cell.set_property('text', compl.matchbase)
         else:
             cell.set_property('text', compl.suffix)
- 
+
 class CompletionStatusDisplay(hotwidgets.TransientPopup):
     __gsignals__ = {
         "histitem-selected" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (gobject.TYPE_PYOBJECT,)),                    
-        "completion-selected" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, []),
+        "completion-selected" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (gobject.TYPE_PYOBJECT,)),
         "completions-loaded" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, []),        
     }    
     def __init__(self, entry, window, context=None, tabhistory=[], **kwargs):
@@ -232,14 +208,20 @@ class CompletionStatusDisplay(hotwidgets.TransientPopup):
         self.__complsys = CompletionSystem()
         self.__current_completion = None
         self.__pending_completion_load = False
-        self.__completion_display = CompletionDisplay(self.__entry, self.__window, self.__context)
+        self.__completion_display = AllCompletionPopup(self.__entry, self.__window, self.__context)
+        self.__completion_display.connect('item-selected', self.__on_completion_selected)
         self.__completions_label = gtk.Label('No completions')
         self.__history_label = gtk.Label('No history')
         
         self.__tab_history_display = TabHistoryPopup(self.__entry, self.__window, self.__context) 
         self.__tab_history_display.connect('item-selected', self.__on_histitem_selected)
         self.__global_history_display = GlobalHistoryPopup(self.__entry, self.__window, self.__context) 
-        self.__global_history_display.connect('item-selected', self.__on_histitem_selected)        
+        self.__global_history_display.connect('item-selected', self.__on_histitem_selected)
+        
+        self.__overview_visible = False
+        self.__completion_visible = False
+        self.__tab_history_visible = False
+        self.__global_history_visible = False        
 
         self.get_box().pack_start(self.__completions_label, expand=False)
         self.get_box().pack_start(self.__history_label, expand=False)
@@ -247,8 +229,8 @@ class CompletionStatusDisplay(hotwidgets.TransientPopup):
     def __on_histitem_selected(self, th, histitem):
         self.emit('histitem-selected', histitem)
          
-    def __on_completion_match_selected(self, tm):
-        self.emit('completion-selected')
+    def __on_completion_selected(self, ac, compl):
+        self.emit('completion-selected', compl)
 
     def invalidate(self):
         self.__completions_label.set_text(' ')
@@ -256,12 +238,17 @@ class CompletionStatusDisplay(hotwidgets.TransientPopup):
         self.__completer = None
         self.__current_completion = None
         self.__pending_completion_load = False
-        self.__completion_display.hide()
+        self.hide_all()
 
     def hide_all(self):
         self.__completion_display.hide()
+        self.__completion_visible = False
         self.__tab_history_display.hide()
+        self.__tab_history_visible = False
+        self.__global_history_display.hide()
+        self.__global_history_visible = False
         super(CompletionStatusDisplay, self).hide()
+        self.__overview_visible = False
 
     def set_completion(self, completer, text, context):
         if text == self.__token and completer == self.__completer:
@@ -275,8 +262,9 @@ class CompletionStatusDisplay(hotwidgets.TransientPopup):
         
     def completion_request(self):      
         if self.__current_completion is not None:
-            self.__completion_display.set_results(self.__current_completion)
+            self.__completion_display.set_content(self.__current_completion.results)
             self.hide_all()
+            self.__completion_visible = True
             self.__completion_display.show()
             self.__completion_display.reposition()
             self.__completion_display.queue_reposition()
@@ -284,6 +272,16 @@ class CompletionStatusDisplay(hotwidgets.TransientPopup):
         self.hide_all()
         self.__pending_completion_load = True
         return None
+    
+    def show(self):
+        self.__overview_visible = True
+        super(CompletionStatusDisplay, self).show()
+        self.reposition()
+        self.queue_reposition()
+        
+    def hide(self):
+        self.__overview_visible = False
+        super(CompletionStatusDisplay, self).hide()
         
     def __completions_result(self, completer, text, results):
         if not (text == self.__token and completer == self.__completer):
@@ -304,18 +302,71 @@ class CompletionStatusDisplay(hotwidgets.TransientPopup):
         _logger.debug("setting size request width to %d*0.75", ref_w)
         self.set_size_request((int(ref_w*0.75)), -1)
         
-    def set_history_search(self, histsearch, now=False):
-        if now:
-            self.__tab_history_display.set_results(self.__tabhistory)
-            self.__tab_history_display.reposition()
-            self.__tab_history_display.queue_reposition()
-            self.__tab_history_display.show()
-        else:
-            histitems = list(self.__context.history.search_commands(histsearch))
-            self.__history_label.set_text('%d matching' % (len(histitems),))
-
-    def select_tab_history_next(self):
-        self.__tab_history_display.select_prev()
+    def set_history_search(self, histsearch):
+        self.__tab_history_display.set_content(self.__tabhistory, uniquify=True)            
+        histitems = list(self.__context.history.search_commands(histsearch, distinct=True))
+        self.__history_label.set_text('%d matching' % (len(histitems),))
+        self.__global_history_display.set_content(histitems, uniquify=True)
+            
+    def popup_tab_history(self):
+        if self.__tab_history_visible:
+            return
+        self.hide()
+        self.__tab_history_display.reposition()
+        self.__tab_history_display.queue_reposition()
+        self.__tab_history_visible = True
+        self.__tab_history_display.show()
         
-    def select_tab_history_prev(self):
-        self.__tab_history_display.select_next()
+    def popup_global_history(self):
+        if self.__global_history_visible:
+            return
+        self.hide()
+        self.__global_history_display.reposition()
+        self.__global_history_display.queue_reposition()
+        self.__global_history_visible = True
+        self.__global_history_display.show()            
+
+    def get_state(self):
+        if self.__tab_history_visible:
+            return 'tabhistory'
+        elif self.__global_history_visible:
+            return 'globalhistory'
+        elif self.__completion_visible:
+            return 'completions'
+        return None
+
+    def select_next(self):
+        if self.__tab_history_visible:
+            self.__tab_history_display.select_next()
+            return True
+        elif self.__global_history_visible:
+            self.__global_history_display.select_next()
+            return True
+        elif self.__completion_visible:
+            self.__completion_display.select_next()
+            return True
+        return False
+        
+    def select_prev(self):
+        if self.__tab_history_visible:
+            self.__tab_history_display.select_prev()
+            return True
+        elif self.__global_history_visible:
+            self.__global_history_display.select_prev()
+            return True
+        elif self.__completion_visible:
+            self.__completion_display.select_prev()
+            return True
+        return False
+
+    def activate_selected(self):
+        if self.__tab_history_visible:
+            self.__tab_history_display.emit_itemselected()
+            return True
+        elif self.__global_history_visible:
+            self.__global_history_display.emit_itemselected()
+            return True
+        elif self.__completion_visible:
+            self.__completion_display.emit_itemselected()
+            return True
+        return False

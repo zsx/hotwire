@@ -505,12 +505,12 @@ for obj in curshell.get_current_output():
     @log_except(_logger)
     def __on_histitem_selected(self, popup, histitem):
         _logger.debug("got history item selected: %s", histitem)
+        self.__input.set_text(histitem)
+        self.__input.set_position(-1)
 
     @log_except(_logger)
-    def __on_completion_selected(self, popup):
+    def __on_completion_selected(self, popup, completion):
         _logger.debug("got completion selected")
-        completion = self.__completions.select_tab_next()        
-        self.__insert_completion(completion, False, True)
 
     def __on_completions_loaded(self, compls):
         assert self.__completion_async_blocking
@@ -561,11 +561,31 @@ for obj in curshell.get_current_output():
         self.__queue_parse()
 
     def __handle_completion_key(self, e):
-        if e.keyval == gtk.gdk.keyval_from_name('Tab'):
+        curtext = self.__input.get_property("text")
+        state = self.__completions.get_state()
+        if (state is not None) and e.keyval == gtk.gdk.keyval_from_name('Return'):
+            self.__completions.activate_selected()
+            return True         
+        elif e.keyval == gtk.gdk.keyval_from_name('Tab'):
             self.__do_completion()
             return True
-        else:
-            return False
+        elif e.keyval == gtk.gdk.keyval_from_name('r') and e.state & gtk.gdk.CONTROL_MASK:
+            if state is None:
+                self.__completions.popup_global_history()
+            return True
+        elif e.keyval == gtk.gdk.keyval_from_name('Up'):
+            if state is None:
+                self.__completions.popup_tab_history()
+            else:
+                self.__completions.select_next()
+            return True
+        elif e.keyval == gtk.gdk.keyval_from_name('Down'):
+            self.__completions.select_prev()
+            return True
+        elif e.keyval == gtk.gdk.keyval_from_name('Escape'):
+            self.__completions.hide_all()
+            return True
+        return False
 
     def __on_entry_focus_lost(self, entry, e):
         self.__completions.hide_all()
@@ -583,35 +603,10 @@ for obj in curshell.get_current_output():
         if self.__completion_async_blocking:
             return True
 
-        if e.keyval == gtk.gdk.keyval_from_name('Return'):
+        if self.__handle_completion_key(e):
+            return True
+        elif e.keyval == gtk.gdk.keyval_from_name('Return'):
             self.__execute()
-            return True
-        elif self.__handle_completion_key(e):
-            return True
-        elif e.keyval == gtk.gdk.keyval_from_name('Up') \
-             and e.state & gtk.gdk.CONTROL_MASK:
-            self.__open_prev_output()
-            return True
-        elif e.keyval == gtk.gdk.keyval_from_name('Down') \
-             and e.state & gtk.gdk.CONTROL_MASK:
-            self.__open_next_output()
-            return True
-        elif e.keyval == gtk.gdk.keyval_from_name('Up'):
-            # If the user hits Up with an empty input, just display
-            # all history
-            if curtext == '' and not self.__history_search_active:
-                self.__completions.set_history_search('', now=True)
-                self.__history_search_active = True
-            elif self.__history_search_active:
-                self.__completions.select_tab_history_next()
-            return True
-        elif e.keyval == gtk.gdk.keyval_from_name('Down'):
-            if self.__history_search_active:
-                self.__completions.select_tab_history_prev()
-            return True
-        elif e.keyval == gtk.gdk.keyval_from_name('Escape'):
-            self.__history_search_active = False
-            self.__completions.hide_all()
             return True
         elif self.__emacs_bindings and self.__handle_emacs_binding(e):
             return True     
@@ -659,14 +654,8 @@ for obj in curshell.get_current_output():
              and e.state & gtk.gdk.MOD1_MASK:
             self.__input.emit('delete-from-cursor', gtk.DELETE_WORD_ENDS, 1)
             return True                       
-        return False           
-
-    def __open_prev_output(self):
-        self.__outputs.open_output(do_prev=True)
-
-    def __open_next_output(self):
-        self.__outputs.open_output()
-
+        return False
+    
     def __unqueue_parse(self):
         if self.__idle_parse_id > 0:
             gobject.source_remove(self.__idle_parse_id)
@@ -772,7 +761,6 @@ for obj in curshell.get_current_output():
         self.__completions.invalidate()
         if self.__completion_active:
             self.__completion_active = False
-        self.__history_search_active = False
         curvalue = self.__input.get_property("text")
         if not self.__history_suppress:
             # Change '' to None, because '' has special value to mean
