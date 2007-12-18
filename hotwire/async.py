@@ -36,6 +36,7 @@ class MiniThreadPool(Singleton):
         self.__avail_threads = 0
         self.__thread_count = 0
         self.__max_threads = 7
+        self.__async_serial = 0
 
     def run(self, callable, args=()):
         self.__queue_cond.acquire()
@@ -45,9 +46,16 @@ class MiniThreadPool(Singleton):
             thr.setDaemon(True)
             thr.start()
             self.__thread_count += 1
-        self.__queue.append((callable, args))    
+        serial = self.__async_serial
+        self.__async_serial += 1
+        self.__queue.append((serial, callable, args))
         self.__queue_cond.notify()
         self.__queue_cond.release()
+        return serial
+    
+    def cancel(self, serial):
+        # FIXME implement
+        pass
             
     def __worker(self):
         while True:
@@ -56,7 +64,7 @@ class MiniThreadPool(Singleton):
             self.__avail_threads += 1
             while not self.__queue:
                 self.__queue_cond.wait()
-            (cb, args) = self.__queue.pop(0)
+            (serial, cb, args) = self.__queue.pop(0)
             self.__avail_threads -= 1
             self.__queue_cond.release()
             try:
