@@ -505,12 +505,21 @@ for obj in curshell.get_current_output():
     @log_except(_logger)
     def __on_histitem_selected(self, popup, histitem):
         _logger.debug("got history item selected: %s", histitem)
+        if not histiem:
+            _logger.debug("no history item, doing popdown")
+            self.__completions.hide_all()
+            return
         self.__input.set_text(histitem)
         self.__input.set_position(-1)
 
     @log_except(_logger)
     def __on_completion_selected(self, popup, completion):
         _logger.debug("got completion selected")
+        if not completion:
+            _logger.debug("no completion, doing popdown")
+            self.__completions.hide_all()
+            return
+        self.__insert_single_completion(completion)
 
     def __on_completions_loaded(self, compls):
         assert self.__completion_async_blocking
@@ -527,6 +536,25 @@ for obj in curshell.get_current_output():
             self.__do_complete()
         self.__insert_completion()
             
+    def __insert_single_completion(self, completion):
+        text = completion.suffix
+        # FIXME move this into CompletionSystem
+        tobj = completion.target
+        if not (isinstance(tobj, File) and tobj.is_directory()):
+            text += " "
+        self.__insert_completing_text(text)
+            
+    def __insert_completing_text(self, text):
+        curtext = self.__input.get_property("text")        
+        pos = self.__input.get_position()
+        self.__completion_suppress = True
+        self.__input.set_property('text', curtext + text)
+        self.__input.set_position(pos + len(text))
+        self.__completion_suppress = False
+        self.__completions.invalidate()
+        self.__completions.hide_all()
+        self.__queue_parse()           
+            
     def __insert_completion(self):
         results = self.__completions.completion_request()
         if results is None:
@@ -540,25 +568,13 @@ for obj in curshell.get_current_output():
         if len(results.results) == 0:
             _logger.debug("no completions")
             return
-        curtext = self.__input.get_property("text")
         if len(results.results) == 1:
-            target = results.results[0].suffix
-            # FIXME move this into CompletionSystem
-            tobj = results.results[0].target
-            if not (isinstance(tobj, File) and tobj.is_directory()):
-                target += " "
+            self.__insert_single_completion(results.results[0])
         elif results.common_prefix:
-            target = results.common_prefix
+            self.__insert_completing_text(results.common_prefix)
         else:
-            return
-        pos = self.__input.get_position()
-        self.__completion_suppress = True
-        self.__input.set_property('text', curtext + target)
-        self.__input.set_position(pos + len(target))
-        self.__completion_suppress = False
-        self.__completions.invalidate()
-        self.__completions.hide_all()
-        self.__queue_parse()
+            # We should have popped up the display list
+            pass
 
     def __handle_completion_key(self, e):
         curtext = self.__input.get_property("text")

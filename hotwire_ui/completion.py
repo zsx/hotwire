@@ -53,7 +53,12 @@ class CompletionPopup(hotwidgets.TransientPopup):
                                                           hotwidgets.CellRendererText(ellipsize=True),
                                                           self._render_item)
         self.__morelabel = gtk.Label()
-        self.get_box().pack_start(self.__morelabel, expand=False)        
+        self.__morelabel.set_no_show_all(True)
+        self.get_box().pack_start(self.__morelabel, expand=False)
+        self.__none_label = gtk.Label()
+        self.__none_label.set_no_show_all(True)
+        self.__none_label.set_markup('<i>%s</i>' % (_('No matches'),))
+        self.get_box().pack_start(self.__none_label, expand=False)
         
     def _get_view(self):
         return self.__view   
@@ -83,6 +88,9 @@ class CompletionPopup(hotwidgets.TransientPopup):
         self._get_view().set_model(model)
         if results:
             self.__selection.select_iter(self.__model.iter_nth_child(None, self.__model.iter_n_children(None)-1))
+            self.__none_label.hide()            
+        else:
+            self.__none_label.show()            
         if overmax:
             self.__morelabel.set_text('%d more...' % (len(results)-self.__maxcount,))
             self.__morelabel.show_all()
@@ -106,6 +114,8 @@ class CompletionPopup(hotwidgets.TransientPopup):
         
     def select_next(self):
         path = self.get_selected_path()
+        if not path:
+            return
         previdx = path[-1]-1
         if previdx < 0:
             return
@@ -116,6 +126,8 @@ class CompletionPopup(hotwidgets.TransientPopup):
         
     def select_prev(self):
         path = self.get_selected_path()
+        if not path:
+            return
         seliter = self.__model.get_iter(path)
         iternext = self.__model.iter_next(seliter)
         if not iternext:
@@ -123,7 +135,10 @@ class CompletionPopup(hotwidgets.TransientPopup):
         self.__selection.select_iter(iternext)
         
     def emit_itemselected(self):
-        (model, iter) = self.__selection.get_selected()        
+        (model, iter) = self.__selection.get_selected()
+        if not iter:
+            self.emit('item-selected', None)
+            return
         self.emit('item-selected', model.get_value(iter, 0))
 
 class TabHistoryPopup(CompletionPopup): 
@@ -334,7 +349,7 @@ class CompletionStatusDisplay(hotwidgets.TransientPopup):
         if self.__tab_history_visible:
             return
         self.hide()
-        self.__tab_history_display.set_content(self.__tabhistory, uniquify=True) # already reversed         
+        self.__tab_history_display.set_content(self.__tabhistory, uniquify=False)         
         self.__tab_history_display.reposition()
         self.__tab_history_display.queue_reposition()
         self.__tab_history_visible = True
