@@ -77,8 +77,8 @@ class CompletionPopup(hotwidgets.TransientPopup):
                 break
             if uniquify and completion in uniqueresults:
                 continue
-            i += 1
             uniqueresults.add(completion)
+            i += 1
             if reverse:
                 iter = model.prepend([completion])
             else:
@@ -89,13 +89,24 @@ class CompletionPopup(hotwidgets.TransientPopup):
             self.__selection.select_iter(self.__model.iter_nth_child(None, self.__model.iter_n_children(None)-1))
             self.__none_label.hide()            
         else:
-            self.__none_label.show()            
-        if overmax:
-            self.__morelabel.set_text('%d more...' % (len(results)-self.__maxcount,))
+            self.__none_label.show()
+        
+        self.__morecount = len(results)-i                        
+        if self.__morecount:
+            self.__morelabel.set_text('%d more...' % (self.__morecount,))
             self.__morelabel.show_all()
         else:
             self.__morelabel.set_text('')
             self.__morelabel.hide()
+            
+    def iter_matches(self):
+        i = self.__model.iter_n_children(None)-1
+        while i >= 0:
+            yield self.__model[i][0]
+            i -= 1
+            
+    def get_display_count(self):
+        return self.__model.iter_n_children(None)
             
     def __on_row_activated(self, tv, path, vc):
         _logger.debug("row activated: %s", path)
@@ -336,13 +347,13 @@ class CompletionStatusDisplay(hotwidgets.TransientPopup):
         
     def set_history_search(self, histsearch):           
         histitems = list(self.__context.history.search_commands(histsearch, distinct=True))
+        self.__global_history_display.set_content(histitems, uniquify=True)        
         if histitems:
-            histmatch = gobject.markup_escape_text(histitems[0])
+            histmatch = gobject.markup_escape_text(self.__global_history_display.iter_matches().__iter__().next())
             self.__history_label.set_markup(_('History items <b>[Ctrl-r]</b>: <span font_family="Monospace">%s</span> <b>%d more</b>') 
-                                            % (histmatch, len(histitems)-1,))
+                                            % (histmatch, self.__global_history_display.get_display_count()-1))
         else:
             self.__history_label.set_text(_('History items: (no matches)'))
-        self.__global_history_display.set_content(histitems, uniquify=True)
             
     def popup_tab_history(self):
         if self.__tab_history_visible:
