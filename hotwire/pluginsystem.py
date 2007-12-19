@@ -22,7 +22,7 @@
 import os,sys,imp,logging
 
 import hotwire
-from hotwire.fs import DirectoryGenerator
+from hotwire.fs import iterd
 from hotwire.sysdep.fs import Filesystem
 
 _logger = logging.getLogger("hotwire.PluginSystem")
@@ -40,7 +40,7 @@ def _load_plugins_in_dir(dirname):
     if not os.path.isdir(dirname):
        return    
     _logger.debug("loading from plugin path: %s", dirname)   
-    for f in DirectoryGenerator(dirname):
+    for f in iterd(dirname):
         if f.endswith('.py'):
             fname = os.path.basename(f[:-3])
             try:

@@ -21,10 +21,8 @@
 
 import os, os.path, stat, logging, locale
 
-from hotwire.iterdir import iterdir
-
 from hotwire.builtin import Builtin, BuiltinRegistry, InputStreamSchema
-from hotwire.fs import FilePath,DirectoryGenerator
+from hotwire.fs import FilePath,iterd_sorted
 from hotwire.sysdep.fs import Filesystem
 from hotwire.util import xmap
 
@@ -43,7 +41,7 @@ class LsBuiltin(Builtin):
 
     def __ls_dir(self, dir, show_all):
         fs = Filesystem.getInstance()
-        for x in DirectoryGenerator(dir):
+        for x in iterd_sorted(dir):
             if show_all:
                 yield x
             else:
@@ -72,7 +70,6 @@ class LsBuiltin(Builtin):
             generator = self.__ls_dir(dir, show_all)
         else:
             generator = xmap(lambda arg: FilePath(arg, context.cwd), args)
-        generator = sorted(generator, locale.strcoll)
         for x in generator:
             yield x
 BuiltinRegistry.getInstance().register(LsBuiltin())

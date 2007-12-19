@@ -23,7 +23,6 @@ import os,sys,imp,logging
 
 import hotwire
 from hotwire.singletonmixin import Singleton
-from hotwire.fs import DirectoryGenerator
 
 _logger = logging.getLogger("hotwire.Builtin")
 

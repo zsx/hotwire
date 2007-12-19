@@ -22,7 +22,7 @@
 import os, sys, stat
 
 from hotwire.builtin import Builtin, BuiltinRegistry
-from hotwire.fs import FilePath, DirectoryGenerator
+from hotwire.fs import FilePath
 from hotwire.completion import PathCompleter
 
 class CdCompleter(PathCompleter):

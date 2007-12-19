@@ -24,7 +24,6 @@ import posixpath, locale
 
 import hotwire
 from hotwire.async import MiniThreadPool
-from hotwire.iterdir import iterdir
 import hotwire.glob2
 
 def dirglob(dir, pat):
@@ -120,14 +119,3 @@ def iterd(dpath, fpath=False):
 def iterd_sorted(dpath, **kwargs):
     for v in sorted(iterd(dpath, **kwargs), locale.strcoll):
         yield v
-
-class DirectoryGenerator(object):
-    def __init__(self, dir):
-        self.__dir = dir
-
-    def get_dir(self):
-        return self.__dir
-
-    def __iter__(self):
-        for name in iterdir(self.__dir):
-            yield FilePath(name, self.__dir)

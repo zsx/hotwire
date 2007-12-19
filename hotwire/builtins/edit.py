@@ -21,8 +21,6 @@
 
 import os, os.path, stat
 
-from hotwire.iterdir import iterdir
-
 from hotwire.builtin import Builtin, BuiltinRegistry
 from hotwire.fs import FilePath
 from hotwire.sysdep.fs import Filesystem
