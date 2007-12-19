@@ -71,11 +71,7 @@ class CompletionPopup(hotwidgets.TransientPopup):
         overmax = False
         uniqueresults = set()
         i = 0
-        if reverse:
-            src = reversed(results)
-        else:
-            src = results
-        for completion in src:
+        for completion in results:
             if i >= self.__maxcount:
                 overmax = True
                 break
@@ -83,7 +79,10 @@ class CompletionPopup(hotwidgets.TransientPopup):
                 continue
             i += 1
             uniqueresults.add(completion)
-            iter = model.append([completion])
+            if reverse:
+                iter = model.prepend([completion])
+            else:
+                iter = model.append([completion])
         self.__model = model
         self._get_view().set_model(model)
         if results:
