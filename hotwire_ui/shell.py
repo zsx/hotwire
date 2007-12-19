@@ -29,6 +29,7 @@ import hotwire_ui.pyshell
 from hotwire.singletonmixin import Singleton
 from hotwire.sysdep.term import Terminal
 from hotwire.builtin import BuiltinRegistry
+from hotwire.cmdalias import Alias, AliasRegistry
 from hotwire.gutil import *
 from hotwire.util import markup_for_match, quote_arg
 from hotwire.fs import path_unexpanduser, path_expanduser, unix_basename
@@ -473,13 +474,18 @@ for obj in curshell.get_current_output():
                 resolution_match = None
                 for completion in vc.completions(verb.text, self.__cwd):
                     target = completion.target
-                    if not isinstance(target, File):
-                        continue
-                    if verb.text == unix_basename(target.path) or fs.path_inexact_executable_match(completion.matchbase):
+                    if isinstance(target, Alias) and verb.text == target.name:
+                        resolution_match = completion
+                        break
+                    if isinstance(target, File) and \
+                       (verb.text == unix_basename(target.path) or fs.path_inexact_executable_match(completion.matchbase)):
                         resolution_match = completion
                         break
                 if resolution_match:
-                    resolutions.append((cmd, verb.text, 'sh ' + quote_arg(completion.target.path)))
+                    if isinstance(resolution_match.target, Alias):
+                        resolutions.append((cmd, verb.text, resolution_match.target.target))                    
+                    elif isinstance(resolution_match.target, File):
+                        resolutions.append((cmd, verb.text, 'sh ' + quote_arg(resolution_match.target.path)))
                 else:
                     self.push_msg(_('No matches for <b>%s</b>') % (gobject.markup_escape_text(verb.text),), markup=True)
                     return
