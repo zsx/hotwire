@@ -380,7 +380,11 @@ for obj in curshell.get_current_output():
         return odisp.get_objects()        
     
     def do_copy_url_drag_to_dir(self, urls, path):
-        quoted_fpaths = map(quote_arg, urls.split('\r\n'))
+        def fstrip(url):
+            if url.startswith('file://'):
+                return url[7:]
+            return url
+        quoted_fpaths = map(quote_arg, map(fstrip, urls.split('\r\n')))
         _logger.debug("path is %s, got drop paths: %s", path, quoted_fpaths)
         quoted_fpaths.append(quote_arg(path))
         self.execute_internal_str('cp ' + ' '.join(quoted_fpaths))
