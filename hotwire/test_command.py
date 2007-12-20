@@ -77,6 +77,10 @@ class PipelineParserTests(unittest.TestCase):
     def testPathological1(self):
         pt = Pipeline.parse_tree('cat | ls', self._context)
         self.assertEquals(len(pt), 2)
+        
+    def testNoSpace1(self):
+        pt = Pipeline.parse_tree('cat|sys echo bar', self._context)
+        self.assertEquals(len(pt), 2)
 
 class PipelineInstantiateTests(unittest.TestCase):
     def setUp(self):
