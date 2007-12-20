@@ -230,11 +230,11 @@ class SysBuiltin(Builtin):
             stdout_read = subproc.stdout
             stdout_fd = subproc.stdout.fileno()
         if out_opt_format is None:
-            for line in ShBuiltin.__unbuffered_readlines(stdout_read):
+            for line in SysBuiltin.__unbuffered_readlines(stdout_read):
                 yield line[:-1]
         elif out_opt_format == 'text/chunked':     
             try:
-                for buf in ShBuiltin.__unbuffered_read_pipe(stream=stdout_read, fd=stdout_fd):
+                for buf in SysBuiltin.__unbuffered_read_pipe(stream=stdout_read, fd=stdout_fd):
                     yield buf
             except OSError, e:
                 pass

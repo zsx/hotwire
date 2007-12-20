@@ -126,6 +126,9 @@ class VerbCompleter(Completer):
         for alias in aliases:
             compl = self._match(alias.name, text, alias)
             if compl: yield compl
+        textpath = FilePath(text, cwd)
+        expanded_textpath = path_expanduser(textpath)
+        (text_dpath, text_prefix) = os.path.split(expanded_textpath)             
         if text.find('/') >= 0 or text.startswith('.' + os.sep):
             pc = PathCompleter()
             for completion in pc.completions(text, cwd):
@@ -133,13 +136,13 @@ class VerbCompleter(Completer):
                 if fobj.is_directory() or fobj.is_executable():
                     yield completion
         else:
-            fs = Filesystem.getInstance()
+            fs = Filesystem.getInstance()           
             for dpath in fs.get_path_generator():
                 if not os.access(dpath, os.X_OK):
                     continue
                 for fpath in iterd_sorted(dpath):
                     fname = unix_basename(fpath)
-                    if not fname.startswith(text):
+                    if not fname.startswith(text_prefix):
                         continue
                     fobj = fs.get_file_sync(fpath)
                     if fobj.is_executable():

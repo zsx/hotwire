@@ -67,11 +67,11 @@ class PipelineParserTests(unittest.TestCase):
         self.assertEquals(len(pt), 1)
 
     def testMulti(self):
-        pt = Pipeline.parse_tree('sh echo true | sh cat /tmp/foo.txt', self._context)
+        pt = Pipeline.parse_tree('sys echo true | sys cat /tmp/foo.txt', self._context)
         self.assertEquals(len(pt), 2)
 
     def testMulti4(self):
-        pt = Pipeline.parse_tree('sh echo true | sh cat /tmp/foo.txt | sh echo moo  cow | sh cat cat cat /tmp/foo.txt', self._context)
+        pt = Pipeline.parse_tree('sys echo true | sys cat /tmp/foo.txt | sys echo moo  cow | sys cat cat cat /tmp/foo.txt', self._context)
         self.assertEquals(len(pt), 4)
 
     def testPathological1(self):
@@ -86,14 +86,14 @@ class PipelineInstantiateTests(unittest.TestCase):
         self._context = None
 
     def testSh(self):
-        p = Pipeline.parse('sh echo true', self._context)
+        p = Pipeline.parse('sys echo true', self._context)
         self.assertEquals(p.get_input_type(), str)
         self.assertEquals(p.get_output_type(), str)
         self.assertEquals(p.get_undoable(), False)
         self.assertEquals(p.get_idempotent(), False)
 
     def testShFilter(self):
-        p = Pipeline.parse('sh echo true | filter true', self._context)
+        p = Pipeline.parse('sys echo true | filter true', self._context)
         self.assertEquals(p.get_input_type(), str)
         self.assertEquals(p.get_output_type(), str)
         self.assertEquals(p.get_undoable(), False)
@@ -121,10 +121,10 @@ class PipelineInstantiateTests(unittest.TestCase):
         self.assertEquals(p.get_idempotent(), False)
 
     def testInvalid1(self):
-        self.assertRaises(hotwire.command.PipelineParseException, lambda: Pipeline.parse('mv foo bar | sh cat', self._context))
+        self.assertRaises(hotwire.command.PipelineParseException, lambda: Pipeline.parse('mv foo bar | sys cat', self._context))
 
     def testInvalid2(self):
-        self.assertRaises(hotwire.command.PipelineParseException, lambda: Pipeline.parse('sh cat | proc', self._context))
+        self.assertRaises(hotwire.command.PipelineParseException, lambda: Pipeline.parse('sys cat | proc', self._context))
 
     def testInvalid3(self):
         self.assertRaises(hotwire.command.PipelineParseException, lambda: Pipeline.parse('filter foo', self._context))

@@ -478,7 +478,8 @@ for obj in curshell.get_current_output():
                         resolution_match = completion
                         break
                     if isinstance(target, File) and \
-                       (verb.text == unix_basename(target.path) or fs.path_inexact_executable_match(completion.matchbase)):
+                       not target.is_directory() and \
+                       (unix_basename(verb.text) == unix_basename(target.path) or fs.path_inexact_executable_match(completion.matchbase)):
                         resolution_match = completion
                         break
                 if resolution_match:

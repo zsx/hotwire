@@ -115,3 +115,27 @@ class CompletionTests(unittest.TestCase):
         self.assertEquals(results[0].target.path, path_join(self._tmpd, 'testdir2', 'moo'))           
         self.assertEquals(results[0].suffix, 'oo')
         self.assertEquals(results[1].suffix, 'oodir/')
+        
+    def testCwd6(self):
+        self._setupTree1()
+        results = list(self.pc.completions('./testd', self._tmpd))
+        self.assertEquals(len(results), 1)
+        self.assertEquals(results[0].target.path, path_join(self._tmpd, '.', 'testdir'))
+        self.assertEquals(results[0].suffix, 'ir/')
+
+    def testCwd7(self):
+        self._setupTree2()
+        results = list(self.pc.completions('./f3', self._tmpd))
+        self.assertEquals(len(results), 1)
+        self.assertEquals(results[0].target.path, path_join(self._tmpd, '.', 'f3test'))
+        self.assertEquals(results[0].suffix, 'test')
+
+    def testCwd8(self):
+        self._setupTree1()
+        results = list(self.vc.completions('./test', self._tmpd))
+        self.assertEquals(len(results), 2)
+        self.assertEquals(results[0].target.path, path_join(self._tmpd, '.', 'testdir'))
+        self.assertEquals(results[0].suffix, 'dir/')
+        self.assertEquals(results[1].target.path, path_join(self._tmpd, '.', 'testf'))
+        self.assertEquals(results[1].suffix, 'f')
+        
