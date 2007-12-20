@@ -95,6 +95,11 @@ class PipelineParserTests(unittest.TestCase):
         pt = Pipeline.parse_tree('echo f>bar', self._context)
         self.assertEquals(len(pt), 1)
         self.assertEquals(len(pt[0]), 4)
+        
+    def testOtherChars1(self):
+        pt = Pipeline.parse_tree('env f=b true', self._context)
+        self.assertEquals(len(pt), 1)
+        self.assertEquals(len(pt[0]), 3)   
 
 class PipelineInstantiateTests(unittest.TestCase):
     def setUp(self):

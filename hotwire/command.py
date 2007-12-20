@@ -561,7 +561,7 @@ class Pipeline(gobject.GObject):
         
         countstream = CountingStream(StringIO(text))
         parser = shlex.shlex(countstream, posix=True)
-        parser.wordchars += '-*/~.'
+        parser.wordchars += '-*/~.=:+@'
         
         is_initial = True
         current_verb = None
