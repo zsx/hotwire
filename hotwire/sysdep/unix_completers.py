@@ -22,7 +22,7 @@
 import os,sys
 
 from hotwire.completion import Completer, Completion
-from hotwire.builtins.sh import ShellCompleters
+from hotwire.builtins.sys_builtin import SystemCompleters
 from hotwire.singletonmixin import Singleton
 
 class RpmDbCompleter(Completer):
@@ -39,4 +39,4 @@ def rpm_completion(context, args, i):
     lastarg = args[i].text
     if lastarg.startswith('-q'):
         return RpmDbCompleter()
-ShellCompleters.getInstance()['rpm'] = rpm_completion 
+SystemCompleters.getInstance()['rpm'] = rpm_completion 

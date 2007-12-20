@@ -485,7 +485,7 @@ for obj in curshell.get_current_output():
                     if isinstance(resolution_match.target, Alias):
                         resolutions.append((cmd, verb.text, resolution_match.target.target))                    
                     elif isinstance(resolution_match.target, File):
-                        resolutions.append((cmd, verb.text, 'sh ' + quote_arg(resolution_match.target.path)))
+                        resolutions.append((cmd, verb.text, 'sys ' + quote_arg(resolution_match.target.path)))
                 else:
                     self.push_msg(_('No matches for <b>%s</b>') % (gobject.markup_escape_text(verb.text),), markup=True)
                     return
@@ -756,7 +756,7 @@ for obj in curshell.get_current_output():
                 completer = verb.builtin.get_completer(self.context, compl_token, compl_idx)
             else:
                 # If we're not sure what it is, try assuming it's a system command.
-                completer = BuiltinRegistry.getInstance()['sh'].get_completer(self.context, compl_token, compl_idx)
+                completer = BuiltinRegistry.getInstance()['sys'].get_completer(self.context, compl_token, compl_idx)
                 if not completer:
                     completer = self.__token_completer
             self.__completion_token = hotwire.command.ParsedToken('', pos)

@@ -37,11 +37,11 @@ from hotwire.sysdep.proc import ProcessManager
 if is_unix():
     import signal
 
-_logger = logging.getLogger("hotwire.builtin.Sh")
+_logger = logging.getLogger("hotwire.builtin.Sys")
 
-class ShellCompleters(dict, Singleton):
+class SystemCompleters(dict, Singleton):
     def __init__(self):
-        super(ShellCompleters, self).__init__()
+        super(SystemCompleters, self).__init__()
         
 # This object is necessary because we don't want the file object
 # to close the pty FD when it's unreffed.
@@ -61,15 +61,15 @@ class BareFdStream(object):
     def close(self):
         pass
 
-class ShBuiltin(Builtin):
-    __doc__ = _("""Execute a system shell command, returning output as text.""")
-    def __init__(self):
-        super(ShBuiltin, self).__init__('sh',
-                                        input=InputStreamSchema(str, optional=True),
-                                        output=OutputStreamSchema(str, opt_formats=['x-filedescriptor/special', 'text/chunked']),
-                                        parseargs=(is_windows() and 'shglob' or 'str-shquoted'),
-                                        hasstatus=True,
-                                        threaded=True)
+class SysBuiltin(Builtin):
+    __doc__ = _("""Execute a system command, returning output as text.""")
+    def __init__(self, name='sys'):
+        super(SysBuiltin, self).__init__(name,
+                                         input=InputStreamSchema(str, optional=True),
+                                         output=OutputStreamSchema(str, opt_formats=['x-filedescriptor/special', 'text/chunked']),
+                                         parseargs='shglob',
+                                         hasstatus=True,
+                                         threaded=True)
 
     def __on_input(self, input, stream):
         try:
@@ -140,13 +140,13 @@ class ShBuiltin(Builtin):
     def get_completer(self, context, args, i):
         verb = args[0].text
         _logger.debug("looking for completion for: %s", verb)
-        for matcher,completer in ShellCompleters.getInstance().iteritems():
+        for matcher,completer in SystemCompleters.getInstance().iteritems():
             if isinstance(matcher, basestring):
                 if verb.startswith(matcher):
                     _logger.debug("matched completer %s", matcher)
                     return completer(context, args, i)
 
-    def execute(self, context, arg, out_opt_format=None):
+    def execute(self, context, args, out_opt_format=None):
         # This function is complex.  There are two major variables.  First,
         # are we on Unix or Windows?  This is effectively determined by
         # pty_available, though I suppose some Unixes might not have ptys.
@@ -192,23 +192,16 @@ class ShBuiltin(Builtin):
                         'stderr': subprocess.STDOUT,
                         'cwd': context.cwd}
         if is_windows():
-            subproc_args['universal_newlines'] = True                
-            subproc = subprocess.Popen(arg, **subproc_args)
+            subproc_args['universal_newlines'] = True
         elif is_unix():
-            ## On Unix, we re've requoted all the arguments, and now we process
-            # them as a single string through /bin/sh.  This is a gross hack,
-            # but necessary if we want to allow people to use shell features
-            # such as for loops, I/O redirection, etc.  In the longer term
-            # future, we want to implement replacements for both of these,
-            # and execute the command directly.
             subproc_args['close_fds'] = True
             def preexec():
                 os.setsid()
                 signal.signal(signal.SIGHUP, signal.SIG_IGN)
             subproc_args['preexec_fn'] = preexec
-            subproc = subprocess.Popen(['/bin/sh', '-c', arg], **subproc_args)
         else:
-            assert(False)
+            assert(False)    
+        subproc = subprocess.Popen(args, **subproc_args)
         if not subproc.pid:
             if master_fd is not None:
                 os.close(master_fd)
@@ -257,4 +250,4 @@ class ShBuiltin(Builtin):
             retcode_str = _('signal %d') % (abs(retcode),)
         context.status_notify(_('Exit %s') % (retcode_str,))
         
-BuiltinRegistry.getInstance().register(ShBuiltin())
+BuiltinRegistry.getInstance().register(SysBuiltin())
