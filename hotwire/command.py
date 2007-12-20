@@ -583,7 +583,11 @@ class Pipeline(gobject.GObject):
                     _logger.debug("handling unclosed quote, returning %s", token)
                     cmd_tokens.append(token)
                 else:
-                    _logger.debug("handling unclosed quote, but token was empty")          
+                    _logger.debug("handling unclosed quote, but token was empty")
+            # empty input
+            if token is None and (not current_verb):
+                break
+            # rewrite |      
             if is_initial and token == '|':
                 is_initial = False
                 parser.push_token('|')
