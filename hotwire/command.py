@@ -559,89 +559,57 @@ class Pipeline(gobject.GObject):
         result = []
         _logger.debug("parsing '%s'", text)
         
-        curpos = 0        
-        # Hack - we need to clean the below up
-        currentpipe = 'current | '
-        if text.startswith('| '):
-            text = currentpipe + text[2:]
-            curpos += (len(currentpipe)-1)
+        countstream = CountingStream(StringIO(text))
+        parser = shlex.shlex(countstream, posix=True)
+        parser.whitespace_split = True
         
-        pipeline_items = text.split(" | ")
-        _logger.debug("items: %s", pipeline_items)        
-        if pipeline_items[0] == '':
-            return result
-
-        for item in pipeline_items:
-            if curpos != 0:
-                curpos += 3 # previous pipe
-            cmd_tokens = []
-            parsed = item.split(' ', 1)
-            if len(parsed) == 2:
-                verb, rest = parsed
-            else:
-                verb = parsed[0]
-                rest = ''
+        is_initial = True
+        current_verb = None
+        current_args = []
+        curpos = 0
+        while True:
             try:
-                builtin = BuiltinRegistry.getInstance()[verb]
-                verb_token = ParsedVerb(verb, curpos, builtin=builtin)
-                parseargs = builtin.get_parseargs()
-            except KeyError, e:
-                builtin = None
-                verb_token = ParsedVerb(verb, curpos)
-                parseargs = 'ws-parsed' 
-            curpos = verb_token.end
-            cmd_tokens.append(verb_token)
-            if rest != '':
-                # space we skipped over earlier
-                curpos += 1
-                _logger.debug("lexing '%s'", rest)
-                # The goal of this code is to tokenize the input stream.  A token
-                # includes the parsed text (i.e. removing quotes etc.), while retaining
-                # knowledge of the original input offsets of the token.  It is not
-                # beautiful code and honestly was arrived at after some trial and error.
-                # It could probably be cleaned up by sucking in shlex and doing this internally.
-                countstream = CountingStream(StringIO(rest))
-                parser = shlex.shlex(countstream, posix=True)
-                parser.whitespace_split = True
+                token = parser.get_token()
+            except ValueError, e:
+                # FIXME gross, but...any way to fix?
+                msg = hasattr(e, 'message') and e.message or (e.args[0])
+                was_quotation_error = (e.message == 'No closing quotation' and parser.token[0:1] == "'")
+                if (not accept_unclosed) or (not was_quotation_error):
+                    _logger.debug("caught lexing exception", exc_info=True)
+                    raise PipelineParseException(e)
+                arg = parser.token[1:] 
+                if arg:
+                    token = ParsedToken(arg, curpos+1, was_unquoted=True)
+                    _logger.debug("handling unclosed quote, returning %s", token)
+                    cmd_tokens.append(token)
+                else:
+                    _logger.debug("handling unclosed quote, but token was empty")          
+            if is_initial and token == '|':
+                is_initial = False
+                parser.push_token('|')
+                parser.push_token('current')
+                continue
+            is_initial = False
+            end = countstream.get_count()
+            if (token is None) or (token == '|' and current_verb):
+                current_args.insert(0, current_verb)
+                result.append(current_args)
+                current_verb = None
+                current_args = []
+            elif current_verb is None:
                 try:
-                    streamstart = 0
-                    arg = parser.get_token()
-                    had_args = not not arg
-                    while arg:
-                        streamend = countstream.get_count()
-                        arglen = streamend-streamstart
-                        if not countstream.at_eof():
-                            arglen -= 1
-                        token = ParsedToken(arg, curpos+streamstart, end=curpos+streamstart+arglen)
-                        _logger.debug("parsed token (%s %s) '%s' '%s'", token.start, token.end, token.text, text[token.start:token.end])
-                        cmd_tokens.append(token)
-                        streamstart = countstream.get_count()
-                        arg = parser.get_token()
-                    curpos += countstream.get_count()
-                except ValueError, e:
-                    # FIXME gross, but...any way to fix?
-                    msg = hasattr(e, 'message') and e.message or (e.args[0])
-                    was_quotation_error = (e.message == 'No closing quotation' and parser.token[0:1] == "'")
-                    if (not accept_unclosed) or (not was_quotation_error):
-                        _logger.debug("caught lexing exception", exc_info=True)
-                        raise PipelineParseException(e)
-                    arg = parser.token[1:] 
-                    if arg:
-                        token = ParsedToken(arg, curpos + 1, was_unquoted=True)
-                        _logger.debug("handling unclosed quote, returning %s", token)
-                        cmd_tokens.append(token)
-                    else:
-                        _logger.debug("handling unclosed quote, but token was empty")
-
-            _logger.debug("%d tokens in command", len(cmd_tokens))                
-            result.append(cmd_tokens)
+                    builtin = BuiltinRegistry.getInstance()[token]
+                except KeyError, e:
+                    builtin = None
+                current_verb = ParsedVerb(token, curpos, end=end, builtin=builtin)                  
+            else:
+                arg = ParsedToken(token, curpos, end=end)
+                current_args.append(arg)
+            if token is None:
+                break
+            curpos = end
         return result
 
-    @staticmethod
-    def reparse_tree(tree, context):
-        text = string.join([string.join([x.text for x in cmd], " ") for cmd in tree], " | ")
-        return Pipeline.parse_tree(text, context)
-            
     @staticmethod
     def parse_from_tree(tree, context=None):
         components = []
