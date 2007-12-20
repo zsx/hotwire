@@ -81,6 +81,20 @@ class PipelineParserTests(unittest.TestCase):
     def testNoSpace1(self):
         pt = Pipeline.parse_tree('cat|sys echo bar', self._context)
         self.assertEquals(len(pt), 2)
+        
+    def testNull(self):
+        pt = Pipeline.parse_tree('', self._context)
+        self.assertEquals(len(pt), 0)
+        
+    def testGlob1(self):
+        pt = Pipeline.parse_tree('echo f*', self._context)
+        self.assertEquals(len(pt), 1)
+        self.assertEquals(len(pt[0]), 2)
+        
+    def testRedir1(self):
+        pt = Pipeline.parse_tree('echo f>bar', self._context)
+        self.assertEquals(len(pt), 1)
+        self.assertEquals(len(pt[0]), 4)
 
 class PipelineInstantiateTests(unittest.TestCase):
     def setUp(self):
