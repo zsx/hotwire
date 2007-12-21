@@ -61,7 +61,7 @@ class OpenSshKnownHostCompleter(Completer):
 
     def completions(self, text, cwd, **kwargs):
         for host in self.__hosts.get_hosts():
-            compl = self._match(host, text, None)
+            compl = self._match(host, text, None, icon='gtk-network')
             if compl: yield compl
 
 class HotSshBuiltin(Builtin):

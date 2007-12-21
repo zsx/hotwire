@@ -25,6 +25,8 @@ from hotwire.completion import Completion, CompletionSystem, CompletionResults
 from hotwire.util import markup_for_match
 from hotwire_ui.pixbufcache import PixbufCache
 from hotwire.state import History
+from hotwire.builtin import Builtin
+from hotwire.cmdalias import Alias
 from hotwire.sysdep.fs import File, Filesystem
 from hotwire.sysdep.proc import Process
 
@@ -250,6 +252,10 @@ class TabCompletionView(MatchView):
     def __get_icon_func_for_klass(self, klass):
         if isinstance(klass, File):
             return self.__fs.get_file_icon_name
+        elif isinstance(klass, Builtin):
+            return lambda x: 'hotwire'
+        elif isinstance(klass, Alias):
+            return lambda x: 'gtk-convert'           
         elif isinstance(klass, Process):
             return lambda x: 'gtk-execute'
         else:
@@ -257,8 +263,8 @@ class TabCompletionView(MatchView):
 
     def __render_icon(self, col, cell, model, iter):
         compl = model.get_value(iter, 0)
-        icon_name = None
-        if compl.target:
+        icon_name = compl.icon
+        if (not icon_name) and compl.target:
             ifunc = self.__get_icon_func_for_klass(compl.target)
             if ifunc:
                 icon_name = ifunc(compl.target)

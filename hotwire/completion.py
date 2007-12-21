@@ -39,14 +39,16 @@ _logger = logging.getLogger("hotwire.Completion")
 
 class Completion(object):
     """Represents a match of a string by some text input."""
-    __slots__ = ['suffix', 'target', 'matchbase']
+    __slots__ = ['suffix', 'target', 'matchbase', 'icon']
     def __init__(self, 
                   suffix,
                   target,
-                  matchbase):
+                  matchbase,
+                  icon=None):
         self.suffix = suffix
         self.matchbase = matchbase
         self.target = target
+        self.icon = icon
 
     def __cmp__(self, other):
         return cmp(self.suffix,other.suffix)
@@ -55,9 +57,9 @@ class Completer(object):
     def __init__(self):
         super(Completer, self).__init__()
         
-    def _match(self, name, text, target):
+    def _match(self, name, text, target, **kwargs):
         if name.startswith(text):
-            return Completion(name[len(text):], target, name)
+            return Completion(name[len(text):], target, name, **kwargs)
         return None
 
 def _mkfile_completion(text, fpath, fileobj=None):
