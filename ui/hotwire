@@ -97,7 +97,7 @@ def main():
         elif o in ('--debug-modules'):
             debug_modules = v.split(',')
         elif o in ("-h", "--help"):
-            usage()
+            usage(__version__, svn_version_str())
             sys.exit()
         elif o in ('-n', '--no-persist'):
             new_process = True
