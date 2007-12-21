@@ -610,11 +610,13 @@ for obj in curshell.get_current_output():
             self.__completions.activate_selected()
             return True         
         elif e.keyval == gtk.gdk.keyval_from_name('Tab'):
-            self.__do_completion()
+            if curtext:
+                self.__do_completion()
             return True
         elif e.keyval == gtk.gdk.keyval_from_name('r') and e.state & gtk.gdk.CONTROL_MASK:
             if state is None:
-                self.__completions.popup_global_history()
+                if curtext:
+                    self.__completions.popup_global_history()
             return True
         elif e.keyval == gtk.gdk.keyval_from_name('Up'):
             if state is None:
