@@ -60,8 +60,9 @@ class MatchView(gtk.VBox):
                                                           hotwidgets.CellRendererText(ellipsize=True),
                                                           self._render_item)
         self.__none_label = gtk.Label()
+        self.__none_label.set_alignment(0.0, 0.5)
         self.__none_label.set_no_show_all(True)
-        self.__none_label.set_markup('<i>%s</i>' % (_('No matches'),))
+        self.__none_label.set_markup('<i>%s</i>' % (_('(No matches)'),))
         self.pack_start(self.__none_label, expand=False)         
     
     def get_view(self):
@@ -136,8 +137,9 @@ class MatchPopup(hotwidgets.TransientPopup):
         self.__morelabel.set_no_show_all(True)
         self.get_box().pack_start(self.__morelabel, expand=False)
         self.__none_label = gtk.Label()
+        self.__none_label.set_alignment(0.0, 0.5)
         self.__none_label.set_no_show_all(True)
-        self.__none_label.set_markup('<i>%s</i>' % (_('No matches'),))
+        self.__none_label.set_markup('<i>%s</i>' % (_('(No matches)'),))
         self.get_box().pack_start(self.__none_label, expand=False)               
         
     def _get_view(self):
