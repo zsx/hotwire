@@ -109,9 +109,7 @@ _hostmonitor = HostConnectionMonitor()
 class SshTerminalWidget(gtk.VBox):
     def __init__(self, args, cwd):
         super(SshTerminalWidget, self).__init__()
-        self.__connecting_state = False
-        self.__connected = None
-        self.__latency = None
+        self.__init_state()
         self.__sshcmd = list(get_sshcmd())
         self.__sshcmd.extend(args)
         self.__cwd = cwd
@@ -131,6 +129,12 @@ class SshTerminalWidget(gtk.VBox):
         self.pack_start(header, expand=False)
         self.connect()
         
+    def __init_state(self):
+        self.__connecting_state = False
+        self.__connected = None
+        self.__cmd_exited = False
+        self.__latency = None        
+        
     def set_status(self, connected, latency):
         if not connected and self.__connecting_state:
             return
@@ -144,6 +148,8 @@ class SshTerminalWidget(gtk.VBox):
         self.__sync_msg()
         
     def __sync_msg(self):
+        if self.__cmd_exited:
+            return
         if self.__connecting_state:
             text = 'Connecting'
         elif self.__connected is True:
@@ -170,11 +176,13 @@ class SshTerminalWidget(gtk.VBox):
             os.kill(self.__term.pid, signal.SIGTERM)
         self.remove(self.__term)
         self.__term.destroy()
+        self.__init_state()
         self.connect()    
         
     def __on_child_exited(self, term):
         _logger.debug("disconnected")
-        self.__msg.set_text('Disconnected')
+        self.__cmd_exited = True
+        self.__msg.set_text('Connection terminated')
         
     def get_vte(self):
         return self.__term.get_vte()
@@ -285,7 +293,7 @@ class SshWindow(VteWindow):
             ('OpenSFTP', gtk.STOCK_NEW, 'Open SFTP', '<control><shift>S',
              'Open a SFTP connection', self.__open_sftp_cb),            
             ('ConnectionMenu', None, 'Connection'),
-            ('Reconnect', None, '_Reconnect', None, 'Reset connection to server', self.__reconnect_cb),
+            ('Reconnect', None, '_Reconnect', '<control><shift>R', 'Reset connection to server', self.__reconnect_cb),
             ]
         self._merge_ui(self.__actions, self.__ui_string)
         
