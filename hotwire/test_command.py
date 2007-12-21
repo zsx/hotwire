@@ -1,4 +1,5 @@
 # This file is part of the Hotwire Shell project API.
+# -*- coding: utf-8 -*-
 
 # Copyright (C) 2007 Colin Walters <walters@verbum.org>
 
@@ -100,6 +101,12 @@ class PipelineParserTests(unittest.TestCase):
         pt = Pipeline.parse_tree('env f=b true', self._context)
         self.assertEquals(len(pt), 1)
         self.assertEquals(len(pt[0]), 3)   
+        
+    def testUtf1(self):
+        pt = Pipeline.parse_tree('sys echo Ω', self._context)
+        self.assertEquals(len(pt), 1)
+        self.assertEquals(pt[0][2].text, 'Ω')
+        self.assertEquals(len(pt[0]), 3)              
 
 class PipelineInstantiateTests(unittest.TestCase):
     def setUp(self):
