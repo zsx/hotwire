@@ -230,6 +230,7 @@ class Hotwire(gtk.VBox):
 
         self.__idle_parse_id = 0
         self.__parse_stale = False
+        self.__meta_syntax = None
         self.__pipeline_tree = None
         self.__verb_completer = VerbCompleter()
         self.__token_completer = TokenCompleter()
@@ -412,8 +413,9 @@ for obj in curshell.get_current_output():
         self.execute_pipeline(tree, add_history=False, reset_input=False)        
 
     def execute_pipeline(self, pipeline,
-                         add_history=True,
-                         reset_input=True):
+                            add_history=True,
+                            reset_input=True,
+                            tree=None):
         _logger.debug("pipeline: %s", pipeline)
 
         if pipeline.is_nostatus():
@@ -422,6 +424,8 @@ for obj in curshell.get_current_output():
         if add_history:
             text = self.__input.get_property("text").strip()
             self.context.history.append_command(text, self.context.get_cwd())
+            if tree:
+                History.getInstance().record_pipeline(self.__cwd, self.__pipeline_tree)
             self.__tabhistory.insert(0, text)
             if len(self.__tabhistory) >= self.MAX_TABHISTORY:
                 self.__tabhistory.pop(-1)
@@ -455,8 +459,24 @@ for obj in curshell.get_current_output():
             try:
                 self.__do_parse(throw=True)
             except hotwire.command.PipelineParseException, e:
-                self.push_msg(_("Failed to parse pipeline: %s") % (e.args[0],))
-                return
+                if self.__meta_syntax is None:
+                    self.push_msg(_("Failed to parse pipeline: %s") % (e.args[0],))
+                    return
+                
+        text = self.__input.get_property("text")
+
+        if self.__meta_syntax == 'sh':
+            _logger.debug("using sh meta syntax")
+            pipeline = Pipeline.create_from_args(self.context,
+                                                 [BuiltinRegistry.getInstance()['sys'],
+                                                  '/bin/sh',
+                                                  '-c',
+                                                  text[3:]])
+            self.execute_pipeline(pipeline)
+            return
+        else:
+            assert self.__meta_syntax is None
+                
         _logger.debug("executing '%s'", self.__pipeline_tree)
         if not self.__pipeline_tree or len(self.__pipeline_tree) == 0:
             _logger.debug("Nothing to execute")
@@ -506,10 +526,6 @@ for obj in curshell.get_current_output():
         except hotwire.command.PipelineParseException, e:
             self.push_msg('Failed to parse pipeline: %s' % (e.args[0],))
             return
-
-        History.getInstance().record_pipeline(self.__cwd, self.__pipeline_tree)
-
-        text = self.__input.get_property("text")
 
         self.execute_pipeline(pipeline)
 
@@ -772,10 +788,15 @@ for obj in curshell.get_current_output():
         if not self.__parse_stale:
             return True
         text = self.__input.get_property("text")
+        if text.startswith('sh '):
+            self.__meta_syntax = 'sh'
+        else:
+            self.__meta_syntax = None 
         try:
             self.__pipeline_tree = Pipeline.parse_tree(text, self.context, accept_unclosed=(not throw))
         except hotwire.command.PipelineParseException, e:
-            _logger.debug("parse failed")
+            _logger.debug("parse failed, current syntax=%s", self.__meta_syntax)
+            self.__pipeline_tree = None
             if throw:
                 raise e
             return False

@@ -271,7 +271,7 @@ class Command(gobject.GObject):
             return ' '.join(map(unicode, args))
         args = [self.builtin.name]
         args.extend(self.options)
-        args.extend(self.args)
+        args.extend(map(quote_arg, self.args))
         return unijoin(args)
 
 class PipelineParseException(Exception):
@@ -535,6 +535,13 @@ class Pipeline(gobject.GObject):
         return False
 
     @staticmethod
+    def mkparser(text):
+        countstream = CountingStream(StringIO(text))
+        parser = shlex.shlex(countstream, posix=True)
+        parser.wordchars += '-_*/~.=:+@,'
+        return (countstream, parser)
+
+    @staticmethod
     def parse_tree(text, context, assertfn=None, accept_unclosed=False):
         """
         emacs
@@ -559,11 +566,10 @@ class Pipeline(gobject.GObject):
         result = []
         _logger.debug("parsing '%s'", text)
         
-        countstream = CountingStream(StringIO(text))
-        parser = shlex.shlex(countstream, posix=True)
-        parser.wordchars += '-_*/~.=:+@,'
+        (countstream, parser) = Pipeline.mkparser(text)
         
         is_initial = True
+        first_token = None
         current_verb = None
         current_args = []
         curpos = 0
@@ -587,12 +593,14 @@ class Pipeline(gobject.GObject):
             # empty input
             if token is None and (not current_verb):
                 break
-            # rewrite |      
+            # rewrite |
             if is_initial and token == '|':
-                is_initial = False
                 parser.push_token('|')
                 parser.push_token('current')
+                is_initial = False
                 continue
+            if first_token is None:
+                first_token = token            
             is_initial = False
             end = countstream.get_count()
             if (token is None) or (token == '|' and current_verb):
@@ -613,9 +621,22 @@ class Pipeline(gobject.GObject):
                 break
             curpos = end
         return result
-
+    
     @staticmethod
     def parse_from_tree(tree, context=None):
+        newtree = list(tree)
+        for j,cmd in enumerate(newtree):
+            newcmd = list(cmd)
+            newtree[j] = newcmd
+            for i,token in enumerate(newcmd):
+                if isinstance(token, ParsedVerb):
+                    newcmd[i] = token.builtin
+                else:
+                    newcmd[i] = token.text
+        return Pipeline.create_from_args(context, *newtree)
+        
+    @staticmethod
+    def create_from_args(context, *args):
         components = []
         undoable = None
         idempotent = True
@@ -625,12 +646,8 @@ class Pipeline(gobject.GObject):
         pipeline_output_type = None
         prev_locality = None
         pipeline_type_validates = True
-        for cmd_tokens in tree:
-            verb = cmd_tokens[0]
-            assert verb.resolved
-
-            b = BuiltinRegistry.getInstance()[verb.text] 
-            parseargs = b.get_parseargs()
+        for cmd_tokens in args:
+            b = cmd_tokens[0]
             builtin_opts = b.get_options()
             def arg_to_opts(arg):
                 if builtin_opts is None:
@@ -649,21 +666,13 @@ class Pipeline(gobject.GObject):
                 return results
             options = []
             args_text = []
-            for arg in cmd_tokens[1:]:
-                argtext = arg.text
+            for argtext in cmd_tokens[1:]:
                 argopts = arg_to_opts(argtext)
                 if argopts:
                     options.extend(argopts)
                 else:
                     args_text.append(argtext)
-            if parseargs == 'str':
-                args = [string.join(args_text, " ")] # TODO syntax
-            elif parseargs == 'str-shquoted':
-                args = [string.join(map(quote_arg, args_text), " ")]
-            elif parseargs in ('ws-parsed', 'shglob'):
-                args = args_text 
-            else:
-                assert False
+            args = args_text
             cmd = Command(b, args, options, context)
             components.append(cmd)
             if prev:
