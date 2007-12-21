@@ -240,6 +240,7 @@ class UnicodeRenderer(ObjectsRenderer):
             self.__text.modify_font(pango.FontDescription("monospace"))
         self.__text.connect('event-after', self.__on_event_after)
         self._buf.connect('mark-set', self.__on_mark_set)
+        self.__term = None
         self.__wrap_lines = False
         self.__have_selection = False
         self.__sync_wrap()
@@ -405,9 +406,28 @@ class UnicodeRenderer(ObjectsRenderer):
             self.__append_chunk(obj)
         self._buf.insert(self._buf.get_end_iter(), '\n')
 
+    def __spawn_terminal(self, fd, buf):
+        w = gtk.Window(gtk.WINDOW_TOPLEVEL)
+        from hotvte.vteterm import VteTerminalScreen
+        self.__term = term = VteTerminalScreen()
+        w.add(term)
+        import termios
+        attrs = termios.tcgetattr(src)
+        attrs[1] = attrs[1] & (termios.ONLCR)
+        attrs[3] = attrs[3] & (termios.ECHO)
+        termios.tcsetattr(src, termios.TCSANOW, attrs)                 
+        term.term.set_pty(src)
+        term.term.feed_child(buf)
+        w.show_all()        
+
     def __on_fd(self, src, condition):
         if (condition & gobject.IO_IN):
-            self.__append_chunk(os.read(src, 8192))
+            buf = os.read(src, 8192)
+            if (not self.__term) and buf.find('\x1b[') >= 0:
+                self.__spawn_terminal(src, buf)
+                return False
+            else:
+                self.__append_chunk(buf)
         if ((condition & gobject.IO_HUP) or (condition & gobject.IO_ERR)):
             try:
                 os.close(src)
