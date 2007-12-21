@@ -23,6 +23,7 @@ import signal,tempfile,shutil
 import gtk,gobject,pango
 import dbus,dbus.glib,dbus.service
 
+from hotwire.logutil import log_except
 from hotvte.vteterm import VteTerminalWidget
 from hotvte.vtewindow import VteWindow
 from hotvte.vtewindow import VteApp
@@ -30,38 +31,48 @@ from hotvte.vtewindow import VteApp
 _logger = logging.getLogger("hotsudo.SudoWindow")
 
 class AnimatedBorderBox(gtk.Bin):
-    def __init__(self, color, width):
+    def __init__(self):
         super(AnimatedBorderBox, self).__init__()
+        self.set_border_width(2)
         self.__animate_id = 0
-        self.color = color
-        self.width = width
         
-    def do_expose(self, event):
-        flags = self.get_flags()
+    @log_except(_logger)
+    def do_expose_event(self, event):
+        flags = self.flags()
         if (flags & gtk.VISIBLE) and (flags & gtk.MAPPED):
-            self.paint(event.area)
-        return False 
+            self.__paint(event.area)
+        gtk.Bin.do_expose_event(self, event)
+        return False
     
+    def __paint(self, area):
+        cr = self.window.cairo_create()
+        cr.set_line_width(1)
+        cr.set_source_rgb(0., 0., 0.)
+        cr.rectangle(0.5, 0.5, self.allocation.width - 1, self.allocation.height - 1)
+        cr.stroke()
+            
+    @log_except(_logger)    
     def do_size_request(self, req):
         req.width = 0
         req.height = 0
-        if self.child and (self.child.get_flags() & gtk.VISIBLE):
-            child_req = child.size_request()
-            req.width = child_req.width
-            req.height = child_req.height
+        if self.child and (self.child.flags() & gtk.VISIBLE):
+            child_req = self.child.size_request()
+            req.width = child_req[0]
+            req.height = child_req[1]
             
         req.width += self.border_width + self.style.xthickness * 2;
         req.height += self.border_width + self.style.ythickness * 2;
         
+    @log_except(_logger)
     def do_size_allocate(self, alloc):
         self.allocation = alloc
-        flags = self.get_flags()        
+        flags = self.flags()        
         childalloc = self.__get_child_alloc()
         if flags & gtk.MAPPED and \
             (childalloc != self.child_allocation):
             self.window.invalidate_rect(self.allocation, False)
         self.child_allocation = childalloc
-        
+
     def __get_child_alloc(self):
         topmargin = self.style.ythickness
         x = self.border_width + self.style.xthickness
@@ -71,6 +82,7 @@ class AnimatedBorderBox(gtk.Bin):
         x += self.allocation.x
         y += self.allocation.y
         return (x,y,width,height)
+gobject.type_register(AnimatedBorderBox)
 
 class SudoTerminalWidget(gtk.VBox):
     def __init__(self, args, cwd):
@@ -84,7 +96,10 @@ class SudoTerminalWidget(gtk.VBox):
         term.show_all()
         self.__headerbox = gtk.HBox()
         self.pack_start(self.__headerbox, expand=False)
-        self.pack_start(term, expand=True)
+        #self.__borderbox = AnimatedBorderBox()
+        self.pack_start(term, expand=True)# self.__borderbox, expand=True)
+        #self.__borderbox.add(term)
+        #self.__borderbox.show_all()        
         
     def __on_child_exited(self, term):
         _logger.debug("disconnected")
