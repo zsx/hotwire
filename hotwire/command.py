@@ -19,7 +19,7 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR 
 # THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import os, sys, threading, Queue, logging, string, re, time, shlex, traceback
+import os, sys, threading, Queue, logging, string, re, time, traceback
 import posixpath
 from StringIO import StringIO
 
@@ -31,6 +31,7 @@ from hotwire.async import IterableQueue, MiniThreadPool
 from hotwire.builtin import BuiltinRegistry
 import hotwire.util
 from hotwire.util import quote_arg, assert_strings_equal
+import hotwire.shlex as shlex
 
 _logger = logging.getLogger("hotwire.Command")
 
@@ -536,7 +537,11 @@ class Pipeline(gobject.GObject):
 
     @staticmethod
     def mkparser(text):
-        countstream = CountingStream(StringIO(text))
+        if isinstance(text, unicode):
+            utext = text
+        else:
+            utext = unicode(text, 'utf-8')
+        countstream = CountingStream(StringIO(utext))
         parser = shlex.shlex(countstream, posix=True)
         parser.wordchars += '-_*/~.=:+@,'
         return (countstream, parser)
