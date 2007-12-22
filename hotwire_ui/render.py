@@ -221,7 +221,8 @@ class TreeObjectsRenderer(ObjectsRenderer):
             iter = self._model.iter_next(iter)
 
     def _signal_obj_changed(self, obj, colidx=0):
-        iter = self._findobj(obj, colidx=colidx) 
+        iter = self._findobj(obj, colidx=colidx)
+        _logger.debug("signaling change of %r", iter) 
         self._model.row_changed(self._model.get_path(iter), iter)
 
     def _render_objtext(self, col, cell, model, iter):

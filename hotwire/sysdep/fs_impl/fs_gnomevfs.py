@@ -30,8 +30,8 @@ from hotwire.sysdep.fs_impl.fs_unix import UnixFilesystem, UnixFile
 _logger = logging.getLogger("hotwire.fs.GnomeVfs")
 
 class GnomeVfsFile(UnixFile):
-    def __init__(self, path):
-        super(GnomeVfsFile, self).__init__(path)
+    def __init__(self, path, **kwargs):
+        super(GnomeVfsFile, self).__init__(path, **kwargs)
         self.vfsstat = None
         self.target_vfsstat = None
         self.target_vfsstat_error = None
@@ -92,6 +92,15 @@ class GnomeVfsFile(UnixFile):
             self.stat_error = str(e)
             if rethrow:
                 raise FileStatError(e)
+            
+    def _do_get_icon(self):
+        if not self.vfsstat:
+            self.icon = 'gtk-dialog-error'
+        try:
+            self.icon = self.fs.icon_lookup(self)
+        except Exception, e:
+            _logger.debug("Failed to get file icon for '%s'", self.uri, exc_info=True)
+            self.icon = 'gtk-dialog-error'
 
 class GnomeVfsMonitor(object):
     """Avoid some locking oddities in gnomevfs monitoring"""
@@ -131,15 +140,9 @@ class GnomeVFSFilesystem(UnixFilesystem):
     def get_monitor(self, path, cb):
         return GnomeVfsMonitor(path, gnomevfs.MONITOR_EVENT_CHANGED, cb)
     
-    def _load_file_icon(self, file_obj):
-        if not file_obj.vfsstat:
-            return None
-        try:
-            (result, flags) = gnome.ui.icon_lookup(self.__itheme, self.__thumbnails, file_obj.uri, file_info=file_obj.vfsstat, mime_type=file_obj.vfsstat.mime_type)
-        except Exception, e:
-            _logger.debug("Failed to get file icon for '%s'", file_obj.uri, exc_info=True)
-            return None
-        return result
+    def icon_lookup(self, fobj):
+        (result, flags) = gnome.ui.icon_lookup(self.__itheme, self.__thumbnails, fobj.uri, file_info=fobj.vfsstat, mime_type=fobj.vfsstat.mime_type)
+        return result        
     
     def launch_open_file(self, path, cwd=None):
         _logger.debug("calling gnome-open '%s'", path)

@@ -29,6 +29,7 @@ from hotwire.fs import unix_basename, FilePath
 from hotwire.async import MiniThreadPool
 from hotwire.sysdep import is_windows, is_unix
 import hotwire.sysdep.fs_impl
+from hotwire.externals.dispatch import dispatcher
 
 _logger = logging.getLogger("hotwire.sysdep.Filesystem")
 
@@ -46,32 +47,15 @@ class BaseFilesystem(object):
         raise NotImplementedError()
 
     def get_file(self, path):
-        f = self.fileklass(path)
+        f = self.fileklass(path, fs=self)
         f.get_stat()
         return f
     
     def get_file_sync(self, path):
-        f = self.fileklass(path)
+        f = self.fileklass(path, fs=self)
         f.get_stat_sync()
         return f
         
-    def get_file_icon_name(self, file_obj):
-        if file_obj.icon:
-            return file_obj.icon
-        if file_obj.icon_error:
-            return None
-        icon = self._load_file_icon(file_obj)
-        if not icon:
-            file_obj.set_icon_error(True)
-            return None
-        file_obj.set_icon(icon)
-        return file_obj.icon
-        
-    def _load_file_icon(self, fobj):
-        if stat.S_ISDIR(fobj.stat.st_mode):
-            fobj.icon = 'gtk-directory'
-        fobj.icon = 'gtk-file'
-
     def launch_open_file(self, path, cwd=None):
         raise NotImplementedError()
 
@@ -170,14 +154,11 @@ class FileStatError(Exception):
         super(FileStatError, self).__init__()
         self.cause = cause
 
-class File(gobject.GObject):
-    __gsignals__ = {
-        "changed" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, ()),
-    }
-
-    def __init__(self, path):
+class File(object):
+    def __init__(self, path, fs=None):
         super(File, self).__init__()
         self.path = path
+        self.fs = fs
         self.stat = None
         self.xaccess = None
         self.icon = None
@@ -267,7 +248,8 @@ class File(gobject.GObject):
         
     def get_stat_sync(self):
         self._do_get_stat(rethrow=True)
-        self._do_get_xaccess()        
+        self._do_get_xaccess()
+        self._do_get_icon()
 
     def _do_get_stat(self, rethrow=False):
         try:
@@ -284,12 +266,23 @@ class File(gobject.GObject):
                 raise FileStatError(e)
             
     def _do_get_xaccess(self):
-        self.xaccess = os.access(self.path, os.X_OK)        
+        self.xaccess = os.access(self.path, os.X_OK) 
+        
+    def _do_get_icon(self):
+        if not self.stat:
+            self.icon = 'gtk-dialog-error'
+        elif self.is_directory():
+            self.icon = 'gtk-directory'
+        else:
+            self.icon = 'gtk-file'              
 
     def __get_stat_signal(self):
-        self._do_get_stat()
-        self._do_get_xaccess()
-        gobject.idle_add(lambda: self.emit("changed"), priority=gobject.PRIORITY_LOW)
+        self.get_stat_sync()
+        gobject.idle_add(self.__idle_emit_changed, priority=gobject.PRIORITY_LOW)        
+        
+    def __idle_emit_changed(self):
+        _logger.debug("doing idle changed dispatch from %r", self)
+        dispatcher.sendExact(sender=self)
         
     def set_icon(self, icon):
         self.icon = icon

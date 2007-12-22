@@ -253,7 +253,7 @@ class TabCompletionView(MatchView):
         
     def __get_icon_func_for_klass(self, klass):
         if isinstance(klass, File):
-            return self.__fs.get_file_icon_name
+            return lambda x: x.icon
         elif isinstance(klass, Builtin):
             return lambda x: 'hotwire'
         elif isinstance(klass, Alias):

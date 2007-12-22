@@ -27,8 +27,10 @@ from hotwire.command import Pipeline
 from hotwire.fs import FilePath, unix_basename
 from hotwire_ui.render import TreeObjectsRenderer, ClassRendererMapping, menuitem
 from hotwire.sysdep.fs import Filesystem, File
+from hotwire.logutil import log_except
 from hotwire_ui.pixbufcache import PixbufCache
 from hotwire.util import format_file_size, quote_arg
+from hotwire.externals.dispatch import dispatcher
 
 _logger = logging.getLogger("hotwire.ui.render.File")
 
@@ -103,7 +105,7 @@ class FilePathRenderer(TreeObjectsRenderer):
 
     def _render_icon(self, col, cell, model, iter):
         obj = self._file_for_iter(model, iter)
-        icon_name = self.__fs.get_file_icon_name(obj)
+        icon_name = obj.icon
         if icon_name:
             if icon_name.startswith(os.sep):
                 pixbuf = PixbufCache.getInstance().get(icon_name)
@@ -150,20 +152,21 @@ class FilePathRenderer(TreeObjectsRenderer):
     def _render_permissions(self, col, cell, model, iter):
         obj = self._file_for_iter(model, iter)
         perms = obj.get_permissions_string()
-        cell.set_property('text', perms or '')       
+        cell.set_property('text', perms or '')
         
     def _render_mime(self, col, cell, model, iter):
         obj = self._file_for_iter(model, iter)
         mime = obj.get_mime()
-        cell.set_property('text', mime or '')                 
+        cell.set_property('text', mime or '')
 
     def _get_row(self, obj):
         if isinstance(obj, File):
-            return (obj.path, obj)
-        file_obj = self.__fs.get_file(obj)
-        file_obj.connect("changed", self._signal_obj_changed, 1)
-        return (obj, file_obj)
-
+            fobj = obj
+        else:
+            fobj = self.__fs.get_file(obj)
+        dispatcher.connect(log_except(_logger)(self._signal_obj_changed), sender=fobj)
+        return (fobj.path, fobj)
+    
     def append_obj(self, obj, **kwargs):
         row = self._get_row(obj)
         if self.__basedir is not False:
