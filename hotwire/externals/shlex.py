@@ -98,7 +98,7 @@ class shlex:
                   % (self.instream, self.lineno)
         self.state = ' '
 
-    def get_token(self):
+    def get_token_info(self):
         "Get a token from the input stream (or from stack if it's nonempty)"
         if self.pushback:
             tok = self.pushback.popleft()
@@ -106,7 +106,7 @@ class shlex:
                 print "shlex: popping token " + repr(tok)
             return tok
         # No pushback.  Get a token.
-        raw = self.read_token()
+        (raw, quoted) = self.read_token_info()
         # Handle inclusions
         if self.source is not None:
             while raw == self.source:
@@ -114,20 +114,24 @@ class shlex:
                 if spec:
                     (newfile, newstream) = spec
                     self.push_source(newstream, newfile)
-                raw = self.get_token()
+                (raw, quoted) = self.get_token_info()
         # Maybe we got EOF instead?
         while raw == self.eof:
             if not self.filestack:
-                return self.eof
+                return (self.eof, False)
             else:
                 self.pop_source()
-                raw = self.get_token()
+                (raw, quoted) = self.get_token_info()
         # Neither inclusion nor EOF
         if self.debug >= 1:
             if raw != self.eof:
                 print "shlex: token=" + repr(raw)
             else:
                 print "shlex: token=EOF"
+        return (raw, quoted)
+    
+    def get_token(self):
+        (raw, quoted) = self.get_token_info()
         return raw
     
     def __is_whitespace(self, c, category):
@@ -136,7 +140,7 @@ class shlex:
     def __is_wordchar(self, c, category):
         return c in self.wordchars or (self.utf and category[0] in ('L', 'N'))        
 
-    def read_token(self):
+    def read_token_info(self):
         quoted = False
         escapedstate = ' '
         while True:
@@ -249,7 +253,7 @@ class shlex:
                     or self.whitespace_split:
                     self.token = self.token + nextchar
                 else:
-                    self.pushback.appendleft(nextchar)
+                    self.pushback.appendleft((nextchar, quoted))
                     if self.debug >= 2:
                         print "shlex: I see punctuation in word state"
                     self.state = ' '
@@ -266,6 +270,10 @@ class shlex:
                 print "shlex: raw token=" + repr(result)
             else:
                 print "shlex: raw token=EOF"
+        return (result, quoted)
+    
+    def read_token(self):
+        (result, quoted) = self.read_token_info()
         return result
 
     def sourcehook(self, newfile):

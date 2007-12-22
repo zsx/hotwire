@@ -279,14 +279,15 @@ class PipelineParseException(Exception):
     pass
 
 class ParsedToken(object):
-    def __init__(self, text, start, end=None, was_unquoted=False):
+    def __init__(self, text, start, end=None, was_unquoted=False, quoted=False):
         self.text = text 
         self.start = start
         self.end = end or (start + len(text))
         self.was_unquoted = was_unquoted
+        self.quoted = quoted
 
     def __repr__(self):
-        return 'Token(%s %d %d)' % (self.text, self.start, self.end)
+        return 'Token(%s %d %d %s)' % (self.text, self.start, self.end, self.quoted)
 
 class ParsedVerb(ParsedToken):
     def __init__(self, verb, start, builtin=None, **kwargs):
@@ -580,7 +581,7 @@ class Pipeline(gobject.GObject):
         curpos = 0
         while True:
             try:
-                token = parser.get_token()
+                (token, quoted) = parser.get_token_info()
             except ValueError, e:
                 # FIXME gross, but...any way to fix?
                 msg = hasattr(e, 'message') and e.message or (e.args[0])
@@ -620,7 +621,7 @@ class Pipeline(gobject.GObject):
                     builtin = None
                 current_verb = ParsedVerb(token, curpos, end=end, builtin=builtin)                  
             else:
-                arg = ParsedToken(token, curpos, end=end)
+                arg = ParsedToken(token, curpos, end=end, quoted=quoted)
                 current_args.append(arg)
             if token is None:
                 break
