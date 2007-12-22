@@ -5,7 +5,7 @@ import gobject, paramiko
 
 from hotwire import FilePath
 from hotwire.async import QueueIterator, CancellableQueueIterator, MiniThreadPool
-from hotwire.singletonmixin import Singleton
+from hotwire.externals.singletonmixin import Singleton
 import hotwire.util
 
 _logger = logging.getLogger('hotwire.Minion')

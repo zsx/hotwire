@@ -21,7 +21,7 @@
 
 import os,sys,re,stat,logging
 
-from hotwire.singletonmixin import Singleton
+from hotwire.externals.singletonmixin import Singleton
 
 _logger = logging.getLogger("hotwire.CmdAlias")
 

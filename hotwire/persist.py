@@ -24,7 +24,7 @@ import os, re, sys, logging, pickle, tempfile, threading
 import gobject
 
 import hotwire
-from hotwire.singletonmixin import Singleton
+from hotwire.externals.singletonmixin import Singleton
 from hotwire.async import MiniThreadPool
 from hotwire.sysdep.fs import Filesystem
 from hotwire.util import atomic_rename

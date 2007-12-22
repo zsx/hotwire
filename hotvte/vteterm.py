@@ -156,9 +156,9 @@ class VteTerminalWidget(gtk.VBox):
             # Older webbrowser.py didn't check gconf
             if sys.version_info[0] == 2 and sys.version_info[1] < 6:
                 try:
-                    import hotwire.pycompat.webbrowser as webbrowser
+                    import hotwire.externals.webbrowser as webbrowser
                 except ImportError, e:
-                    _logger.warn("Couldn't import hotwire.pycompat.webbrowser", exc_info=True)
+                    _logger.warn("Couldn't import hotwire.externals.webbrowser", exc_info=True)
                     import webbrowser
             else:
                 import webbrowser            

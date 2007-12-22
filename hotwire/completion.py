@@ -30,7 +30,7 @@ from hotwire.cmdalias import Alias, AliasRegistry
 from hotwire.async import MiniThreadPool
 from hotwire.fs import FilePath,iterd,iterd_sorted,path_normalize,path_expanduser,unix_basename
 from hotwire.sysdep.fs import Filesystem
-from hotwire.singletonmixin import Singleton
+from hotwire.externals.singletonmixin import Singleton
 from hotwire.util import quote_arg, tracefn
 from hotwire.state import UsageRecord, History
 from hotwire.sysdep.fs import Filesystem

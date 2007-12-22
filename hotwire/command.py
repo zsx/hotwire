@@ -31,7 +31,7 @@ from hotwire.async import IterableQueue, MiniThreadPool
 from hotwire.builtin import BuiltinRegistry
 import hotwire.util
 from hotwire.util import quote_arg, assert_strings_equal
-import hotwire.shlex as shlex
+import hotwire.externals.shlex as shlex
 
 _logger = logging.getLogger("hotwire.Command")
 

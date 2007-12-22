@@ -24,10 +24,10 @@ import posixpath, locale
 
 import hotwire
 from hotwire.async import MiniThreadPool
-import hotwire.glob2
+from hotwire.externals.glob2 import iglob
 
 def dirglob(dir, pat):
-    for result in hotwire.glob2.iglob(pat, dir):
+    for result in iglob(pat, dir):
         yield result
 
 _sep_len = len(os.sep)

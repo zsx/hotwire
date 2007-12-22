@@ -21,7 +21,7 @@ import sys, os, logging
 import gtk, gobject
 
 import hotwire
-from hotwire.singletonmixin import Singleton
+from hotwire.externals.singletonmixin import Singleton
 from hotwire_ui.pixbufcache import PixbufCache
 import hotwire_ui.widgets as hotwidgets
 

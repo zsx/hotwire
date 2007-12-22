@@ -25,7 +25,7 @@ import hotwire
 
 from hotwire.sysdep.proc import ProcessManager, Process
 from hotwire.builtin import Builtin, BuiltinRegistry
-from hotwire.singletonmixin import Singleton
+from hotwire.externals.singletonmixin import Singleton
 from hotwire.completion import Completer, Completion
 
 _signals = []

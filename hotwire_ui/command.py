@@ -20,7 +20,7 @@ import os, sys, logging, time
 
 import gtk, gobject
 
-from hotwire.singletonmixin import Singleton
+from hotwire.externals.singletonmixin import Singleton
 import hotwire_ui.widgets as hotwidgets
 from hotwire_ui.odisp import MultiObjectsDisplay
 from hotwire_ui.pixbufcache import PixbufCache

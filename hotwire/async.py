@@ -23,7 +23,7 @@ import threading, Queue, logging
 
 import gobject
 
-from singletonmixin import Singleton
+from hotwire.externals.singletonmixin import Singleton
 
 _logger = logging.getLogger("hotwire.Async")
 

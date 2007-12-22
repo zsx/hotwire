@@ -27,7 +27,7 @@ else:
 
 import gobject
 
-from hotwire.singletonmixin import Singleton
+from hotwire.externals.singletonmixin import Singleton
 from hotwire.sysdep.fs import Filesystem
 from hotwire.persist import Persister
 from hotwire.usagerecord import UsageRecord

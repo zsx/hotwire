@@ -23,7 +23,7 @@ import os,sys
 
 from hotwire.completion import Completer, Completion
 from hotwire.builtins.sys_builtin import SystemCompleters
-from hotwire.singletonmixin import Singleton
+from hotwire.externals.singletonmixin import Singleton
 
 class RpmDbCompleter(Completer):
     def __init__(self):

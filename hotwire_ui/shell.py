@@ -26,7 +26,7 @@ import hotwire.command
 import hotwire.version
 import hotwire_ui.widgets as hotwidgets
 import hotwire_ui.pyshell
-from hotwire.singletonmixin import Singleton
+from hotwire.externals.singletonmixin import Singleton
 from hotwire.sysdep.term import Terminal
 from hotwire.builtin import BuiltinRegistry
 from hotwire.cmdalias import Alias, AliasRegistry

@@ -29,7 +29,7 @@ except:
 import hotwire
 from hotwire.text import MarkupText
 from hotwire.async import MiniThreadPool
-from hotwire.singletonmixin import Singleton
+from hotwire.externals.singletonmixin import Singleton
 from hotwire.builtin import Builtin, BuiltinRegistry, InputStreamSchema, OutputStreamSchema
 from hotwire.sysdep import is_windows, is_unix
 from hotwire.sysdep.proc import ProcessManager

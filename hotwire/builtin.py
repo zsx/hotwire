@@ -22,7 +22,7 @@
 import os,sys,imp,logging
 
 import hotwire
-from hotwire.singletonmixin import Singleton
+from hotwire.externals.singletonmixin import Singleton
 
 _logger = logging.getLogger("hotwire.Builtin")
 

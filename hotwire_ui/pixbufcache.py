@@ -20,7 +20,7 @@ import os,sys,logging
 
 import gtk
 
-from hotwire.singletonmixin import Singleton
+from hotwire.externals.singletonmixin import Singleton
 from hotwire.async import MiniThreadPool
 
 def _get_datadirs():
