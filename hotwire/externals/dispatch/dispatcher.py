@@ -26,7 +26,7 @@ Internal attributes:
         vs. the original code.)
 """
 import types, weakref
-from django.dispatch import saferef, robustapply, errors
+from hotwire.externals.dispatch import saferef, robustapply, errors
 
 __author__ = "Patrick K. O'Brien <pobrien@orbtech.com>"
 __cvsid__ = "$Id: dispatcher.py,v 1.9 2005/09/17 04:55:57 mcfletch Exp $"
