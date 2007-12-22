@@ -424,19 +424,19 @@ class CommandExecutionControl(gtk.VBox):
   <accelerator action='ScrollPgDown'/>  
 </ui>"""         
         self.__actions = [
-            ('DetachCommand', None, _('Detach _Command'), '<control><shift>N', _('Create window from output'), self.__to_window_cb),                          
-            ('Copy', None, _('_Copy'), '<control>c', _('Copy output'), self.__copy_cb),                          
-            ('Cancel', None, _('_Cancel'), '<control><shift>c', _('Cancel current command'), self.__cancel_cb),
-            ('Undo', None, _('_Undo'), None, _('Undo current command'), self.__undo_cb),            
-            ('Search', None, _('_Search'), '<control>s', _('Search output'), self.__search_cb),
-            ('Input', None, _('_Input'), '<control>i', _('Send input'), self.__input_cb),
+            ('DetachCommand', gtk.STOCK_JUMP_TO, _('Detach _Command'), '<control><shift>N', _('Create window from output'), self.__to_window_cb),                          
+            ('Copy', gtk.STOCK_COPY, _('_Copy'), '<control>c', _('Copy output'), self.__copy_cb),                          
+            ('Cancel', gtk.STOCK_CANCEL, _('_Cancel'), '<control><shift>c', _('Cancel current command'), self.__cancel_cb),
+            ('Undo', gtk.STOCK_UNDO, _('_Undo'), None, _('Undo current command'), self.__undo_cb),            
+            ('Search', gtk.STOCK_FIND, _('_Search'), '<control>s', _('Search output'), self.__search_cb),
+            ('Input', gtk.STOCK_EDIT, _('_Input'), '<control>i', _('Send input'), self.__input_cb),
             ('ScrollHome', None, _('Output _Top'), '<control>Home', _('Scroll to output top'), self.__view_home_cb),
             ('ScrollEnd', None, _('Output _Bottom'), '<control>End', _('Scroll to output bottom'), self.__view_end_cb), 
             ('ScrollPgUp', None, _('Output Page _Up'), 'Page_Up', _('Scroll output up'), self.__view_up_cb),
             ('ScrollPgDown', None, _('Output Page _Down'), 'Page_Down', _('Scroll output down'), self.__view_down_cb),
             ('ControlMenu', None, _('_Control')),
-            ('RemovePipeline', None, _('_Remove Pipeline'), '<control><shift>K', _('Remove current pipeline view'), self.__remove_pipeline_cb),
-            ('UndoRemovePipeline', None, _('U_ndo Remove Pipeline'), '<control><shift>J', _('Undo removal of current pipeline view'), self.__undo_remove_pipeline_cb),            
+            ('RemovePipeline', gtk.STOCK_REMOVE, _('_Remove Pipeline'), '<control><shift>K', _('Remove current pipeline view'), self.__remove_pipeline_cb),
+            ('UndoRemovePipeline', gtk.STOCK_UNDO, _('U_ndo Remove Pipeline'), '<control><shift>J', _('Undo removal of current pipeline view'), self.__undo_remove_pipeline_cb),            
             ('PreviousCommand', gtk.STOCK_GO_UP, _('_Previous'), '<control>Up', _('View previous command'), self.__view_previous_cb),
             ('NextCommand', gtk.STOCK_GO_DOWN, _('_Next'), '<control>Down', _('View next command'), self.__view_next_cb),
         ]
