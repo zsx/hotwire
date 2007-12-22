@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 """A lexical analyzer class for simple shell-like syntaxes."""
 
+## MODIFIED FROM UPSTREAM PYTHON, see:
+## http://bugs.python.org/issue1170
+
 # Module and documentation by Eric S. Raymond, 21 Dec 1998
 # Input stacking and error message cleanup added by ESR, March 2000
 # push_source() and pop_source() made explicit by ESR, January 2001.
