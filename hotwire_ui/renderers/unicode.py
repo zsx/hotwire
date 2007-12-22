@@ -458,16 +458,19 @@ class UnicodeRenderer(ObjectsRenderer):
     def __on_toggle_wrap(self, menuitem):
         self.__wrap_lines = not self.__wrap_lines
         self.__sync_wrap()
-        
+
     def __on_populate_popup(self, textview, menu):
         menuitem = gtk.SeparatorMenuItem()
         menuitem.show_all()
-        menu.append(menuitem)
+        menu.prepend(menuitem)
         menuitem = gtk.CheckMenuItem(label='_Wrap lines', use_underline=True) 
         menuitem.set_active(self.__wrap_lines)
         menuitem.connect("activate", self.__on_toggle_wrap)
         menuitem.show_all()
-        menu.append(menuitem)
+        menu.prepend(menuitem)                   
+        menuitem = self.context.get_ui().get_action('/Menubar/EditMenu/EditMenuAdditions/Input').create_menu_item()
+        menuitem.show_all()
+        menu.prepend(menuitem) 
 
     def supports_input(self):
         return True
