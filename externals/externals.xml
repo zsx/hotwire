@@ -1,9 +1,0 @@
-<?xml version="1.0"?>
-<externals>
-  <external name="pygtk-shell" 
-	    home="http://felixrabe.textdriven.com/pygtk-shell/">
-    <source url="http://felixrabe.textdriven.com/pygtk-shell/releases/1.90.7/pygtk-shell-1.90.7.tar.gz"
-	    sha1="ff930c0ce2dc39b397e2a46702041f90b55c955b"/>
-  </external>
-</externals>
-
