@@ -646,14 +646,20 @@ class Pipeline(gobject.GObject):
         pipeline_output_type = None
         prev_locality = None
         pipeline_type_validates = True
-        prevarg = None
+        pushback = []
         tokens = list(tokens)
+        is_first = True
         while tokens:
-            if prevarg:
-                builtin_token = prevarg
-                prevarg = None
+            if pushback:
+                builtin_token = pushback.pop(0)
             else:
                 builtin_token = tokens.pop(0)
+                
+            if is_first and builtin_token == hotwire.script.PIPE:
+                is_first = False
+                pushback.append('current')
+                pushback.append(builtin_token)
+                continue
                 
             def forcetoken(t):
                 # Allow passing plain strings for convenience from Python
