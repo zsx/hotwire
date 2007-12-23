@@ -26,7 +26,7 @@ from StringIO import StringIO
 import gobject
 
 import hotwire.fs
-from hotwire.fs import path_normalize
+from hotwire.fs import path_normalize, FilePath
 from hotwire.async import IterableQueue, MiniThreadPool
 from hotwire.builtin import BuiltinRegistry, Builtin
 import hotwire.util
@@ -166,7 +166,7 @@ class Command(gobject.GObject):
         "exception" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (gobject.TYPE_PYOBJECT,)),
     }
 
-    def __init__(self, builtin, args, options, hotwire, tokens=None):
+    def __init__(self, builtin, args, options, hotwire, tokens=None, in_redir=None, out_redir=None, out_append=False):
         super(Command, self).__init__()
         self.builtin = builtin
         self.context = CommandContext(hotwire) 
@@ -179,6 +179,9 @@ class Command(gobject.GObject):
         self.map_fn = lambda x: x
         self.args = args
         self.options = options
+        self.in_redir = in_redir and FilePath(in_redir, self.context.cwd)
+        self.out_redir = out_redir and FilePath(out_redir, self.context.cwd)
+        self.out_append = out_append
         self.__executing_sync = None
         self._cancelled = False
         self.__tokens = tokens
@@ -262,6 +265,14 @@ class Command(gobject.GObject):
                 kwargs['options'] = options
             if self.output.opt_type:
                 kwargs['out_opt_format'] = self.output.opt_type
+            if self.in_redir:
+                _logger.debug("input redirected, opening %s", self.in_redir)
+                self.context.input = open(self.in_redir, 'r')
+            if self.out_redir:
+                _logger.debug("output redirected, opening %s", self.out_redir)
+                outfile = open(self.out_redir, self.out_append and 'a+' or 'w')
+            else:
+                outfile = None
             try:
                 for result in self.builtin.execute(self.context, *target_args, **kwargs):
                     # if it has status, let it do its own cleanup
@@ -270,9 +281,16 @@ class Command(gobject.GObject):
                         self.output.put(self.map_fn(None))
                         self.emit("complete")                        
                         return
-                    #print "queue %s: %s" % (self.output, result)
-                    self.output.put(self.map_fn(result))
+                    if outfile and (result is not None):
+                        if isinstance(result, basestring):
+                            outfile.write(result)
+                        else:
+                            outfile.write(repr(result))
+                    else:                        
+                        self.output.put(self.map_fn(result))
             finally:
+                if outfile:
+                    outfile.close()
                 self.builtin.cleanup(self.context)
         except Exception, e:
             _logger.exception("Caught exception: %s", e)
@@ -597,11 +615,13 @@ class Pipeline(gobject.GObject):
                 break 
             is_initial = False
             end = countstream.get_count()
-            if not quoted and token in ('|', '<', '>'):
+            if not quoted and token in ('|', '<', '>', '>>'):
                 if token == '|':
                     yield hotwire.script.PIPE
                 elif token == '>':
                     yield hotwire.script.REDIR_OUT
+                elif token == '>>':
+                    yield hotwire.script.REDIR_OUT_APPEND
                 elif token == '<':
                     yield hotwire.script.REDIR_IN           
             else:
@@ -669,11 +689,11 @@ class Pipeline(gobject.GObject):
                 elif cmdarg == hotwire.script.REDIR_IN:
                     if not tokens:
                         raise PipelineParseException(_('Must specify target for input redirection'))
-                    in_redir = tokens.pop(0)
+                    in_redir = tokens.pop(0).text
                 elif cmdarg == hotwire.script.REDIR_OUT:
                     if not tokens:
                         raise PipelineParseException(_('Must specify target for output redirection'))
-                    out_redir = tokens.pop(0)                    
+                    out_redir = tokens.pop(0).text                    
                 else:
                     cmdargs.append(cmdarg)
                     
@@ -709,9 +729,9 @@ class Pipeline(gobject.GObject):
                         expanded_cmdargs.append(token.text)
             cmdtokens = [builtin_token]
             cmdtokens.extend(cmdargs)
-            cmd = Command(b, expanded_cmdargs, options, context, tokens=cmdtokens)
+            cmd = Command(b, expanded_cmdargs, options, context, tokens=cmdtokens, in_redir=in_redir, out_redir=out_redir)
             components.append(cmd)
-            if prev:
+            if (not in_redir) and prev:
                 cmd.set_input(prev.output)
             input_accepts_type = cmd.builtin.get_input_type()
             input_optional = cmd.builtin.get_input_optional()
@@ -738,7 +758,10 @@ class Pipeline(gobject.GObject):
                                              (cmd.builtin.name, prev.builtin.name))
             prev_locality = locality
                 
-            prev = cmd
+            if out_redir:
+                prev = None
+            else:
+                prev = cmd
             if pipeline_input_type == 'unknown':
                 pipeline_input_type = input_accepts_type
 

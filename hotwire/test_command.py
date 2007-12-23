@@ -448,6 +448,31 @@ class PipelineRunTests(PipelineRunTestFramework):
         p.execute_sync()
         self.assertEquals(os.access(path_join(self._tmpd, 'testdir2', 'testf'), os.R_OK), True)
         self.assertEquals(os.access(path_join(self._tmpd, 'testdir2', 'dir with spaces'), os.R_OK), True)
+        
+    def testRedir1(self):
+        self._setupTree2()
+        p = Pipeline.parse("ls testdir2 > outtest.txt", self._context)
+        p.execute_sync()
+        outpath = path_join(self._tmpd, 'outtest.txt')
+        self.assertEquals(os.access(outpath, os.R_OK), True)
+        lines = list(open(outpath))
+        self.assertEquals(len(lines), 1)
+        self.assertEquals(lines[0], path_join(self._tmpd, 'testdir2', 'blah'))
+        
+    def testRedir2(self):
+        self._setupTree2()
+        outpath = path_join(self._tmpd, 'sectest.txt')
+        f= open(outpath, 'w')
+        f.write('hello world\n')
+        f.write('sha test\n')        
+        f.close()
+        p = Pipeline.parse("sechash < sectest.txt", self._context)
+        p.execute_sync()
+        results = list(p.get_output())
+        self.assertEquals(len(results), 2)
+        self.assertEquals(results[0], '22596363b3de40b06f981fb85d82312e8c0ed511')
+        self.assertEquals(results[1], '84b5d4093c8ffaf2eca0feaf014a53b9f41d28ed')
+              
 
 def suite():
     loader = unittest.TestLoader()
