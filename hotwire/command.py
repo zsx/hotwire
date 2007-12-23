@@ -636,6 +636,8 @@ class Pipeline(gobject.GObject):
                 elif token == '<':
                     yield hotwire.script.REDIR_IN           
             else:
+                if end-curpos > len(token):
+                    end = curpos+len(token)
                 yield ParsedToken(token, curpos, end=end, quoted=quoted)
             curpos = end
         
@@ -695,7 +697,7 @@ class Pipeline(gobject.GObject):
                             raise PipelineParseException(_('No matches for %s') % (gobject.markup_escape_text(builtin_token.text),))
                     else:
                         b = BuiltinRegistry.getInstance()['sys']
-                        cmdargs = [builtin_token.text]
+                        cmdargs = [ParsedToken(builtin_token.text, builtin_token.start, end=builtin_token.end)]
             else:
                 _logger.error("unknown in parse stream: %r", builtin_token)
                 assert False

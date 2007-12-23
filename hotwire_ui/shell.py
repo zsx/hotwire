@@ -737,7 +737,7 @@ for obj in curshell.get_current_output():
         for i,cmd in enumerate(commands):
             verb = cmd[0]
             verbcmd = self.__parsed_pipeline[i]            
-            if pos >= verb.start and pos < verb.end :
+            if pos >= verb.start and pos <= verb.end :
                 _logger.debug("pos %r generating verb completions for '%s' (%r %r)", verb.text, pos, verb.start, verb.end)
                 completer = self.__verb_completer
                 self.__completion_token = verb
@@ -750,7 +750,11 @@ for obj in curshell.get_current_output():
                     continue
                 completer = verbcmd.builtin.get_completer(self.context, cmd, i)
                 if not completer:
-                    completer = self.__token_completer
+                    # This happens because of the way we auto-inject 'sys'
+                    if verbcmd.builtin.name == 'sys':
+                        completer = self.__verb_completer
+                    else:
+                        completer = self.__token_completer
                 _logger.debug("generating token completions from %s for '%s'", completer, token.text)
                 self.__completion_token = token
                 break
