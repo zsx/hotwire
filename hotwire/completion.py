@@ -84,8 +84,8 @@ class PathCompleter(Completer):
         super(PathCompleter, self).__init__()
 
     def completions(self, text, cwd):
-        textpath = FilePath(text, cwd)
-        fullpath = path_expanduser(textpath)
+        expanded = path_expanduser(text)        
+        fullpath = FilePath(expanded, cwd)
         try:
             isdir = stat.S_ISDIR(os.stat(srcpath).st_mode)
         except:
