@@ -58,6 +58,7 @@ class CommandExecutionHeader(gtk.VBox):
     }
     def __init__(self, context, pipeline, odisp, overview_mode=True, **args):
         super(CommandExecutionHeader, self).__init__(**args)
+        self.__context = context
         self.__pipeline = pipeline
         self.__overview_mode = overview_mode
         self.__primary_complete = False
@@ -84,7 +85,7 @@ class CommandExecutionHeader(gtk.VBox):
                                             & gtk.gdk.LEAVE_NOTIFY_MASK)
             self.__titlebox_ebox.connect("enter_notify_event", self.__on_enter) 
             self.__titlebox_ebox.connect("leave_notify_event", self.__on_leave) 
-            self.__titlebox_ebox.connect("button-press-event", lambda eb, e: self.__on_button_press(e))
+        self.__titlebox_ebox.connect("button-press-event", lambda eb, e: self.__on_button_press(e))
 
         self.__titlebox = gtk.HBox()
         self.__titlebox_ebox.add(self.__titlebox)
@@ -298,8 +299,16 @@ class CommandExecutionHeader(gtk.VBox):
 
     @log_except(_logger)
     def __on_button_press(self, e):
-        if e.button == 1:
+        if self.__overview_mode and e.button == 1:
             self.emit('setvisible')
+            return True
+        elif (not self.__overview_mode) and e.button in (1,3):
+            menu = gtk.Menu()
+            for action in ['Cancel', 'Undo', 'RemovePipeline', 'UndoRemovePipeline']:
+                menuitem = self.__context.get_ui().get_action('/Menubar/WidgetMenuAdditions/ControlMenu/' + action).create_menu_item()
+                menuitem.show_all()
+                menu.append(menuitem)
+            menu.popup(None, None, None, e.button, e.time)                
             return True
         return False
 
