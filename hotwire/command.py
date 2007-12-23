@@ -670,9 +670,10 @@ class Pipeline(gobject.GObject):
             is_first = False            
                 
             def forcetoken(t):
-                # Allow passing plain strings for convenience from Python
+                # Allow passing plain strings for convenience from Python.
+                # Treat them as quoted.
                 if isinstance(t, basestring):
-                    return ParsedToken(t, -1)
+                    return ParsedToken(t, -1, quoted=True)
                 return t
             
             builtin_token = forcetoken(builtin_token)
