@@ -653,17 +653,21 @@ class Pipeline(gobject.GObject):
         pushback = []
         tokens = list(tokens)
         is_first = True
-        while tokens or pushback:
+        def pull_token():
             if pushback:
-                builtin_token = pushback.pop(0)
+                return pushback.pop(0)
             else:
-                builtin_token = tokens.pop(0)
+                return tokens.pop(0)            
+        while tokens or pushback:
+            builtin_token = pull_token()
+            _logger.debug("token = %r", builtin_token)
 
             if is_first and builtin_token == hotwire.script.PIPE:
-                is_first = False
-                pushback.append('current')
-                pushback.append(builtin_token)
+                _logger.debug("doing current rewrite")
+                pushback.insert(0, builtin_token)                
+                pushback.insert(0, 'current')
                 continue
+            is_first = False            
                 
             def forcetoken(t):
                 # Allow passing plain strings for convenience from Python
@@ -700,18 +704,17 @@ class Pipeline(gobject.GObject):
 
             # Pull from the stream to get all the arguments
             while tokens:
-                cmdarg = tokens.pop(0)
+                cmdarg = pull_token()
                 if cmdarg == hotwire.script.PIPE:
-                    prevarg = cmdarg
                     break
                 elif cmdarg == hotwire.script.REDIR_IN:
                     if not tokens:
                         raise PipelineParseException(_('Must specify target for input redirection'))
-                    in_redir = tokens.pop(0).text
+                    in_redir = pull_token().text
                 elif cmdarg == hotwire.script.REDIR_OUT:
                     if not tokens:
                         raise PipelineParseException(_('Must specify target for output redirection'))
-                    out_redir = tokens.pop(0).text                    
+                    out_redir = pull_token().text                    
                 else:
                     cmdargs.append(cmdarg)
                     

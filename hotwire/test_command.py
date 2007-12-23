@@ -457,7 +457,7 @@ class PipelineRunTests(PipelineRunTestFramework):
         self.assertEquals(os.access(outpath, os.R_OK), True)
         lines = list(open(outpath))
         self.assertEquals(len(lines), 1)
-        self.assertEquals(lines[0], path_join(self._tmpd, 'testdir2', 'blah'))
+        self.assertEquals(lines[0], path_join(self._tmpd, 'testdir2', 'blah\n'))
         
     def testRedir2(self):
         self._setupTree2()
