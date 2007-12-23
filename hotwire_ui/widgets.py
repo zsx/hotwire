@@ -16,7 +16,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-import logging
+import os,sys,logging
 import xml.sax, xml.sax.handler
 
 import cairo, gtk, gobject, pango
@@ -147,7 +147,14 @@ class TransientPopup(gtk.Window):
                       cur_x, cur_y)
         if (cur_x != move_x) or (cur_y != move_y):
             self.move(move_x, move_y)
-            
+
+    # override
+    def do_size_request(self, req):
+        (req.width, req.height) = self.__border.size_request()
+        #(parent_w, parent_h) = map(lambda x: int(x*0.8), self.__ref_widget.get_toplevel().get_size())
+        (ref_x, ref_y, ref_w, ref_h, bits) = self.__ref_widget.get_parent_window().get_geometry()
+        req.width = min(int(0.8*ref_w), req.width)
+        req.height = min(int(0.8*ref_h), req.height)
 
     def queue_reposition(self):
         if self.__idle_reposition_id > 0:

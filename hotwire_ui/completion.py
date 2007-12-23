@@ -33,7 +33,7 @@ from hotwire.sysdep.proc import Process
 _logger = logging.getLogger("hotwire.ui.Completion")
 
 class MatchView(gtk.VBox):
-    def __init__(self, title, maxcount=10, keybinding=None):
+    def __init__(self, title, maxcount=500, keybinding=None):
         super(MatchView, self).__init__()
         self.__maxcount = maxcount
         headerhbox = gtk.HBox()
@@ -46,18 +46,24 @@ class MatchView(gtk.VBox):
             self.__keybinding_label.set_alignment(1.0, 0.5)
             headerhbox.add(self.__keybinding_label)
         self.__title = title
-        self.__morecount = -1
         self.__keybinding = keybinding
-        self.set_more_count(self.__morecount)
-        self.pack_start(headerhbox, expand=False)      
+        self.pack_start(headerhbox, expand=False)
+        self.__scroll = gtk.ScrolledWindow()
+        # FIXME - we should really be using a combo box here
+        self.__scroll.set_policy(gtk.POLICY_NEVER, gtk.POLICY_NEVER)      
         self.__model = gtk.ListStore(gobject.TYPE_PYOBJECT)        
         self.__view = gtk.TreeView(self.__model)
         self.__selection = self.__view.get_selection()
         self.__selection.set_mode(gtk.SELECTION_SINGLE)
+        self.__selection.connect('changed', self.__on_selection_changed)
         self.__view.set_headers_visible(False)
-        self.add(self.__view)
+        if maxcount > 1:
+            self.__scroll.add(self.__view)
+            self.add(self.__scroll)
+        else:
+            self.add(self.__view)
         colidx = self.__view.insert_column_with_data_func(-1, '',
-                                                          hotwidgets.CellRendererText(ellipsize=True),
+                                                          hotwidgets.CellRendererText(),
                                                           self._render_item)
         self.__none_label = gtk.Label()
         self.__none_label.set_alignment(0.0, 0.5)
@@ -66,23 +72,20 @@ class MatchView(gtk.VBox):
         self.pack_start(self.__none_label, expand=False)         
     
     def get_view(self):
-        return self.__view 
+        return self.__view
+    
+    def prepare_max_size_request(self):
+        self.__scroll.set_policy(gtk.POLICY_NEVER, gtk.POLICY_NEVER)
+        
+    def finish_max_size_request(self):  
+        self.__scroll.set_policy(gtk.POLICY_NEVER, gtk.POLICY_AUTOMATIC)        
     
     def get_model(self):
         return self.__model
 
     def get_selection(self):
         return self.__selection
-    
-    def set_more_count(self, morecount):
-        self.__morecount = morecount
-        if morecount < 0:
-            self.__label.set_text(self.__title)
-        else:
-            self.__label.set_markup('%s - <b>%d</b> total' % \
-                                    (gobject.markup_escape_text(self.__title),
-                                     self.__morecount+1))
-    
+
     def set_content(self, results, uniquify=False, reverse=True, do_select=True):
         model = gtk.ListStore(gobject.TYPE_PYOBJECT)
         overmax = False
@@ -102,21 +105,54 @@ class MatchView(gtk.VBox):
                 iter = model.append([completion])
         self.__model = model
         self.__view.set_model(model)
+        nchildren = self.__model.iter_n_children(None)
         if results and do_select:
-            self.__selection.select_iter(self.__model.iter_nth_child(None, self.__model.iter_n_children(None)-1))
+            self.__selection.select_iter(self.__model.iter_nth_child(None, nchildren-1))
         if results:
             self.__none_label.hide()
         else:
-            self.__none_label.show()            
+            self.__none_label.show()
+        self.set_total(nchildren)
             
+    def set_total(self, total):
+        self.__label.set_markup('%s - <b>%d</b> total' % \
+                                (gobject.markup_escape_text(self.__title),
+                                 total))
+
     def iter_matches(self):
         i = self.__model.iter_n_children(None)-1
         while i >= 0:
             yield self.__model[i][0]
             i -= 1
+            
+    def __vadjust(self, pos, full):
+        adjustment = self.__scroll.get_vadjustment()
+        if not full:
+            val = self.__scroll.get_vadjustment().page_increment
+            if not pos:
+                val = 0 - val;
+            newval = adjustment.value + val
+        else:
+            if pos:
+                newval = adjustment.upper
+            else:
+                newval = adjustment.lower
+        newval = max(min(newval, adjustment.upper-adjustment.page_size), adjustment.lower)
+        adjustment.value = newval
     
-    def get_display_count(self):        
-        return self.__model.iter_n_children(None)             
+    def page_up(self, pos):
+        self.__vadjust(False)    
+        
+    def page_down(self, pos):
+        self.__vadjust(True)
+    
+    def get_total(self):        
+        return self.__model.iter_n_children(None) 
+    
+    def __on_selection_changed(self, sel):
+        (model, iter) = sel.get_selected()
+        if iter:
+            self.__view.scroll_to_cell(model.get_path(iter))
 
 class MatchPopup(hotwidgets.TransientPopup):
     __gsignals__ = {
@@ -144,24 +180,15 @@ class MatchPopup(hotwidgets.TransientPopup):
         
     def _get_view(self):
         return self.__view
-    
+
     def get_miniview(self):
         return self.__miniview
 
     def set_content(self, results, **kwargs):
         self.__view.set_content(results, **kwargs)
         self.__miniview.set_content(results, do_select=False, **kwargs)
-          
-        self.__morecount = len(results)-self.__view.get_display_count()                        
-        if self.__morecount:
-            self.__morelabel.set_text(_('%d more...') % (self.__morecount,))
-            self.__morelabel.show_all()
-        else:
-            self.__morelabel.set_text('')
-            self.__morelabel.hide()
-        
-        self.__miniview.set_more_count(self.__view.get_display_count()-1)
-            
+        self.__miniview.set_total(self.__view.get_total())
+
         if results:
             self.__none_label.hide()
         else:
@@ -175,13 +202,13 @@ class MatchPopup(hotwidgets.TransientPopup):
         for x in self.__view.iter_matches(*args, **kwargs):
             yield x
             
-    def get_display_count(self):
-        return self.__view.get_display_count()       
+    def get_total(self):
+        return self.__view.get_total()       
     
     def _set_size_request(self):            
         (ref_x, ref_y, ref_w, ref_h, bits) = self.__entry.get_parent_window().get_geometry()
         _logger.debug("setting size request width to %d*0.75", ref_w)
-        self.set_size_request((int(ref_w*0.75)), -1)
+        #self.set_size_request((int(ref_w*0.75)), -1)
 
     def get_selected_path(self):
         (model, iter) = self.__selection.get_selected()
@@ -209,7 +236,13 @@ class MatchPopup(hotwidgets.TransientPopup):
         iternext = model.iter_next(seliter)
         if not iternext:
             return
-        self.__selection.select_iter(iternext)
+        self.__selection.select_iter(iternext)       
+        
+    def page_up(self):
+        self.__view.page_up()
+        
+    def page_down(self):
+        self.__view.page_down()   
         
     def emit_itemselected(self):
         (model, iter) = self.__selection.get_selected()
@@ -222,7 +255,7 @@ class MatchPopup(hotwidgets.TransientPopup):
         _logger.debug("row activated: %s", path)
         model = self.__view.get_model()
         iter = model.get_iter(path)
-        self.emit('item-selected', model().get_value(iter, 0))           
+        self.emit('item-selected', model.get_value(iter, 0))           
 
 class MatchingHistoryView(MatchView):
     def __init__(self, *args, **kwargs):
@@ -466,6 +499,30 @@ class CompletionStatusDisplay(hotwidgets.TransientPopup):
             return True
         elif self.__completion_visible:
             self.__completion_display.select_prev()
+            return True
+        return False
+    
+    def page_up(self):
+        if self.__tab_history_visible:
+            self.__tab_history_display.page_up()
+            return True
+        elif self.__global_history_visible:
+            self.__global_history_display.page_up()
+            return True
+        elif self.__completion_visible:
+            self.__completion_display.page_up()
+            return True
+        return False
+
+    def page_down(self):
+        if self.__tab_history_visible:
+            self.__tab_history_display.page_down()
+            return True
+        elif self.__global_history_visible:
+            self.__global_history_display.page_down()
+            return True
+        elif self.__completion_visible:
+            self.__completion_display.page_down()
             return True
         return False
 

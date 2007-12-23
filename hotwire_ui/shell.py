@@ -606,6 +606,12 @@ for obj in curshell.get_current_output():
         elif e.keyval == gtk.gdk.keyval_from_name('Down'):
             self.__completions.select_prev()
             return True
+        elif e.keyval == gtk.gdk.keyval_from_name('Page_Up'):
+            print >>sys.stderr, "page up"
+            return self.__completions.page_up()
+        elif e.keyval == gtk.gdk.keyval_from_name('Page_Down'):
+            print >>sys.stderr, "page down"            
+            return self.__completions.page_down()  
         elif e.keyval == gtk.gdk.keyval_from_name('Escape'):
             self.__completions.hide_all()
             return True
