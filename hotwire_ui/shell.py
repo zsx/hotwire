@@ -743,33 +743,25 @@ for obj in curshell.get_current_output():
                 self.__completion_token = verb
                 break
             prev_token = verb.text
-            for i,token in enumerate(cmd[1:]):
-                if not ((pos >= token.start) and (pos <= token.end)):
+            cmdargs = cmd[1:]
+            cmdlen = len(cmdargs)
+            for i,token in enumerate(cmdargs):
+                if not ((pos >= token.start) and (pos <= token.end)) and not (i == cmdlen-1):
                     _logger.debug("skipping token (%s %s) out of %d: %s ", token.start, token.end, pos, token.text)
                     prev_token = token
                     continue
-                completer = verbcmd.builtin.get_completer(self.context, cmd, i)
-                if not completer:
-                    # This happens because of the way we auto-inject 'sys'
-                    if verbcmd.builtin.name == 'sys':
-                        completer = self.__verb_completer
-                    else:
-                        completer = self.__token_completer
                 _logger.debug("generating token completions from %s for '%s'", completer, token.text)
                 self.__completion_token = token
                 break
-        if verbcmd and not self.__completion_token:
-            _logger.debug("position at end")
-            compl_token = commands[-1]
-            compl_idx = len(commands[-1])-1
-            if verbcmd:
-                completer = verbcmd.builtin.get_completer(self.context, compl_token, compl_idx)
-            else:
-                # If we're not sure what it is, try assuming it's a system command.
-                completer = BuiltinRegistry.getInstance()['sys'].get_completer(self.context, compl_token, compl_idx)
+            if not self.__completion_token:
+                self.__completion_token = hotwire.command.ParsedToken('', start=pos)              
+            completer = verbcmd.builtin.get_completer(self.context, cmd, i)
             if not completer:
-                completer = self.__token_completer
-            self.__completion_token = hotwire.command.ParsedToken('', pos)
+                # This happens because of the way we auto-inject 'sys'
+                if verbcmd.builtin.name == 'sys' and cmdlen == 0:
+                    completer = self.__verb_completer
+                else:
+                    completer = self.__token_completer
         self.__completer = completer
         if self.__completer:
             self.__completions.set_completion(completer, self.__completion_token.text, self.context)
