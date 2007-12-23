@@ -28,9 +28,10 @@ import gobject
 import hotwire.fs
 from hotwire.fs import path_normalize
 from hotwire.async import IterableQueue, MiniThreadPool
-from hotwire.builtin import BuiltinRegistry
+from hotwire.builtin import BuiltinRegistry, Builtin
 import hotwire.util
 from hotwire.util import quote_arg, assert_strings_equal
+import hotwire.script
 import hotwire.externals.shlex as shlex
 
 _logger = logging.getLogger("hotwire.Command")
@@ -158,7 +159,7 @@ class Command(gobject.GObject):
         "exception" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (gobject.TYPE_PYOBJECT,)),
     }
 
-    def __init__(self, builtin, args, options, hotwire):
+    def __init__(self, builtin, args, options, hotwire, tokens=None):
         super(Command, self).__init__()
         self.builtin = builtin
         self.context = CommandContext(hotwire) 
@@ -173,6 +174,7 @@ class Command(gobject.GObject):
         self.options = options
         self.__executing_sync = None
         self._cancelled = False
+        self.__tokens = tokens
 
     def set_pipeline(self, pipeline):
         self.context.set_pipeline(pipeline)
@@ -217,6 +219,9 @@ class Command(gobject.GObject):
     def get_auxstreams(self):
         for obj in self.context.get_auxstreams():
             yield obj
+    
+    def get_tokens(self):
+        return self.__tokens
 
     def __run(self):
         if self._cancelled:
@@ -548,27 +553,7 @@ class Pipeline(gobject.GObject):
         return (countstream, parser)
 
     @staticmethod
-    def parse_tree(text, context, assertfn=None, accept_unclosed=False):
-        """
-        emacs
-          => [
-              [('Verb', 0, 4, None, 'unresolved')  # default is VerbCompleter
-              ]
-             ]
-        emacs /tmp/foo.txt
-          => [
-              [('Verb', 0, 4, None, 'unresolved'),
-               ('Arg', 5, 16, None)   # default is PathCompleter
-              ]
-        ps | grep whee <CURSOR>
-          => [
-              [('Verb', 0, 3, None)
-              ],
-              [('Verb', 21, 25, None),
-               ('Arg', 27, 31, [])  # no completions
-               ('Arg', 29, 29, [PropertyCompleter(class=UnixProcess)])
-              ]
-"""
+    def tokenize(text, context=None, assertfn=None, accept_unclosed=False):
         result = []
         _logger.debug("parsing '%s'", text)
         
@@ -576,8 +561,6 @@ class Pipeline(gobject.GObject):
         
         is_initial = True
         first_token = None
-        current_verb = None
-        current_args = []
         curpos = 0
         while True:
             try:
@@ -589,60 +572,33 @@ class Pipeline(gobject.GObject):
                 if (not accept_unclosed) or (not was_quotation_error):
                     _logger.debug("caught lexing exception", exc_info=True)
                     raise PipelineParseException(e)
-                arg = parser.token[1:] 
+                arg = parser.token[1:]
                 if arg:
                     token = ParsedToken(arg, curpos+1, was_unquoted=True)
                     _logger.debug("handling unclosed quote, returning %s", token)
-                    cmd_tokens.append(token)
+                    yield token
+                    return
                 else:
                     _logger.debug("handling unclosed quote, but token was empty")
+                    return
             # empty input
-            if token is None and (not current_verb):
-                break
-            # rewrite |
-            if is_initial and token == '|':
-                parser.push_token('|')
-                parser.push_token('current')
-                is_initial = False
-                continue
-            if first_token is None:
-                first_token = token            
+            if token is None:
+                break 
             is_initial = False
             end = countstream.get_count()
-            if (token is None) or (token == '|' and current_verb):
-                current_args.insert(0, current_verb)
-                result.append(current_args)
-                current_verb = None
-                current_args = []
-            elif current_verb is None:
-                try:
-                    builtin = BuiltinRegistry.getInstance()[token]
-                except KeyError, e:
-                    builtin = None
-                current_verb = ParsedVerb(token, curpos, end=end, builtin=builtin)                  
+            if not quoted and token in ('|', '<', '>'):
+                if token == '|':
+                    yield hotwire.script.PIPE
+                elif token == '>':
+                    yield hotwire.script.REDIR_OUT
+                elif token == '<':
+                    yield hotwire.script.REDIR_IN           
             else:
-                arg = ParsedToken(token, curpos, end=end, quoted=quoted)
-                current_args.append(arg)
-            if token is None:
-                break
+                yield ParsedToken(token, curpos, end=end, quoted=quoted)
             curpos = end
-        return result
-    
-    @staticmethod
-    def parse_from_tree(tree, context=None):
-        newtree = list(tree)
-        for j,cmd in enumerate(newtree):
-            newcmd = list(cmd)
-            newtree[j] = newcmd
-            for i,token in enumerate(newcmd):
-                if isinstance(token, ParsedVerb):
-                    newcmd[i] = token.builtin
-                else:
-                    newcmd[i] = token.text
-        return Pipeline.create_from_args(context, *newtree)
         
     @staticmethod
-    def create_from_args(context, *args):
+    def create(context, resolver, *tokens):
         components = []
         undoable = None
         idempotent = True
@@ -652,8 +608,66 @@ class Pipeline(gobject.GObject):
         pipeline_output_type = None
         prev_locality = None
         pipeline_type_validates = True
-        for cmd_tokens in args:
-            b = cmd_tokens[0]
+        prevarg = None
+        tokens = list(tokens)
+        while tokens:
+            if prevarg:
+                builtin_token = prevarg
+                prevarg = None
+            else:
+                builtin_token = tokens.pop(0)
+                
+            def forcetoken(t):
+                # Allow passing plain strings for convenience from Python
+                if isinstance(t, basestring):
+                    return ParsedToken(t, -1)
+                return t
+            
+            builtin_token = forcetoken(builtin_token)
+
+            # Attempt to determine which builtin we're using
+            if isinstance(builtin_token, Builtin):
+                b = builtin_token
+                cmdargs = []
+            # If we're parsing without a resolver, assume we're using sys
+            elif isinstance(builtin_token, ParsedToken):
+                try:
+                    b = BuiltinRegistry.getInstance()[builtin_token.text]
+                    cmdargs = []
+                except KeyError, e:
+                    if resolver:
+                        (b, cmdargs) = resolver(builtin_token.text)
+                        _logger.debug("resolved: %r to %r %r", builtin_token.text, b, cmdargs)
+                        if not b:
+                            raise PipelineParseException(_('No matches for %s') % (gobject.markup_escape_text(builtin_token.text),))
+                    else:
+                        b = BuiltinRegistry.getInstance()['sys']
+                        cmdargs = [builtin_token.text]
+            else:
+                assert False
+                
+            in_redir = None
+            out_redir = None
+
+            # Pull from the stream to get all the arguments
+            while tokens:
+                cmdarg = tokens.pop(0)
+                if cmdarg == hotwire.script.PIPE:
+                    prevarg = cmdarg
+                    break
+                elif cmdarg == hotwire.script.REDIR_IN:
+                    if not tokens:
+                        raise PipelineParseException(_('Must specify target for input redirection'))
+                    in_redir = tokens.pop(0)
+                elif cmdarg == hotwire.script.REDIR_OUT:
+                    if not tokens:
+                        raise PipelineParseException(_('Must specify target for output redirection'))
+                    out_redir = tokens.pop(0)                    
+                else:
+                    cmdargs.append(cmdarg)
+                    
+            cmdargs = map(forcetoken, cmdargs)                    
+
             builtin_opts = b.get_options()
             def arg_to_opts(arg):
                 if builtin_opts is None:
@@ -671,15 +685,20 @@ class Pipeline(gobject.GObject):
                             results.append(aliases[0])
                 return results
             options = []
-            args_text = []
-            for argtext in cmd_tokens[1:]:
-                argopts = arg_to_opts(argtext)
-                if argopts:
-                    options.extend(argopts)
+            expanded_cmdargs = []
+            for token in cmdargs:
+                # Treat quoted options as regular arguments
+                if token.quoted:
+                    expanded_cmdargs.append(token.text)
                 else:
-                    args_text.append(argtext)
-            args = args_text
-            cmd = Command(b, args, options, context)
+                    argopts = arg_to_opts(token.text)
+                    if argopts:
+                        options.extend(argopts)
+                    else:
+                        expanded_cmdargs.append(token.text)
+            cmdtokens = [builtin_token]
+            cmdtokens.extend(cmdargs)
+            cmd = Command(b, expanded_cmdargs, options, context, tokens=cmdtokens)
             components.append(cmd)
             if prev:
                 cmd.set_input(prev.output)
@@ -690,21 +709,21 @@ class Pipeline(gobject.GObject):
             _logger.debug("Validating input %s vs prev %s", input_accepts_type, pipeline_output_type)
 
             if prev and not pipeline_output_type:
-                raise PipelineParseException("Command %s yields no output for pipe" % \
+                raise PipelineParseException(_("Command %s yields no output for pipe") % \
                                              (prev.builtin.name))
             if (not prev) and input_accepts_type and not (input_optional): 
-                raise PipelineParseException("Command %s requires input of type %s" % \
+                raise PipelineParseException(_("Command %s requires input of type %s") % \
                                              (cmd.builtin.name, input_accepts_type))
             if input_accepts_type and prev \
                    and not Pipeline.__streamtype_is_assignable(pipeline_output_type, input_accepts_type, input_optional):
-                raise PipelineParseException("Command %s yields '%s' but %s accepts '%s'" % \
+                raise PipelineParseException(_("Command %s yields '%s' but %s accepts '%s'") % \
                                              (prev.builtin.name, pipeline_output_type, cmd.builtin.name, input_accepts_type))
             if (not input_optional) and (not input_accepts_type) and pipeline_output_type:
-                raise PipelineParseException("Command %s takes no input but type '%s' given" % \
+                raise PipelineParseException(_("Command %s takes no input but type '%s' given") % \
                                              (cmd.builtin.name, pipeline_output_type))
             locality = cmd.builtin.get_locality()
             if prev_locality and locality and (locality != prev_locality):
-                raise PipelineParseException("Command %s locality conflict with '%s'" % \
+                raise PipelineParseException(_("Command %s locality conflict with '%s'") % \
                                              (cmd.builtin.name, prev.builtin.name))
             prev_locality = locality
                 
@@ -742,8 +761,16 @@ class Pipeline(gobject.GObject):
         return pipeline 
 
     @staticmethod
-    def parse(str, context=None):
-        return Pipeline.parse_from_tree(Pipeline.parse_tree(str, context), context)
+    def parse(text, context=None, resolver=None, accept_unclosed=False):
+        tokens = list(Pipeline.tokenize(text, context, accept_unclosed=accept_unclosed))
+        return Pipeline.create(context, resolver, *tokens)
+    
+    def __iter__(self):
+        for component in self.__components:
+            yield component
+        
+    def __getitem__(self, i):
+        return self.__components[i]
 
     def __str__(self):
         return string.join(map(lambda x: x.__str__(), self.__components), ' | ')        

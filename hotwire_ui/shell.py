@@ -60,11 +60,8 @@ class HotwireClientContext(hotwire.command.HotwireContext):
         self.__hotwire = hotwire
         self.history = None
 
-    def do_cd(self, dir):
-        tree = Pipeline.parse('cd %s' % (quote_arg(dir),), self)
-        self.__hotwire.execute_pipeline(tree,
-                                        add_history=False,
-                                        reset_input=False)
+    def do_cd(self, dpath):
+        self.__hotwire.internal_execute('cd', dpath)
         
     def get_gtk_event_time(self):
         return gtk.get_current_event_time()
@@ -231,7 +228,7 @@ class Hotwire(gtk.VBox):
         self.__idle_parse_id = 0
         self.__parse_stale = False
         self.__meta_syntax = None
-        self.__pipeline_tree = None
+        self.__parsed_pipeline = None
         self.__verb_completer = VerbCompleter()
         self.__token_completer = TokenCompleter()
         self.__completion_active = False
@@ -330,9 +327,8 @@ for obj in curshell.get_current_output():
         model = self.__recentdirs.get_model()
         iter = model.iter_nth_child(None, self.__recentdir_navigation_index)
         path = path_expanduser(model.get_value(iter, 0))
-        quotedpath = quote_arg(path)
         self.__doing_recentdir_navigation = True
-        self.execute_internal_str('cd ' + quotedpath)            
+        self.internal_execute('cd ', path)            
 
     def __back_cb(self, action):
         _logger.debug("back")
@@ -386,10 +382,10 @@ for obj in curshell.get_current_output():
             if url.startswith('file://'):
                 return url[7:]
             return url
-        quoted_fpaths = map(quote_arg, map(fstrip, urls.split('\r\n')))
+        fpaths = map(fstrip, urls.split('\r\n'))
         _logger.debug("path is %s, got drop paths: %s", path, quoted_fpaths)
-        quoted_fpaths.append(quote_arg(path))
-        self.execute_internal_str('cp ' + ' '.join(quoted_fpaths))
+        fpaths.append(path)
+        self.internal_execute('cp', *fpaths)
     
     def __on_drag_data_received(self, tv, context, x, y, selection, info, etime):
         sel_data = selection.data
@@ -408,9 +404,9 @@ for obj in curshell.get_current_output():
         cwd = self.context.get_cwd()
         return unix_basename(cwd)
 
-    def execute_internal_str(self, pipeline_str):
-        tree = Pipeline.parse(pipeline_str, self.context)
-        self.execute_pipeline(tree, add_history=False, reset_input=False)        
+    def internal_execute(self, *args):
+        pipeline = Pipeline.create(self.context, None, *args)
+        self.execute_pipeline(pipeline, add_history=False, reset_input=False)        
 
     def execute_pipeline(self, pipeline,
                             add_history=True,
@@ -425,7 +421,7 @@ for obj in curshell.get_current_output():
             text = self.__input.get_property("text").strip()
             self.context.history.append_command(text, self.context.get_cwd())
             if tree:
-                History.getInstance().record_pipeline(self.__cwd, self.__pipeline_tree)
+                History.getInstance().record_pipeline(self.__cwd, self.__parsed_pipeline)
             self.__tabhistory.insert(0, text)
             if len(self.__tabhistory) >= self.MAX_TABHISTORY:
                 self.__tabhistory.pop(-1)
@@ -467,18 +463,15 @@ for obj in curshell.get_current_output():
 
         if self.__meta_syntax == 'sh':
             _logger.debug("using sh meta syntax")
-            pipeline = Pipeline.create_from_args(self.context,
-                                                 [BuiltinRegistry.getInstance()['sys'],
-                                                  '/bin/sh',
-                                                  '-c',
-                                                  text[3:]])
+            pipeline = Pipeline.create(self.context, None,
+                                       'sys', '/bin/sh', '-c', text[3:])
             self.execute_pipeline(pipeline)
             return
         else:
             assert self.__meta_syntax is None
                 
-        _logger.debug("executing '%s'", self.__pipeline_tree)
-        if not self.__pipeline_tree or len(self.__pipeline_tree) == 0:
+        _logger.debug("executing '%s'", self.__parsed_pipeline)
+        if not self.__parsed_pipeline:
             _logger.debug("Nothing to execute")
             return
 
@@ -488,46 +481,29 @@ for obj in curshell.get_current_output():
         resolutions = []
         vc = self.__verb_completer
         fs = Filesystem.getInstance()
-        for cmd in self.__pipeline_tree:
-            verb = cmd[0]
-            if not verb.resolved:
-                resolution_match = None
-                for completion in vc.completions(verb.text, self.__cwd):
-                    target = completion.target
-                    if isinstance(target, Alias) and verb.text == target.name:
-                        resolution_match = completion
-                        break
-                    if isinstance(target, File) and \
-                       not target.is_directory() and \
-                       (unix_basename(verb.text) == unix_basename(target.path) or fs.path_inexact_executable_match(completion.matchbase)):
-                        resolution_match = completion
-                        break
-                if resolution_match:
-                    if isinstance(resolution_match.target, Alias):
-                        resolutions.append((cmd, verb.text, resolution_match.target.target))                    
-                    elif isinstance(resolution_match.target, File):
-                        resolutions.append((cmd, verb.text, 'sys ' + quote_arg(resolution_match.target.path)))
-                else:
-                    self.push_msg(_('No matches for <b>%s</b>') % (gobject.markup_escape_text(verb.text),), markup=True)
-                    return
-        for cmd,verbtext,matchtext in resolutions:
-            subtree = Pipeline.parse_tree(matchtext, context=self.context)[0]
-            oldverb = cmd.pop(0)
-            for i,arg in enumerate(subtree):
-                cmd.insert(i, arg)
-
-        if resolutions:
-            resolutions = [_('<tt>%s</tt> to <tt>%s</tt>') % (gobject.markup_escape_text(x[1]),
-                                                              gobject.markup_escape_text(x[2])) for x in resolutions]
-            self.push_msg(_('Resolved: ') + string.join(resolutions, ', '), markup=True)
-
-        try:
-            pipeline = Pipeline.parse_from_tree(self.__pipeline_tree, context=self.context)
-        except hotwire.command.PipelineParseException, e:
-            self.push_msg('Failed to parse pipeline: %s' % (e.args[0],))
-            return
-
-        self.execute_pipeline(pipeline)
+        
+        def resolver(text):
+            resolution_match = None
+            for completion in vc.completions(text, self.__cwd):
+                target = completion.target
+                if isinstance(target, Alias) and text == target.name:
+                    resolution_match = completion
+                    break
+                if isinstance(target, File) and \
+                   not target.is_directory() and \
+                   (unix_basename(text) == unix_basename(target.path) or fs.path_inexact_executable_match(completion.matchbase)):
+                    resolution_match = completion
+                    break
+            if resolution_match:
+                if isinstance(resolution_match.target, Alias):
+                    tokens = list(Pipeline.tokenize(resolution_match.target.target))                   
+                    return (BuiltinRegistry.getInstance()[tokens[0]], tokens[1:])               
+                elif isinstance(resolution_match.target, File):
+                    return (BuiltinRegistry.getInstance()['sys'], [resolution_match.target.path])
+            return (None, None)
+        
+        self.__parsed_pipeline = Pipeline.parse(text, context=self.context, resolver=resolver)
+        self.execute_pipeline(self.__parsed_pipeline)
 
     @log_except(_logger)
     def __on_histitem_selected(self, popup, histitem):
@@ -578,6 +554,7 @@ for obj in curshell.get_current_output():
         self.__input.set_property('text', curtext + text)
         self.__input.set_position(pos + len(text))
         self.__completion_suppress = False
+        self.__parse_stale = True
         self.__completions.invalidate()
         self.__completions.hide_all()
         self.__queue_parse()           
@@ -739,14 +716,19 @@ for obj in curshell.get_current_output():
         prev_token = None
         completer = None
         verb = None
+        verbcmd = None
         addprefix = None
         # can happen when input is empty
-        if not self.__pipeline_tree:
+        if not self.__parsed_pipeline:
             _logger.debug("no tree, disabling completion")
             self.__completions.invalidate()
             return
-        for cmd in self.__pipeline_tree:
+        commands = list(self.__parsed_pipeline)
+        for i,cmd in enumerate(commands):
+            commands[i] = list(cmd.get_tokens())
+        for i,cmd in enumerate(commands):
             verb = cmd[0]
+            verbcmd = self.__parsed_pipeline[i]            
             if pos >= verb.start and pos <= verb.end :
                 _logger.debug("generating verb completions for '%s'", verb.text)
                 completer = self.__verb_completer
@@ -758,21 +740,18 @@ for obj in curshell.get_current_output():
                     _logger.debug("skipping token (%s %s) out of %d: %s ", token.start, token.end, pos, token.text)
                     prev_token = token
                     continue
-                if verb.resolved:
-                    completer = verb.builtin.get_completer(self.context, cmd, i)
-                else:
-                    completer = None
+                completer = verbcmd.builtin.get_completer(self.context, cmd, i)
                 if not completer:
                     completer = self.__token_completer
                 _logger.debug("generating token completions from %s for '%s'", completer, token.text)
                 self.__completion_token = token
                 break
-        if verb and not self.__completion_token:
+        if verbcmd and not self.__completion_token:
             _logger.debug("position at end")
-            compl_token = self.__pipeline_tree[-1]
-            compl_idx = len(self.__pipeline_tree[-1])-1
-            if verb and verb.resolved:
-                completer = verb.builtin.get_completer(self.context, compl_token, compl_idx)
+            compl_token = commands[-1]
+            compl_idx = len(commands[-1])-1
+            if verbcmd:
+                completer = verbcmd.builtin.get_completer(self.context, compl_token, compl_idx)
             else:
                 # If we're not sure what it is, try assuming it's a system command.
                 completer = BuiltinRegistry.getInstance()['sys'].get_completer(self.context, compl_token, compl_idx)
@@ -795,14 +774,14 @@ for obj in curshell.get_current_output():
         else:
             self.__meta_syntax = None 
         try:
-            self.__pipeline_tree = Pipeline.parse_tree(text, self.context, accept_unclosed=(not throw))
+            self.__parsed_pipeline = Pipeline.parse(text, self.context, accept_unclosed=(not throw))
         except hotwire.command.PipelineParseException, e:
             _logger.debug("parse failed, current syntax=%s", self.__meta_syntax)
-            self.__pipeline_tree = None
+            self.__parsed_pipeline = None
             if throw:
                 raise e
             return False
-        _logger.debug("parse tree: %s", self.__pipeline_tree)
+        _logger.debug("parse tree: %s", self.__parsed_pipeline)
         self.__parse_stale = False
         self.__unqueue_parse()
         return True

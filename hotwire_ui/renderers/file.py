@@ -221,9 +221,8 @@ class FilePathRenderer(TreeObjectsRenderer):
     def __on_remove_activated(self, menu, path):
         _logger.debug("got remove for %s", path)
         from hotwire_ui.shell import locate_current_shell
-        hw = locate_current_shell(self._table)
-        qpath = quote_arg(path)     
-        hw.execute_internal_str('rm %s' % (qpath,))           
+        hw = locate_current_shell(self._table)    
+        hw.internal_execute('rm', path)           
 
     def __on_drag_data_get(self, tv, context, selection, info, timestamp):
         sel = tv.get_selection()

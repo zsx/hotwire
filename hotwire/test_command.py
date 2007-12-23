@@ -25,6 +25,7 @@ import os, sys, unittest, tempfile, shutil
 import hotwire
 from hotwire.command import *
 from hotwire.sysdep import is_windows, is_unix
+import hotwire.script
 from hotwire.fs import unix_basename, path_join, path_abs, path_dirname, path_fastnormalize
 
 class PipelineParserTests(unittest.TestCase):
@@ -35,78 +36,84 @@ class PipelineParserTests(unittest.TestCase):
         self._context = None
     
     def testEmacs(self):
-        pt = Pipeline.parse_tree('emacs', self._context, assertfn=self.assertEquals)
+        pt = list(Pipeline.tokenize('emacs', self._context, assertfn=self.assertEquals))
         self.assertEquals(len(pt), 1)
-        self.assertEquals(len(pt[0]), 1)
-        self.assertEquals(pt[0][0].text, 'emacs')
+        self.assertEquals(pt[0].text, 'emacs')
 
     def testEmacsFile(self):
-        pt = Pipeline.parse_tree('emacs /tmp/foo.txt', self._context, assertfn=self.assertEquals)
-        self.assertEquals(len(pt), 1)
-        self.assertEquals(len(pt[0]), 2)
-        self.assertEquals(pt[0][0].text, 'emacs')
-        self.assertEquals(pt[0][1].text, '/tmp/foo.txt')
+        pt = list(Pipeline.tokenize('emacs /tmp/foo.txt', self._context, assertfn=self.assertEquals))
+        self.assertEquals(len(pt), 2)
+        self.assertEquals(pt[0].text, 'emacs')
+        self.assertEquals(pt[1].text, '/tmp/foo.txt')
+        self.assertEquals(pt[1].quoted, False) 
 
     def testEmacsFileSpace(self):
-        pt = Pipeline.parse_tree("emacs 'foo bar'", self._context, assertfn=self.assertEquals)
-        self.assertEquals(len(pt), 1)
-        self.assertEquals(len(pt[0]), 2)
-        self.assertEquals(pt[0][0].text, 'emacs')
-        self.assertEquals(pt[0][1].text, "foo bar")
+        pt = list(Pipeline.tokenize("emacs 'foo bar'", self._context, assertfn=self.assertEquals))
+        self.assertEquals(len(pt), 2)
+        self.assertEquals(pt[0].text, 'emacs')
+        self.assertEquals(pt[1].text, "foo bar")
+        self.assertEquals(pt[1].quoted, True)        
 
     def testEmacsFileSpaces(self):
-        pt = Pipeline.parse_tree("emacs 'foo bar' baz 'whee cow crack'", self._context, assertfn=self.assertEquals)
-        self.assertEquals(len(pt), 1)
-        self.assertEquals(len(pt[0]), 4)
-        self.assertEquals(pt[0][0].text, 'emacs')
-        self.assertEquals(pt[0][1].text, "foo bar")
-        self.assertEquals(pt[0][2].text, "baz")
-        self.assertEquals(pt[0][3].text, "whee cow crack")
+        pt = list(Pipeline.tokenize("emacs 'foo bar' baz 'whee cow crack'", self._context, assertfn=self.assertEquals))
+        self.assertEquals(len(pt), 4)
+        self.assertEquals(pt[0].text, 'emacs')
+        self.assertEquals(pt[1].text, "foo bar")
+        self.assertEquals(pt[2].text, "baz")
+        self.assertEquals(pt[3].text, "whee cow crack")
+        self.assertEquals(pt[3].quoted, True)
 
     def testLsMulti(self):
-        pt = Pipeline.parse_tree('ls foo.py bar.py baz.py', self._context, assertfn=self.assertEquals)
-        self.assertEquals(len(pt), 1)
-
-    def testMulti(self):
-        pt = Pipeline.parse_tree('sys echo true | sys cat /tmp/foo.txt', self._context)
-        self.assertEquals(len(pt), 2)
-
-    def testMulti4(self):
-        pt = Pipeline.parse_tree('sys echo true | sys cat /tmp/foo.txt | sys echo moo  cow | sys cat cat cat /tmp/foo.txt', self._context)
+        pt = list(Pipeline.tokenize('ls foo.py bar.py baz.py', self._context, assertfn=self.assertEquals))
         self.assertEquals(len(pt), 4)
 
+    def testMulti(self):
+        pt = list(Pipeline.tokenize('sys echo true | sys cat /tmp/foo.txt', self._context))
+        self.assertEquals(len(pt), 7)
+        self.assertEquals(pt[3], hotwire.script.PIPE)
+
+    def testMulti4(self):
+        pt = list(Pipeline.tokenize('sys echo true | sys cat /tmp/foo.txt | sys echo moo  cow | sys cat cat cat /tmp/foo.txt', self._context))
+        self.assertEquals(len(pt), 18)
+
     def testPathological1(self):
-        pt = Pipeline.parse_tree('cat | ls', self._context)
-        self.assertEquals(len(pt), 2)
+        pt = list(Pipeline.tokenize('cat | ls', self._context))
+        self.assertEquals(len(pt), 3)
         
     def testNoSpace1(self):
-        pt = Pipeline.parse_tree('cat|sys echo bar', self._context)
-        self.assertEquals(len(pt), 2)
+        pt = list(Pipeline.tokenize('cat|sys echo bar', self._context))
+        self.assertEquals(len(pt), 5)
+        self.assertEquals(pt[0].text, 'cat')
+        self.assertEquals(pt[1], hotwire.script.PIPE)
         
     def testNull(self):
-        pt = Pipeline.parse_tree('', self._context)
+        pt = list(Pipeline.tokenize('', self._context))
         self.assertEquals(len(pt), 0)
         
     def testGlob1(self):
-        pt = Pipeline.parse_tree('echo f*', self._context)
-        self.assertEquals(len(pt), 1)
-        self.assertEquals(len(pt[0]), 2)
+        pt = list(Pipeline.tokenize('echo f*', self._context))
+        self.assertEquals(len(pt), 2)
         
     def testRedir1(self):
-        pt = Pipeline.parse_tree('echo f>bar', self._context)
-        self.assertEquals(len(pt), 1)
-        self.assertEquals(len(pt[0]), 4)
+        pt = list(Pipeline.tokenize('echo f>bar', self._context))
+        self.assertEquals(len(pt), 4)
+        self.assertEquals(pt[2], hotwire.script.REDIR_OUT)
         
     def testOtherChars1(self):
-        pt = Pipeline.parse_tree('env f=b true', self._context)
-        self.assertEquals(len(pt), 1)
-        self.assertEquals(len(pt[0]), 3)   
+        pt = list(Pipeline.tokenize('env f=b true', self._context))
+        self.assertEquals(len(pt), 3)   
         
     def testUtf1(self):
-        pt = Pipeline.parse_tree('sys echo Ω', self._context)
-        self.assertEquals(len(pt), 1)
-        self.assertEquals(pt[0][2].text, 'Ω')
-        self.assertEquals(len(pt[0]), 3)              
+        pt = list(Pipeline.tokenize('sys echo Ω', self._context))
+        self.assertEquals(len(pt), 3)
+        self.assertEquals(pt[2].text, 'Ω')
+        self.assertEquals(pt[2].quoted, False)
+        
+    def testUtf2(self):
+        pt = list(Pipeline.tokenize('sys echo "Ω"', self._context))
+        self.assertEquals(len(pt), 3)
+        self.assertEquals(pt[2].text, 'Ω')
+        self.assertEquals(pt[2].quoted, True)
 
 class PipelineInstantiateTests(unittest.TestCase):
     def setUp(self):
