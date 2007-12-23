@@ -52,6 +52,9 @@ class Completion(object):
 
     def __cmp__(self, other):
         return cmp(self.suffix,other.suffix)
+    
+    def __repr__(self):
+        return "<Completion s:%r>" % (self.suffix,)
 
 class Completer(object):
     def __init__(self):
@@ -164,10 +167,17 @@ class CompletionResults(object):
         super(CompletionResults, self).__init__()
         self.results = resultlist
         self.common_prefix = self.__get_common_prefix(self.results)
+        if self.common_prefix == '':
+            self.common_prefix = None           
  
     def __get_common_prefix(self, completions):
         if len(completions) <= 1:
             return None
+        # We re-sort these by default string compare to make this algorithm
+        # work correctly.  Normally results are sorted by however the completion
+        # system prefers - in the typical case of directories this is by locale
+        # so you get dotfiles between others (bar .dotfile foo).
+        completions = sorted(completions)
         min_item = completions[0]
         max_item = completions[-1]
         n = min(len(min_item.suffix), len(max_item.suffix))
@@ -191,6 +201,7 @@ class CompletionSystem(object):
 
     def __do_async_complete(self, completer, text, cwd, cb):
         result = self.__get_completions(completer, text, cwd)
+        _logger.debug("completions for %r: pfx: %r results: %r", text, result.common_prefix, result.results)        
         def do_cb(*args):
             cb(*args)
             return False

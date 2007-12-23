@@ -573,8 +573,10 @@ for obj in curshell.get_current_output():
             _logger.debug("no completions")
             return
         if len(results.results) == 1:
+            _logger.debug("single completion: %r", results.results[0])            
             self.__insert_single_completion(results.results[0])
         elif results.common_prefix:
+            _logger.debug("completion common prefix: %r", results.common_prefix)
             self.__insert_completing_text(results.common_prefix)
         else:
             # We should have popped up the display list
@@ -729,8 +731,8 @@ for obj in curshell.get_current_output():
         for i,cmd in enumerate(commands):
             verb = cmd[0]
             verbcmd = self.__parsed_pipeline[i]            
-            if pos >= verb.start and pos <= verb.end :
-                _logger.debug("generating verb completions for '%s'", verb.text)
+            if pos >= verb.start and pos < verb.end :
+                _logger.debug("pos %r generating verb completions for '%s' (%r %r)", verb.text, pos, verb.start, verb.end)
                 completer = self.__verb_completer
                 self.__completion_token = verb
                 break
@@ -755,8 +757,8 @@ for obj in curshell.get_current_output():
             else:
                 # If we're not sure what it is, try assuming it's a system command.
                 completer = BuiltinRegistry.getInstance()['sys'].get_completer(self.context, compl_token, compl_idx)
-                if not completer:
-                    completer = self.__token_completer
+            if not completer:
+                completer = self.__token_completer
             self.__completion_token = hotwire.command.ParsedToken('', pos)
         self.__completer = completer
         if self.__completer:
