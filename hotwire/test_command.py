@@ -353,13 +353,35 @@ class PipelineRunTests(PipelineRunTestFramework):
         p.execute_sync()
         results = list(p.get_output())
         self.assertEquals(len(results), 4)
-
+        
     def testLs7(self):
         self._setupTree2()
         p = Pipeline.parse("ls testdir2/b*", self._context)
         p.execute_sync()
         results = list(p.get_output())
+        self.assertEquals(len(results), 1)   
+        
+    def testLs8(self):
+        self._setupTree2()
+        bglobpath = path_join(self._tmpd, 'testdir2', 'b*') 
+        f = open(bglobpath, 'w')
+        f.write('hi')
+        f.close()
+        p = Pipeline.parse("ls 'testdir2/b*'", self._context)
+        p.execute_sync()
+        results = list(p.get_output())
         self.assertEquals(len(results), 1)
+        self.assertEquals(results[0], bglobpath)
+        
+    def testLs9(self):
+        self._setupTree1()
+        p = Pipeline.parse("ls testf", self._context)
+        p.execute_sync()
+        results = list(p.get_output())
+        results.sort()
+        self.assertEquals(len(results), 1)
+        self.assertEquals(os.path.dirname(results[0]), self._tmpd)
+        self.assertEquals(unix_basename(results[0]), 'testf')                     
 
     def testLsQuoted(self):
         self._setupTree1()

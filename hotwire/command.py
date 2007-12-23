@@ -150,6 +150,13 @@ class CommandAuxStream(object):
 class CommandException(Exception):
     pass
 
+class CommandArgument(str):
+    """An argument for a command, with the additional metadata of quotation status."""
+    def __new__(cls, value, quoted=False):
+        inst = super(CommandArgument, cls).__new__(cls, value)
+        inst.isquoted = quoted
+        return inst
+
 class Command(gobject.GObject):
     """Represents a complete executable object in a pipeline."""
 
@@ -234,10 +241,14 @@ class Command(gobject.GObject):
                 matched_files = []
                 oldlen = 0
                 for globarg_in in self.args:
-                    globarg = os.path.expanduser(globarg_in)
-                    matched_files.extend(hotwire.fs.dirglob(self.context.cwd, globarg))
-                    _logger.debug("glob on %s matched is: %s", globarg_in, matched_files) 
-                    newlen = len(matched_files)
+                    if isinstance(globarg_in, CommandArgument) and globarg_in.isquoted:
+                        globarg = globarg_in
+                        newlen = oldlen                    
+                    else:
+                        globarg = os.path.expanduser(globarg_in)
+                        matched_files.extend(hotwire.fs.dirglob(self.context.cwd, globarg))
+                        _logger.debug("glob on %s matched is: %s", globarg_in, matched_files) 
+                        newlen = len(matched_files)
                     if oldlen == newlen:
                         matched_files.append(globarg)
                         newlen += 1
@@ -689,7 +700,7 @@ class Pipeline(gobject.GObject):
             for token in cmdargs:
                 # Treat quoted options as regular arguments
                 if token.quoted:
-                    expanded_cmdargs.append(token.text)
+                    expanded_cmdargs.append(CommandArgument(token.text, quoted=True))
                 else:
                     argopts = arg_to_opts(token.text)
                     if argopts:
