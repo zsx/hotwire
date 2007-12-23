@@ -286,6 +286,7 @@ class Command(gobject.GObject):
                             outfile.write(result)
                         else:
                             outfile.write(repr(result))
+                        outfile.write('\n')
                     else:                        
                         self.output.put(self.map_fn(result))
             finally:
@@ -411,8 +412,14 @@ class Pipeline(gobject.GObject):
             if cmd.input:
                 cmd.input.negotiate(prev_opt_formats, cmd.get_input_opt_formats())
             prev_opt_formats = cmd.get_output_opt_formats()
-        last = self.__components[-1] 
-        last.output.negotiate(last.get_output_opt_formats(), opt_formats)
+            if cmd.out_redir:
+                prev_opt_formats = []
+        last = self.__components[-1]
+        if not last.out_redir:
+            last_opt_fmts = last.get_output_opt_formats()
+        else:
+            last_opt_fmts = []
+        last.output.negotiate(last_opt_fmts, opt_formats)
         for i,cmd in enumerate(self.__components[:-1]):
             cmd.execute(force_sync)
         last.execute(force_sync)
