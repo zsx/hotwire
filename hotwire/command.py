@@ -308,6 +308,10 @@ class Command(gobject.GObject):
         args = [self.builtin.name]
         args.extend(self.options)
         args.extend(map(quote_arg, self.args))
+        if self.in_redir:
+            args.extend(['<', self.in_redir])
+        if self.out_redir:
+            args.extend(['>', self.out_redir])            
         return unijoin(args)
 
 class PipelineParseException(Exception):
@@ -649,12 +653,12 @@ class Pipeline(gobject.GObject):
         pushback = []
         tokens = list(tokens)
         is_first = True
-        while tokens:
+        while tokens or pushback:
             if pushback:
                 builtin_token = pushback.pop(0)
             else:
                 builtin_token = tokens.pop(0)
-                
+
             if is_first and builtin_token == hotwire.script.PIPE:
                 is_first = False
                 pushback.append('current')
@@ -688,6 +692,7 @@ class Pipeline(gobject.GObject):
                         b = BuiltinRegistry.getInstance()['sys']
                         cmdargs = [builtin_token.text]
             else:
+                _logger.error("unknown in parse stream: %r", builtin_token)
                 assert False
                 
             in_redir = None
