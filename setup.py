@@ -81,12 +81,12 @@ if 'py2exe' in sys.argv:
                                     'includes': 'cairo, pango, pangocairo, atk, gobject'}
                          }
 else:
-    kwargs['scripts'] = ['ui/hotwire', 'ui/hotwire-editor', 'ui/hotwire-mimeopen']
+    kwargs['scripts'] = ['ui/hotwire', 'ui/hotwire-editor', 'ui/hotwire-mimeopen', 'ui/hotwire-runtty']
     kwargs['data_files'] = [('share/applications', ['hotwire.desktop']), 
                             ('share/icons/hicolor/24x24/apps', ['images/hotwire.png']),
-                            ('share/icons/hicolor/22x22/apps', ['images/hotwire-22.png']),
+                         # FIXME   #('share/icons/hicolor/22x22/apps', ['images/hotwire-22.png']),
                             ('share/hotwire/images', ['images/throbber.gif', 'images/throbber-done.gif'])]
-    from DistUtilsExtra.command import *    
+    from DistUtilsExtra.command import *
     kwargs['cmdclass'] = { "build_extra" : build_extra.build_extra,
                            "build_i18n" :  build_i18n.build_i18n,
                            "build_help" :  build_help.build_help,
@@ -98,11 +98,12 @@ setup(name='hotwire',
       author='Colin Walters',
       author_email='walters@verbum.org',
       url='http://hotwire-shell.org',
-      packages=['hotwire', 'hotwire_ui', 'hotwire_ui.renderers', 'hotwire.builtins',
-                'hotwire.pycompat', 'hotwire.sysdep', 'hotwire.sysdep.fs_impl', 
+      packages=['hotwire', 'hotwire_ui', 'hotwire_ui.renderers', 'hotwire_ui.adaptors', 
+                'hotwire.builtins',
+                'hotwire.externals', 'hotwire.externals', 'hotwire.externals.dispatch', 
+                'hotwire.sysdep', 'hotwire.sysdep.fs_impl', 
                 'hotwire.sysdep.proc_impl',
                 'hotwire.sysdep.term_impl', 'hotwire.sysdep.ipc_impl',
-                'hotvte', 
-                'hotapps', 'hotapps.hotssh'],
+                'hotvte', 'hotapps', 'hotapps.hotssh', 'hotapps.hotsudo'],
       **kwargs)
 
