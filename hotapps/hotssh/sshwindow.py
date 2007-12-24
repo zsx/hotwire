@@ -227,6 +227,8 @@ class SshWindow(VteWindow):
             _logger.debug("Couldn't find NetworkManager")
             self.__nm_proxy = None
         
+        self.__idle_stop_monitoring_id = 0
+        
         self.connect("notify::is-active", self.__on_is_active_changed)
         _hostmonitor.connect('host-status', self.__on_host_status)
         
@@ -257,8 +259,15 @@ class SshWindow(VteWindow):
         isactive = self.get_property('is-active')
         if isactive:
             self.__start_monitoring()
-        else:
-            self.__stop_monitoring()
+            if self.__idle_stop_monitoring_id > 0:
+                gobject.source_remove(self.__idle_stop_monitoring_id)
+                self.__idle_stop_monitoring_id = 0
+        elif self.__idle_stop_monitoring_id == 0:
+            self.__idle_stop_monitoring_id = gobject.timeout_add(8000, self.__idle_stop_monitoring)
+            
+    def __idle_stop_monitoring(self):
+        self.__idle_stop_monitoring_id = 0
+        self.__stop_monitoring()
         
     def __on_page_switch(self, n, p, pn):
         # Becuase of the way get_current_page() works in this signal handler, this
