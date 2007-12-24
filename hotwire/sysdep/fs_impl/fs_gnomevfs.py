@@ -23,9 +23,15 @@ import os,sys,subprocess,logging
 
 import gtk, gnomevfs, gobject
 import gnome.ui
+try:
+    import gnomedesktop
+    have_gnomedesktop = True
+except:
+    have_gnomedesktop = False
 
 from hotwire.sysdep.fs import FileStatError
 from hotwire.sysdep.fs_impl.fs_unix import UnixFilesystem, UnixFile
+from hotwire_ui.pixbufcache import PixbufCache
 
 _logger = logging.getLogger("hotwire.fs.GnomeVfs")
 
@@ -179,8 +185,19 @@ class GnomeVFSFilesystem(UnixFilesystem):
         apps = gnomevfs.mime_get_all_applications(vfsstat.mime_type)
         textapp = gnomevfs.mime_get_default_application("text/plain")
         menuitems = []
+        pbcache = PixbufCache.getInstance()
         def add_menuitem(app):
-            menuitem = gtk.MenuItem('Open with %s' % (app[1],))
+            _logger.debug("adding app %r", app)
+            if have_gnomedesktop:
+                desktop = gnomedesktop.item_new_from_basename(app[0], 0)
+                iconpath = desktop.get_icon(self.__itheme)
+            else:
+                iconpath = None
+            menuitem = gtk.ImageMenuItem('Open with %s' % (app[1],))
+            if iconpath:
+                pbuf = pbcache.get(iconpath)
+                img = gtk.image_new_from_pixbuf(pbuf)
+                menuitem.set_property('image', img)
             menuitem.connect("activate", self.__on_appmenu_activated, app, uri, context)
             menuitems.append(menuitem) 
         for app in apps:
