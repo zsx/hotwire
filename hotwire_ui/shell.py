@@ -33,6 +33,7 @@ from hotwire.cmdalias import Alias, AliasRegistry
 from hotwire.gutil import *
 from hotwire.util import markup_for_match, quote_arg
 from hotwire.fs import path_unexpanduser, path_expanduser, unix_basename
+from hotwire.sysdep import is_unix
 from hotwire.sysdep.fs import File, Filesystem
 from hotwire.state import History, Preferences
 from hotwire_ui.command import CommandExecutionDisplay,CommandExecutionControl
@@ -773,7 +774,7 @@ for obj in curshell.get_current_output():
         if not self.__parse_stale:
             return True
         text = self.__input.get_property("text")
-        if text.startswith('sh '):
+        if is_unix() and text.startswith('sh '):
             self.__meta_syntax = 'sh'
         else:
             self.__meta_syntax = None 
