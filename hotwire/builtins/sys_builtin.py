@@ -156,6 +156,10 @@ class SysBuiltin(Builtin):
         using_pty_out = pty_available and (out_opt_format is not None)
         using_pty_in = pty_available and context.input_is_first
         _logger.debug("using pty in: %s out: %s", using_pty_in, using_pty_out)
+        # TODO - we need to rework things so that we allocate only one pty per pipeline.
+        # In the very common case of exactly one command, this doesn't matter, but 
+        # allocating two ptys will probably bite us in odd ways if someone does create
+        # a pipeline.  Maybe have a context.request_pty() function?
         if using_pty_in or using_pty_out:
             # We create a pseudo-terminal to ensure that the subprocess is line-buffered.
             # Yes, this is gross, but as far as I know there is no other way to
