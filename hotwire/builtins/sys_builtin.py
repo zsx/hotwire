@@ -161,12 +161,11 @@ class SysBuiltin(Builtin):
             # Yes, this is gross, but as far as I know there is no other way to
             # control the buffering used by subprocesses.
             (master_fd, slave_fd) = pty.openpty()
-            
-            # Ideally there would be a flag to tell a terminal to be completely 
-            # "8-bit clean".          
+                      
             attrs = termios.tcgetattr(master_fd)
+            # We should probably move more terminal logic into renderers/unicode.py,
+            # but for now ensure that lines end in \n, not \r\n.
             attrs[1] = attrs[1] & (~termios.ONLCR)
-            attrs[3] = attrs[3] & (~termios.ECHO)
             termios.tcsetattr(master_fd, termios.TCSANOW, attrs)            
             
             _logger.debug("allocated pty fds %d %d", master_fd, slave_fd)

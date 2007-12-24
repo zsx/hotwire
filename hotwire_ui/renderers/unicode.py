@@ -177,9 +177,10 @@ class InputArea(gtk.HBox):
         "object-input" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (gobject.TYPE_PYOBJECT,gobject.TYPE_BOOLEAN)),  
     }
 
-    def __init__(self, textview, **kwargs):
+    def __init__(self, renderer, textview, **kwargs):
         super(InputArea, self).__init__(**kwargs)
 
+        self.__renderer = renderer
         self.__textview = textview
 
         close = gtk.Button()
@@ -226,6 +227,7 @@ class InputArea(gtk.HBox):
         self.reset()
 
     def focus(self):
+        self.__password_button.set_active(self.__renderer.get_default_password_mode())
         self.__input.grab_focus()
 
     def reset(self):
@@ -250,18 +252,21 @@ class UnicodeRenderer(ObjectsRenderer):
         self.__text.unset_flags(gtk.CAN_FOCUS)
         self.__empty = True
         self.__bytecount = 0
+        self.__term_fd = None
         self._buf.insert_markup("<i>(No output)</i>")
         self.__search = SearchArea(self.__text)
-        self.__inputarea = InputArea(self.__text)
-        self.__inputarea.connect('object-input', self.__on_object_input)
+        self.__inputarea = InputArea(self, self.__text)
+        #self.__inputarea.connect('object-input', self.__on_object_input)
         self.__text.connect('populate-popup', self.__on_populate_popup)
         self.__links = {} # internal hyperlinks
         self.__support_links = False
         self.__hovering_over_link = False
         
     def __on_object_input(self, ia, o, pwmode):
-        if not pwmode:
-            self.append_obj(o)
+        # We're relying on terminal echo now.
+        return
+        #if not pwmode:
+        #    self.append_obj(o)
 
     def __on_event_after(self, textview, e):
         if e.type != gtk.gdk.BUTTON_RELEASE:
@@ -386,6 +391,7 @@ class UnicodeRenderer(ObjectsRenderer):
             self.__append_chunk(obj)
             return
         elif fmt == 'x-filedescriptor/special':
+            self.__term_fd = obj
             self.__monitor_fd(obj)
             return        
         if self.__empty:
@@ -415,7 +421,6 @@ class UnicodeRenderer(ObjectsRenderer):
         import termios
         attrs = termios.tcgetattr(fd)
         attrs[1] = attrs[1] & (termios.ONLCR)
-        attrs[3] = attrs[3] & (termios.ECHO)
         termios.tcsetattr(fd, termios.TCSANOW, attrs)                 
         term.term.set_pty(fd)
         # Undo our newline stripping
@@ -443,6 +448,13 @@ class UnicodeRenderer(ObjectsRenderer):
         
     def __monitor_fd(self, fd):
         gobject.io_add_watch(fd, gobject.IO_IN | gobject.IO_ERR | gobject.IO_HUP, self.__on_fd, priority=gobject.PRIORITY_LOW)
+        
+    def get_default_password_mode(self):
+        if self.__term_fd is None:
+            return False
+        import termios
+        attrs = termios.tcgetattr(self.__term_fd)
+        return (attrs[3] & (termios.ECHO)) == 0      
 
     def get_autoscroll(self):
         return True
