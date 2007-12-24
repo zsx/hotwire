@@ -698,6 +698,8 @@ class Pipeline(gobject.GObject):
                     else:
                         b = BuiltinRegistry.getInstance()['sys']
                         cmdargs = [ParsedToken(builtin_token.text, builtin_token.start, end=builtin_token.end)]
+            elif builtin_token in (hotwire.script.PIPE, hotwire.script.REDIR_IN, hotwire.script.REDIR_OUT, hotwire.script.REDIR_OUT_APPEND):
+                raise PipelineParseException(_("Unexpected token %d") % (builtin_token,))
             else:
                 _logger.error("unknown in parse stream: %r", builtin_token)
                 assert False
