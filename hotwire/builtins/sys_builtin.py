@@ -21,7 +21,7 @@
 
 import os, sys, subprocess, string, threading, logging
 try:
-    import pty, termios
+    import pty, termios, fcntl
     pty_available = True
 except:
     pty_available = False
@@ -194,7 +194,9 @@ class SysBuiltin(Builtin):
         elif is_unix():
             subproc_args['close_fds'] = True
             def preexec():
-                os.setsid()
+                os.setsid()                        
+                if using_pty_out and hasattr(termios, 'TIOCSCTTY'):
+                    fcntl.ioctl(1, termios.TIOCSCTTY, '')
                 signal.signal(signal.SIGHUP, signal.SIG_IGN)
             subproc_args['preexec_fn'] = preexec
         else:
