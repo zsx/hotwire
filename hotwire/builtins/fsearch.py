@@ -45,10 +45,20 @@ class FSearchBuiltin(FileOpBuiltin):
                                              output=FileStringMatch,
                                              threaded=True)
 
-    def execute(self, context, regexp, path=None):
+    def execute(self, context, args):
+        if len(args) > 2:
+            raise ValueError(_("Too many arguments specified"))
+        if len(args) == 0:
+            raise ValueError(_("Too few arguments specified"))        
+        regexp = args[0]
+        if len(args) == 2:
+            path = args[1]
+        else:
+            path = context.cwd
+        regexp = args[0]
         fs = Filesystem.getInstance()
         comp_regexp = re.compile(regexp)
-        for (dirpath, subdirs, files) in os.walk(path or context.cwd):
+        for (dirpath, subdirs, files) in os.walk(path):
             filtered_dirs = []
             for i,dir in enumerate(subdirs):
                 if fs.get_basename_is_ignored(dir):
