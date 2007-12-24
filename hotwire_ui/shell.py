@@ -614,6 +614,7 @@ for obj in curshell.get_current_output():
             print >>sys.stderr, "page down"            
             return self.__completions.page_down()  
         elif e.keyval == gtk.gdk.keyval_from_name('Escape'):
+            self.__completion_async_blocking = False
             self.__completions.hide_all()
             return True
         return False
