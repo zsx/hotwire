@@ -33,7 +33,7 @@ class PsBuiltin(Builtin):
                                         options=[['-a', '--all'],],                                        
                                         threaded=True)
 
-    def execute(self, context, options=[]):
+    def execute(self, context, args, options=[]):
         myself_only = '-a' not in options        
         pm = ProcessManager.getInstance()
         if not myself_only:
