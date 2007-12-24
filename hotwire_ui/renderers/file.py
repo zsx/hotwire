@@ -201,8 +201,8 @@ class FilePathRenderer(TreeObjectsRenderer):
             menuitem.connect('activate', self.__on_new_window_activated, fobj.path)
             items.append(menuitem)            
             items.append(gtk.SeparatorMenuItem())
-        menuitem = gtk.MenuItem(_('Move to Trash'))
-        menuitem.connect("activate", self.__on_remove_activated, fobj.path)
+        menuitem = gtk.MenuItem(_('Copy Path to Input'))
+        menuitem.connect("activate", self.__on_copypath_activated, fobj.path)
         items.append(menuitem)
         return items
        
@@ -218,11 +218,11 @@ class FilePathRenderer(TreeObjectsRenderer):
         hwin = locate_current_window(self._table)
         hwin.new_win_hotwire(initcwd=path, initcmd='ls')
         
-    def __on_remove_activated(self, menu, path):
-        _logger.debug("got remove for %s", path)
+    def __on_copypath_activated(self, menu, path):
+        _logger.debug("got copypath for %s", path)
         from hotwire_ui.shell import locate_current_shell
         hw = locate_current_shell(self._table)    
-        hw.internal_execute('rm', path)           
+        hw.append_text(path)           
 
     def __on_drag_data_get(self, tv, context, selection, info, timestamp):
         sel = tv.get_selection()

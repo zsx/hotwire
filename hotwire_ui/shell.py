@@ -405,6 +405,12 @@ for obj in curshell.get_current_output():
         cwd = self.context.get_cwd()
         return unix_basename(cwd)
 
+    def append_text(self, text):
+        curtext = self.__input.get_property('text')
+        if curtext and curtext[-1] != ' ':
+            text = ' ' + text
+        self.__input.set_property('text', curtext + text)
+
     def internal_execute(self, *args):
         pipeline = Pipeline.create(self.context, None, *args)
         self.execute_pipeline(pipeline, add_history=False, reset_input=False)        
