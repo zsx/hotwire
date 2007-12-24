@@ -36,8 +36,7 @@ class WalkBuiltin(FileOpBuiltin):
     def __init__(self):
         super(WalkBuiltin, self).__init__('walk',
                                           output=File,
-                                          options=[['-a', '--all']],
-                                          parseargs='shglob',                                             
+                                          options=[['-a', '--all']],                                          
                                           threaded=True)
 
     def execute(self, context, args, options=[]):

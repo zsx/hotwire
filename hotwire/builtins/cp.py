@@ -32,7 +32,6 @@ class CpBuiltin(FileOpBuiltin):
     __doc__ = _("""Copy sources to destination.""")
     def __init__(self):
         super(CpBuiltin, self).__init__('cp', aliases=['copy'],
-                                        parseargs='shglob',
                                         hasstatus=True,
                                         threaded=True)
 

@@ -61,7 +61,6 @@ class Builtin(object):
                  aliases=[], 
                  remote_only=False, 
                  nostatus=False,
-                 parseargs='ws-parsed',
                  idempotent=False,
                  undoable=False,
                  hasstatus=False,
@@ -76,9 +75,6 @@ class Builtin(object):
         self.aliases = aliases 
         self.remote_only = remote_only 
         self.nostatus = nostatus
-        if not parseargs in ('ws-parsed', 'str', 'shglob', 'str-shquoted'):
-            raise ValueError('Bad parseargs: %s' % (parseargs,))        
-        self.parseargs = parseargs
         self.idempotent = idempotent
         self.undoable = undoable
         self.hasstatus = hasstatus
@@ -144,9 +140,6 @@ class Builtin(object):
 
     def get_locality(self):
         return self.locality
-
-    def get_parseargs(self):
-        return self.parseargs or 'ws-parsed'
 
     def get_options(self):
         return self.options

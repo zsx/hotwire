@@ -31,7 +31,6 @@ class WriteBuiltin(Builtin):
     def __init__(self):
         super(WriteBuiltin, self).__init__('write',
                                            input=InputStreamSchema('any', optional=False),
-                                           parseargs='shglob',
                                            options=[['-a', '--append'],['-p', '--pickle']],                                           
                                            threaded=True)
 

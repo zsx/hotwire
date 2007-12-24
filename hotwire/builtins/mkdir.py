@@ -32,7 +32,6 @@ class MkdirBuiltin(FileOpBuiltin):
     __doc__ = _("""Create directories.""")
     def __init__(self):
         super(MkdirBuiltin, self).__init__('mkdir',
-                                           parseargs='shglob',
                                            hasstatus=True,
                                            threaded=True)
 

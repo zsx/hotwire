@@ -40,18 +40,20 @@ class CdBuiltin(Builtin):
     def __init__(self):
         super(CdBuiltin, self).__init__('cd',
                                         output=FilePath,
-                                        parseargs='str',
                                         idempotent=True,
                                         threaded=True)
 
     def get_completer(self, context, args, i):
         return CdCompleter()
 
-    def execute(self, context, dir=None):
-        if not dir:
+    def execute(self, context, args):
+        if len(args) > 1:
+            raise ValueError(_('Multiple directories specified'))
+        
+        if not args:
             target_dir = os.path.expanduser("~")
         else:
-            target_dir = dir
+            target_dir = args[0]
         new_dir = context.hotwire.chdir(target_dir)
         for result in BuiltinRegistry.getInstance()['ls'].execute(context, [new_dir]):
             yield result

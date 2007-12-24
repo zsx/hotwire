@@ -31,7 +31,6 @@ class MvBuiltin(FileOpBuiltin):
     __doc__ = _("""Rename initial arguments to destination.""")
     def __init__(self):
         super(MvBuiltin, self).__init__('mv', aliases=['move'],
-                                        parseargs='shglob',
                                         hasstatus=True,
                                         threaded=True)
 

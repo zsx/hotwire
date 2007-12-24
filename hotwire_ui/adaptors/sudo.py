@@ -29,7 +29,6 @@ class HotSudoBuiltin(Builtin):
     __doc__ =  _("""Run a command as root.""")
     def __init__(self):
         super(HotSudoBuiltin, self).__init__('sudo', nostatus=True,
-                                              parseargs='shglob',
                                               threaded=True)
 
     def execute(self, context, args, options=[]):

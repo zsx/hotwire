@@ -34,7 +34,6 @@ class LsBuiltin(Builtin):
         super(LsBuiltin, self).__init__('ls', aliases=['dir'],
                                         input=InputStreamSchema(str, optional=True),
                                         output=FilePath,
-                                        parseargs='shglob',
                                         idempotent=True,
                                         threaded=True,
                                         options=[['-l', '--long'],['-a', '--all']])

@@ -30,7 +30,6 @@ class CatBuiltin(Builtin):
     def __init__(self):
         super(CatBuiltin, self).__init__('cat',
                                          output=str, # 'any'
-                                         parseargs='shglob',
                                          idempotent=True,
                                          #options=[['-p', '--pickle'],],                                          
                                          threaded=True)

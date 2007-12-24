@@ -32,7 +32,6 @@ class RmBuiltin(FileOpBuiltin):
     __doc__ = _("""Move a file to the trash.""")
     def __init__(self):
         super(RmBuiltin, self).__init__('rm', aliases=['delete'],
-                                        parseargs='shglob',
                                         undoable=True,
                                         hasstatus=True,
                                         threaded=True)

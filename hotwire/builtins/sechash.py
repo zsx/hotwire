@@ -31,8 +31,7 @@ class SecHashBuiltin(Builtin):
     def __init__(self):
         super(SecHashBuiltin, self).__init__('sechash', idempotent=True,
                                              input=InputStreamSchema('any', optional=True),
-                                             output=str,
-                                             parseargs='shglob',                                             
+                                             output=str,                                           
                                              options=[['-5', '--md5'],],
                                              threaded=True)
 

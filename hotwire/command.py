@@ -240,25 +240,22 @@ class Command(gobject.GObject):
             return
         try:
             options = self.options
-            if self.builtin.get_parseargs() == 'shglob':
-                matched_files = []
-                oldlen = 0
-                for globarg_in in self.args:
-                    if isinstance(globarg_in, CommandArgument) and globarg_in.isquoted:
-                        globarg = globarg_in
-                        newlen = oldlen                    
-                    else:
-                        globarg = os.path.expanduser(globarg_in)
-                        matched_files.extend(hotwire.fs.dirglob(self.context.cwd, globarg))
-                        _logger.debug("glob on %s matched is: %s", globarg_in, matched_files) 
-                        newlen = len(matched_files)
-                    if oldlen == newlen:
-                        matched_files.append(globarg)
-                        newlen += 1
-                    oldlen = newlen    
-                target_args = [matched_files]
-            else:
-                target_args = self.args
+            matched_files = []
+            oldlen = 0
+            for globarg_in in self.args:
+                if isinstance(globarg_in, CommandArgument) and globarg_in.isquoted:
+                    globarg = globarg_in
+                    newlen = oldlen                    
+                else:
+                    globarg = os.path.expanduser(globarg_in)
+                    matched_files.extend(hotwire.fs.dirglob(self.context.cwd, globarg))
+                    _logger.debug("glob on %s matched is: %s", globarg_in, matched_files) 
+                    newlen = len(matched_files)
+                if oldlen == newlen:
+                    matched_files.append(globarg)
+                    newlen += 1
+                oldlen = newlen    
+            target_args = [matched_files]
             _logger.info("Execute '%s' args: %s options: %s", self.builtin, target_args, options)
             kwargs = {}
             if options:

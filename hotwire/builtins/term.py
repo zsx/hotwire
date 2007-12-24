@@ -25,7 +25,6 @@ class TermBuiltin(Builtin):
     __doc__ = _("""Execute a system command in a new terminal.""")
     def __init__(self):
         super(TermBuiltin, self).__init__('term', nostatus=True,
-                                          parseargs='str-shquoted',
                                           options=[['-w', '--window']])
 
     def execute(self, context, arg, options=[]):

@@ -497,7 +497,7 @@ for obj in curshell.get_current_output():
             if resolution_match:
                 if isinstance(resolution_match.target, Alias):
                     tokens = list(Pipeline.tokenize(resolution_match.target.target))                   
-                    return (BuiltinRegistry.getInstance()[tokens[0]], tokens[1:])               
+                    return (BuiltinRegistry.getInstance()[tokens[0].text], tokens[1:])               
                 elif isinstance(resolution_match.target, File):
                     return (BuiltinRegistry.getInstance()['sys'], [resolution_match.target.path])
             return (None, None)

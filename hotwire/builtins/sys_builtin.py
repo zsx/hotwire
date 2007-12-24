@@ -67,7 +67,6 @@ class SysBuiltin(Builtin):
         super(SysBuiltin, self).__init__(name,
                                          input=InputStreamSchema(str, optional=True),
                                          output=OutputStreamSchema(str, opt_formats=['x-filedescriptor/special', 'text/chunked']),
-                                         parseargs='shglob',
                                          hasstatus=True,
                                          threaded=True)
 

@@ -31,7 +31,6 @@ class EditBuiltin(Builtin):
         super(EditBuiltin, self).__init__('edit',
                                           aliases=['ed'],
                                           nostatus=True,
-                                          parseargs='shglob',
                                           idempotent=True)
  
     def execute(self, context, args):

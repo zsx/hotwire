@@ -70,8 +70,7 @@ class KillBuiltin(Builtin):
             options.append(['-' + _sigvalue_to_sym[num][3:]])
         super(KillBuiltin, self).__init__('kill',
                                           nostatus=True,
-                                          options=options,
-                                          parseargs='shglob',                                        
+                                          options=options,                                     
                                           threaded=True)
         
     def get_completer(self, context, args, i):

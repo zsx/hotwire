@@ -30,7 +30,6 @@ class HelpBuiltin(Builtin):
     def __init__(self):
         super(HelpBuiltin, self).__init__('help',
                                           output=HelpItem,
-                                          parseargs='shglob',
                                           idempotent=True)
 
     def get_completer(self, context, args, i):
