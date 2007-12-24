@@ -40,7 +40,16 @@ class FilterBuiltin(Builtin):
                                             options=[['-i', '--ignore-case'],],
                                             threaded=True)
 
-    def execute(self, context, regexp, prop=None, options=[]):
+    def execute(self, context, args, options=[]):
+        if len(args) > 2:
+            raise ValueError(_("Too many arguments specified"))
+        if len(args) == 0:
+            raise ValueError(_("Too few arguments specified"))        
+        if len(args) == 2:
+            prop = args[1]
+        else:
+            prop = None
+        regexp = args[0]
         if prop and prop[-2:] == '()':
             target_prop = prop[:-2]
             is_func = True

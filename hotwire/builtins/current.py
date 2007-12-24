@@ -28,7 +28,7 @@ class CurrentBuiltin(Builtin):
                                              output=OutputStreamSchema('any', 
                                                                        typefunc=lambda hotwire: hotwire.get_current_output_type()))
 
-    def execute(self, context):
+    def execute(self, context, args):
         current = context.current_output
         if not current:
             return
