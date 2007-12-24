@@ -241,6 +241,7 @@ class UnicodeRenderer(ObjectsRenderer):
         self.__text.connect('event-after', self.__on_event_after)
         self._buf.connect('mark-set', self.__on_mark_set)
         self.__term = None
+        self.__bufcount = 0
         self.__wrap_lines = False
         self.__have_selection = False
         self.__sync_wrap()
@@ -412,18 +413,22 @@ class UnicodeRenderer(ObjectsRenderer):
         self.__term = term = VteTerminalScreen()
         w.add(term)
         import termios
-        attrs = termios.tcgetattr(src)
+        attrs = termios.tcgetattr(fd)
         attrs[1] = attrs[1] & (termios.ONLCR)
         attrs[3] = attrs[3] & (termios.ECHO)
-        termios.tcsetattr(src, termios.TCSANOW, attrs)                 
-        term.term.set_pty(src)
+        termios.tcsetattr(fd, termios.TCSANOW, attrs)                 
+        term.term.set_pty(fd)
+        # Undo our newline stripping
+        buf = buf.replace('\n', '\r\n')
         term.term.feed_child(buf)
         w.show_all()        
 
     def __on_fd(self, src, condition):
         if (condition & gobject.IO_IN):
             buf = os.read(src, 8192)
-            if (not self.__term) and buf.find('\x1b[') >= 0:
+            self.__bufcount += 1
+            # TODO: improve this further
+            if (not self.__term) and self.__bufcount < 3 and buf.find('\x1b[') >= 0:
                 self.__spawn_terminal(src, buf)
                 return False
             else:
