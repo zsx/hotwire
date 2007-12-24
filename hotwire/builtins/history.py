@@ -26,7 +26,7 @@ class HistoryBuiltin(Builtin):
         super(HistoryBuiltin, self).__init__('history',
                                              output=str)
 
-    def execute(self, context):
+    def execute(self, context, args):
         return context.hotwire.get_history()
     
 BuiltinRegistry.getInstance().register(HistoryBuiltin())

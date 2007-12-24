@@ -32,7 +32,10 @@ class PropBuiltin(Builtin):
                                           output='any',
                                           idempotent=True)
 
-    def execute(self, context, prop):
+    def execute(self, context, args):
+        if len(args) != 1:
+            raise ValueError(_("Must specify exactly one property name"))
+        prop = args[0]            
         if prop[-2:] == '()':
             target_prop = prop[:-2]
             is_func = True
