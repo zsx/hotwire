@@ -119,7 +119,7 @@ class SudoTerminalWidget(gtk.VBox):
 
 class SudoWindow(VteWindow):
     def __init__(self, **kwargs):
-        super(SudoWindow, self).__init__(title='HotSudo', icon_name='sudo', **kwargs)
+        super(SudoWindow, self).__init__(title='HotSudo', icon_name='hotwire-sudo', **kwargs)
         
         self.__default_args = ['su', '-']
         self.__ui_string = """

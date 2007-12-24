@@ -1,5 +1,7 @@
 include hotwire.desktop
 include COPYING
+include COPYING.UI
+include COPYING.API
 include hotwire.spec
 include images/*.png
 include images/*.gif

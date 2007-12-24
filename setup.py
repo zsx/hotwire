@@ -81,9 +81,10 @@ if 'py2exe' in sys.argv:
                                     'includes': 'cairo, pango, pangocairo, atk, gobject'}
                          }
 else:
-    kwargs['scripts'] = ['ui/hotwire', 'ui/hotwire-editor', 'ui/hotwire-mimeopen', 'ui/hotwire-runtty']
+    kwargs['scripts'] = ['ui/hotwire', 'ui/hotwire-editor', 'ui/hotwire-mimeopen', 'ui/hotwire-runtty',
+                         'hotapps/bin/hotwire-ssh', 'hotapps/bin/hotwire-sudo']
     kwargs['data_files'] = [('share/applications', ['hotwire.desktop']), 
-                            ('share/icons/hicolor/24x24/apps', ['images/hotwire.png']),
+                            ('share/icons/hicolor/24x24/apps', ['images/hotwire.png', 'images/hotwire-openssh.png', 'images/hotwire-sudo.png']),
                          # FIXME   #('share/icons/hicolor/22x22/apps', ['images/hotwire-22.png']),
                             ('share/hotwire/images', ['images/throbber.gif', 'images/throbber-done.gif'])]
     from DistUtilsExtra.command import *
