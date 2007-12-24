@@ -39,4 +39,4 @@ def rpm_completion(context, args, i):
     lastarg = args[i].text
     if lastarg.startswith('-q'):
         return RpmDbCompleter()
-SystemCompleters.getInstance()['rpm'] = rpm_completion 
+#SystemCompleters.getInstance()['rpm'] = rpm_completion 
