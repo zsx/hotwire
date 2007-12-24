@@ -78,7 +78,7 @@ elif is_windows():
     import hotwire.sysdep.proc_impl.proc_win32
     _module = hotwire.sysdep.proc_impl.proc_win32
 else:
-    raise NotImplementedError("No Process implemented for %s!" % (platform.system(),))
+    raise NotImplementedError("No Process implemented for %r" % (platform.system(),))
 
 _instance = None
 class ProcessManager(object):

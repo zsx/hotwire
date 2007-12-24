@@ -302,7 +302,7 @@ elif is_windows():
     import hotwire.sysdep.fs_impl.fs_win32
     _module = hotwire.sysdep.fs_impl.fs_win32
 else:
-    raise NotImplementedError("No Filesystem implemented for %s!" % (platform.system(),))
+    raise NotImplementedError("No Filesystem implemented for %r" % (platform.system(),))
 
 _instance = None
 class Filesystem(object):
