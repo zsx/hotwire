@@ -151,7 +151,7 @@ class BaseFilesystem(object):
     
 class FileStatError(Exception):
     def __init__(self, cause):
-        super(FileStatError, self).__init__()
+        Exception.__init__(self, str(cause))
         self.cause = cause
 
 class File(object):
