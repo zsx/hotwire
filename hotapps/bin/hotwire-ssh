@@ -18,12 +18,6 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 import sys, os
-if sys.version_info[0] < 2 or sys.version_info[1] < 5:
-    try:
-        os.execvp('python2.5', ['python2.5'] + sys.argv)
-    except OSError, e:
-        print >>sys.stderr, "Hotwire requires Python 2.5"
-        os._exit(1)
 
 from hotapps.hotssh.sshwindow import SshApp
 from hotvte.vtewindow import VteMain
