@@ -306,7 +306,7 @@ class UnicodeRenderer(ObjectsRenderer):
         self.__update_cursor_for_coords(x, y)
         
     def __on_mark_set(self, *args):
-        have_sel = self._buf.get_has_selection()
+        have_sel = not not self._buf.get_selection_bounds()
         if have_sel == self.__have_selection:
             return
         self.context.get_ui().get_action('/Menubar/EditMenu/EditMenuAdditions/Copy').set_sensitive(have_sel)
