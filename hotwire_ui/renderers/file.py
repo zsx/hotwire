@@ -171,13 +171,19 @@ class FilePathRenderer(TreeObjectsRenderer):
         obj = self._file_for_iter(model, iter)
         mime = obj.get_mime()
         cell.set_property('text', mime or '')
+        
+    @log_except(_logger)
+    def __handle_file_change(self, signal=None, sender=None):
+        fobj = sender
+        _logger.debug("got file change for %r", fobj)
+        self._signal_obj_changed(fobj, colidx=1)
 
     def _get_row(self, obj):
         if isinstance(obj, File):
             fobj = obj
         else:
             fobj = self.__fs.get_file(obj)
-        dispatcher.connect(log_except(_logger)(self._signal_obj_changed), sender=fobj)
+        dispatcher.connect(self.__handle_file_change, sender=fobj)
         return (fobj.path, fobj)
     
     def append_obj(self, obj, **kwargs):

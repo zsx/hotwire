@@ -221,6 +221,7 @@ class TreeObjectsRenderer(ObjectsRenderer):
 
     def _signal_obj_changed(self, obj, colidx=0):
         iter = self._findobj(obj, colidx=colidx)
+        assert iter
         _logger.debug("signaling change of %r", iter) 
         self._model.row_changed(self._model.get_path(iter), iter)
 

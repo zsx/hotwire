@@ -27,6 +27,7 @@ import gobject
 import hotwire
 from hotwire.fs import unix_basename, FilePath
 from hotwire.async import MiniThreadPool
+from hotwire.logutil import log_except
 from hotwire.sysdep import is_windows, is_unix
 import hotwire.sysdep.fs_impl
 from hotwire.externals.dispatch import dispatcher
@@ -155,6 +156,8 @@ class FileStatError(Exception):
         self.cause = cause
 
 class File(object):
+    """An extended crossplatform stat() container, essentially.  
+    Extra data retrieved includes symbolic link target (if applicable) and icon."""
     def __init__(self, path, fs=None):
         super(File, self).__init__()
         self.path = path
@@ -276,13 +279,15 @@ class File(object):
         else:
             self.icon = 'gtk-file'              
 
+    @log_except(_logger)
     def __get_stat_signal(self):
         self.get_stat_sync()
         gobject.idle_add(self.__idle_emit_changed, priority=gobject.PRIORITY_LOW)        
         
+    @log_except(_logger)
     def __idle_emit_changed(self):
-        _logger.debug("doing idle changed dispatch from %r", self)
-        dispatcher.sendExact(sender=self)
+        responses = dispatcher.send(sender=self)
+        _logger.debug("idle changed dispatch from %r, responses=%r", self, responses)
         
     def set_icon(self, icon):
         self.icon = icon
