@@ -102,13 +102,12 @@ class TreeObjectsRenderer(ObjectsRenderer):
         self._table = gtk.TreeView(self._model)
         #self._table.unset_flags(gtk.CAN_FOCUS)        
         self._table.get_selection().set_mode(gtk.SELECTION_MULTIPLE)
-        self._table.add_events(gtk.gdk.BUTTON_PRESS_MASK)        
+        self._table.add_events(gtk.gdk.BUTTON_PRESS_MASK)      
         self._table.connect("button-press-event", self.__on_button_press)        
         self._table.connect("row-activated", self.__on_row_activated)
         self._setup_view_columns()
         for col in self._table.get_columns():
             col.set_resizable(True)
-
         self.__selected_obj = None
 
     def __get_func_menuitems(self, iter):

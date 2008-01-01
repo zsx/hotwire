@@ -36,6 +36,14 @@ def unix_basename(path):
         path = path[:-_sep_len]
     return os.path.basename(path)
 
+def path_unabs(path, base):
+    """Convert path into a relative path using base as the base directory."""
+    if path.startswith(base):
+        if len(path) > len(base) and path[len(base)] == '/':
+            return path[len(base)+1:]
+        return path[len(base):]
+    return path
+
 path_fastnormalize = lambda x: x
 path_normalize = os.path.normpath
 path_expanduser = os.path.expanduser

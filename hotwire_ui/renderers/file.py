@@ -24,7 +24,7 @@ import gtk, gobject, pango
 import hotwire
 import hotwire_ui.widgets as hotwidgets
 from hotwire.command import Pipeline
-from hotwire.fs import FilePath, unix_basename
+from hotwire.fs import FilePath, unix_basename, path_unabs
 from hotwire_ui.render import TreeObjectsRenderer, ClassRendererMapping, menuitem
 from hotwire.sysdep.fs import Filesystem, File
 from hotwire.logutil import log_except
@@ -64,6 +64,18 @@ class FilePathRenderer(TreeObjectsRenderer):
         col.set_spacing(0)
         col.set_resizable(True)
         self._linkcolumns.append(col)
+        self._table.set_search_column(0)
+        self._table.set_search_equal_func(self.__path_search_equal)
+        
+    def __path_search_equal(self, model, column, key, iter):
+        fobj = self._file_for_iter(model, iter)
+        if self.__basedir:
+            target = path_unabs(fobj.path, self.__basedir)
+        else:
+            target = fobj.path
+        matches = (target.find(key) >= 0)
+        # return value intentionally reversed
+        return not matches
     
     def _setup_view_columns(self):
         self._setup_icon_path_columns()
@@ -119,7 +131,8 @@ class FilePathRenderer(TreeObjectsRenderer):
         obj = self._file_for_iter(model, iter)
         path = obj.path
         if self.__basedir:
-            text = unix_basename(path)
+            # Add one to strip leading /
+            text = path[len(self.__basedir)+1:]
         else:
             text = path
         cell.set_text(text)
