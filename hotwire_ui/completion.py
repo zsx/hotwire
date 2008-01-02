@@ -255,7 +255,7 @@ class MatchPopup(hotwidgets.TransientPopup):
         _logger.debug("row activated: %s", path)
         model = self.__view.get_model()
         iter = model.get_iter(path)
-        self.emit('item-selected', model.get_value(iter, 0))           
+        self.emit('item-selected', model.get_value(iter, 0))
 
 class MatchingHistoryView(MatchView):
     def __init__(self, *args, **kwargs):

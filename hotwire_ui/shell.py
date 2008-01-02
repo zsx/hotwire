@@ -39,6 +39,7 @@ from hotwire.state import History, Preferences
 from hotwire_ui.command import CommandExecutionDisplay,CommandExecutionControl
 from hotwire_ui.completion import CompletionStatusDisplay
 from hotwire_ui.prefs import PrefsWindow
+from hotwire_ui.dirswitch import DirSwitchWindow
 from hotwire.logutil import log_except
 
 _logger = logging.getLogger("hotwire.ui.Shell")
@@ -132,6 +133,8 @@ class Hotwire(gtk.VBox):
         <menuitem action='Forward'/>
         <separator/>        
         <menuitem action='Home'/>
+        <separator/>        
+        <menuitem action='DirSwitch'/>        
       </menu>
     </placeholder>
   </menubar>
@@ -142,6 +145,7 @@ class Hotwire(gtk.VBox):
             ('Back', 'gtk-go-back', _('Back'), '<alt>Left', _('Go to previous directory'), self.__back_cb),
             ('Forward', 'gtk-go-forward', _('Forward'), '<alt>Right', _('Go to next directory'), self.__forward_cb),
             ('Home', 'gtk-home', _('_Home'), '<alt>Home', _('Go to home directory'), self.__home_cb),
+            ('DirSwitch', None, _('Quick Switch'), '<alt>Down', _('Search for a directory'), self.__dirswitch_cb)
         ]
         self.__action_group = gtk.ActionGroup('HotwireActions')
         self.__action_group.add_actions(self.__actions)
@@ -323,6 +327,15 @@ for obj in curshell.get_current_output():
     def __up_cb(self, action):
         _logger.debug("up")
         self.execute_internal_str("cd ..")
+        
+    @log_except(_logger)
+    def __dirswitch_cb(self, action):
+        _logger.debug("doing dirswitch")
+        win = DirSwitchWindow()
+        dirpath = win.run_get_value()
+        if not dirpath:
+            return
+        self.internal_execute('cd', dirpath)
         
     def __do_recentdir_cd(self):
         model = self.__recentdirs.get_model()
