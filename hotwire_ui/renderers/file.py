@@ -16,7 +16,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-import os, stat, signal, datetime, logging
+import os, stat, signal, datetime, logging, subprocess
 from StringIO import StringIO
 
 import gtk, gobject, pango
@@ -27,6 +27,7 @@ from hotwire.command import Pipeline
 from hotwire.fs import FilePath, unix_basename, path_unabs
 from hotwire_ui.render import TreeObjectsRenderer, ClassRendererMapping, menuitem
 from hotwire.sysdep.fs import Filesystem, File
+from hotwire.sysdep.sysenv import SystemEnvironment, GnomeSystemEnvironment
 from hotwire.logutil import log_except
 from hotwire_ui.pixbufcache import PixbufCache
 from hotwire.util import format_file_size, quote_arg
@@ -211,16 +212,26 @@ class FilePathRenderer(TreeObjectsRenderer):
     def _get_menuitems(self, iter):
         fobj = self._file_for_iter(self._model, iter)
         items = self.__fs.get_file_menuitems(fobj, context=self.context)
-        items.append(gtk.SeparatorMenuItem())
+        if items:
+            items.append(gtk.SeparatorMenuItem())
         if fobj.is_directory():
-            menuitem = gtk.MenuItem(_('Open Folder in New Tab'))
+            menuitem = gtk.ImageMenuItem(_('Open Folder in New Tab'))
+            menuitem.set_property('image', gtk.image_new_from_stock('gtk-new', gtk.ICON_SIZE_MENU))
             menuitem.connect('activate', self.__on_new_tab_activated, fobj.path)
             items.append(menuitem)
-            menuitem = gtk.MenuItem(_('Open Folder in New Window'))
+            menuitem = gtk.ImageMenuItem(_('Open Folder in New Window'))
+            menuitem.set_property('image', gtk.image_new_from_stock('gtk-new', gtk.ICON_SIZE_MENU))            
             menuitem.connect('activate', self.__on_new_window_activated, fobj.path)
-            items.append(menuitem)            
+            items.append(menuitem)
+            sysenv = SystemEnvironment.getInstance()
+            if isinstance(sysenv, GnomeSystemEnvironment):
+                items.append(gtk.SeparatorMenuItem())
+                menuitem = gtk.MenuItem(_('Open with File Manager'))
+                menuitem.connect('activate', self.__on_file_manager_activated, ['nautilus', fobj.path])
+                items.append(menuitem)
             items.append(gtk.SeparatorMenuItem())
-        menuitem = gtk.MenuItem(_('Copy Path to Input'))
+        menuitem = gtk.ImageMenuItem(_('Copy Path to Input'))
+        menuitem.set_property('image', gtk.image_new_from_stock('gtk-copy', gtk.ICON_SIZE_MENU))
         menuitem.connect("activate", self.__on_copypath_activated, fobj.path)
         items.append(menuitem)
         return items
@@ -236,6 +247,9 @@ class FilePathRenderer(TreeObjectsRenderer):
         from hotwire_ui.shell import locate_current_window
         hwin = locate_current_window(self._table)
         hwin.new_win_hotwire(initcwd=path, initcmd='ls')
+        
+    def __on_file_manager_activated(self, menu, args):
+        subprocess.Popen(args)
         
     def __on_copypath_activated(self, menu, path):
         _logger.debug("got copypath for %s", path)

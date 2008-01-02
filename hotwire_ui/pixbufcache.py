@@ -18,7 +18,7 @@
 
 import os,sys,logging
 
-import gtk
+import gtk, gobject
 
 from hotwire.externals.singletonmixin import Singleton
 from hotwire.async import MiniThreadPool
@@ -48,16 +48,30 @@ class PixbufCache(Singleton):
         super(PixbufCache, self).__init__()
         self.__cache = {}
 
-    def get(self, path, size=24, animation=False):
+    def get(self, path, size=24, animation=False, trystock=False, stocksize=None):
+        if trystock:
+            pixbuf = self.get_stock(path, stocksize)
+            if pixbuf:
+                return pixbuf
         if not os.path.isabs(path):
             path = _find_in_datadir(path)
         if not path:
             return None        
-        if not self.__cache.has_key(path):
+        if not self.__cache.has_key((path, size)):
             pixbuf = self.__do_load(path, size, animation)
-            self.__cache[path] = pixbuf
-        return self.__cache[path]
-
+            self.__cache[(path, size)] = pixbuf
+        return self.__cache[(path, size)]
+    
+    def get_stock(self, name, stocksize):
+        if name.find(os.sep) >= 0:
+            name = os.path.basename(name)
+        (root, ext) = os.path.splitext(name)
+        theme = gtk.icon_theme_get_default()
+        try:
+            return theme.load_icon(name, stocksize, 0)
+        except gobject.GError, e:
+            return None
+        
     def __do_load(self, path, size, animation):
         f = open(path, 'rb')
         data = f.read()

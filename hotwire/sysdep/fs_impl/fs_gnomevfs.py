@@ -181,9 +181,13 @@ class GnomeVFSFilesystem(UnixFilesystem):
 
     def get_file_menuitems(self, file_obj, context=None):
         uri = gnomevfs.get_uri_from_local_path(file_obj.path)
-        vfsstat = gnomevfs.get_file_info(uri, gnomevfs.FILE_INFO_GET_MIME_TYPE)
-        apps = gnomevfs.mime_get_all_applications(vfsstat.mime_type)
-        textapp = gnomevfs.mime_get_default_application("text/plain")
+        if file_obj.is_directory(follow_link=True):
+            return []
+        else:
+            apps = gnomevfs.mime_get_all_applications(file_obj.get_mime())
+            textapp = gnomevfs.mime_get_default_application("text/plain")
+            if textapp in apps:
+                textapp = None
         menuitems = []
         pbcache = PixbufCache.getInstance()
         def add_menuitem(app):
@@ -195,17 +199,16 @@ class GnomeVFSFilesystem(UnixFilesystem):
                 iconpath = None
             menuitem = gtk.ImageMenuItem(_('Open with %s') % (app[1],))
             if iconpath:
-                pbuf = pbcache.get(iconpath)
+                pbuf = pbcache.get(iconpath, trystock=True, stocksize=gtk.ICON_SIZE_MENU)
                 img = gtk.image_new_from_pixbuf(pbuf)
                 menuitem.set_property('image', img)
             menuitem.connect("activate", self.__on_appmenu_activated, app, uri, context)
             menuitems.append(menuitem) 
         for app in apps:
             add_menuitem(app)
-        add_textapp = (not file_obj.is_directory(follow_link=True)) and (textapp not in apps)
-        if apps and add_textapp:
+        if apps and textapp:
             menuitems.append(gtk.SeparatorMenuItem())
-        if add_textapp:
+        if textapp:
             add_menuitem(textapp)
         return menuitems
 
