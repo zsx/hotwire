@@ -32,7 +32,7 @@ from hotwire.builtin import BuiltinRegistry
 from hotwire.cmdalias import Alias, AliasRegistry
 from hotwire.gutil import *
 from hotwire.util import markup_for_match, quote_arg
-from hotwire.fs import path_unexpanduser, path_expanduser, unix_basename
+from hotwire.fs import path_unexpanduser, path_expanduser, unix_basename, path_fromurl
 from hotwire.sysdep import is_unix
 from hotwire.sysdep.fs import File, Filesystem
 from hotwire.state import History, Preferences
@@ -41,6 +41,7 @@ from hotwire_ui.completion import CompletionStatusDisplay
 from hotwire_ui.prefs import PrefsWindow
 from hotwire_ui.dirswitch import DirSwitchWindow
 from hotwire.logutil import log_except
+from hotwire.externals.dispatch import dispatcher
 
 _logger = logging.getLogger("hotwire.ui.Shell")
 
@@ -131,10 +132,10 @@ class Hotwire(gtk.VBox):
         <menuitem action='Up'/>
         <menuitem action='Back'/>
         <menuitem action='Forward'/>
-        <separator/>        
+        <separator/>              
+        <menuitem action='DirSwitch'/>
+        <separator/>
         <menuitem action='Home'/>
-        <separator/>        
-        <menuitem action='DirSwitch'/>        
       </menu>
     </placeholder>
   </menubar>
@@ -156,6 +157,10 @@ class Hotwire(gtk.VBox):
         self.context.connect("cwd", self.__on_cwd)
 
         self.__cwd = self.context.get_cwd()
+        
+        bookmarks = Filesystem.getInstance().get_bookmarks()
+        dispatcher.connect(self.__handle_bookmark_change, sender=bookmarks)
+        gobject.idle_add(self.__sync_bookmarks)
 
         self.drag_dest_set(gtk.DEST_DEFAULT_MOTION | gtk.DEST_DEFAULT_HIGHLIGHT | gtk.DEST_DEFAULT_DROP,
                            [('text/uri-list', 0, 0)],
@@ -292,6 +297,31 @@ for obj in curshell.get_current_output():
             self.__msgline.set_text(msg)
         else:
             self.__msgline.set_markup(msg)
+            
+    def __handle_bookmark_change(self, signal=None, sender=None):
+        self.__sync_bookmarks()
+        
+    def __sync_bookmarks(self):
+        gomenu = self.__ui.get_widget('/Menubar/WidgetMenuAdditions/GoMenu/Home').get_parent()
+        removals = []
+        for child in gomenu:
+            if child.get_data('hotwire-dynmenu'):
+                removals.append(child)
+                
+        for removal in removals:
+            gomenu.remove(removal)
+            
+        for bookmark in Filesystem.getInstance().get_bookmarks():
+            bn = unix_basename(bookmark)
+            menuitem = gtk.ImageMenuItem(bn)
+            menuitem.set_data('hotwire-dynmenu', True)
+            menuitem.set_property('image', gtk.image_new_from_stock('gtk-directory', gtk.ICON_SIZE_MENU))
+            menuitem.connect('activate', self.__on_bookmark_activate, bookmark)
+            menuitem.show_all()
+            gomenu.append(menuitem)
+            
+    def __on_bookmark_activate(self, menu, bookmark):
+        self.internal_execute('cd', path_fromurl(bookmark))
 
     def __sync_cwd(self):
         max_recentdir_len = self.MAX_RECENTDIR_LEN

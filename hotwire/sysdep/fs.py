@@ -25,10 +25,11 @@ from cStringIO import StringIO
 import gobject
 
 import hotwire
-from hotwire.fs import unix_basename, FilePath
+from hotwire.fs import unix_basename, FilePath, path_expanduser
 from hotwire.async import MiniThreadPool
 from hotwire.logutil import log_except
 from hotwire.sysdep import is_windows, is_unix
+from hotwire.externals.singletonmixin import Singleton
 import hotwire.sysdep.fs_impl
 from hotwire.externals.dispatch import dispatcher
 
@@ -46,6 +47,9 @@ class BaseFilesystem(object):
     
     def get_monitor(self, path, cb):
         raise NotImplementedError()
+    
+    def get_bookmarks(self):
+        return BaseBookmarks.getInstance()
 
     def get_file(self, path):
         f = self.fileklass(path, fs=self)
@@ -294,6 +298,29 @@ class File(object):
         
     def set_icon_error(self, err):
         self.icon_error = err
+        
+class BaseBookmarks(Singleton):
+    def __init__(self):
+        self.__bookmarks_path = path_expanduser('~/.gtk-bookmarks')
+        try:
+            self.__monitor = Filesystem.getInstance().get_monitor(self.__bookmarks_path, self.__on_bookmarks_changed)
+        except NotImplementedError, e:
+            pass
+        self.__bookmarks = []
+        self.__read_bookmarks()
+        
+    def __on_bookmarks_changed(self, *args):
+        self.__read_bookmarks()
+        dispatcher.send(sender=self)
+        
+    def __read_bookmarks(self):
+        f = open(self.__bookmarks_path)
+        self.__bookmarks = map(lambda x: x.strip(), list(f))
+        f.close()
+        
+    def __iter__(self):
+        for b in self.__bookmarks:
+            yield b
 
 _module = None
 if is_unix():
