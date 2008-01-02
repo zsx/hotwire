@@ -56,12 +56,7 @@ class VteTerminal(gtk.VBox):
     </menu> -->
   </menubar>
 </ui>"""         
-        self.__actions = [
-            ('Copy', None, '_Copy', '<control><shift>C', 'Copy selected text', self.__copy_cb),
-            ('Paste', None, '_Paste', '<control><shift>V', 'Paste text', self.__paste_cb),
-        ]
-        self.__action_group = gtk.ActionGroup('TerminalActions')
-        self.__action_group.add_actions(self.__actions)
+
         self.__title = title
         self.__header = gtk.HBox()
         self.__msg = gtk.Label('')
@@ -86,8 +81,8 @@ class VteTerminal(gtk.VBox):
             termargs['initbuf'] = initbuf
         _logger.debug("creating term, cmd=%r", termargs['cmd'])
         self.__term = term = VteTerminalWidget(cwd=cwd, **termargs)
+        self.__action_group = term.get_action_group()        
         self.pack_start(self.__term, expand=True)
-        self.__term.get_vte().connect('selection-changed', self.__on_selection_changed)
         self.__term.connect('child-exited', self.__on_child_exited)
         self.__term.connect('fork-child', self.__on_fork_child)
          
@@ -95,18 +90,6 @@ class VteTerminal(gtk.VBox):
         
     def get_ui_pairs(self):
         return [(self.__ui_string, self.__action_group)]
-
-    def __on_selection_changed(self, *args):
-        have_selection = self.__term.get_vte().get_has_selection()
-        self.__action_group.get_action('Copy').set_sensitive(have_selection)
-
-    def __copy_cb(self, a):
-        _logger.debug("doing copy")
-        self.__term.get_vte().copy_clipboard()
-
-    def __paste_cb(self, a):
-        _logger.debug("doing paste")        
-        self.__term.get_vte().paste_clipboard()
         
     def __on_pref_changed(self, prefs, key, value):
         self.__sync_prefs()    
