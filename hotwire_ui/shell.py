@@ -146,7 +146,7 @@ class Hotwire(gtk.VBox):
             ('Back', 'gtk-go-back', _('Back'), '<alt>Left', _('Go to previous directory'), self.__back_cb),
             ('Forward', 'gtk-go-forward', _('Forward'), '<alt>Right', _('Go to next directory'), self.__forward_cb),
             ('Home', 'gtk-home', _('_Home'), '<alt>Home', _('Go to home directory'), self.__home_cb),
-            ('DirSwitch', None, _('Quick Switch'), '<alt>Down', _('Search for a directory'), self.__dirswitch_cb)
+            ('DirSwitch', 'gtk-find', _('Quick Switch'), '<alt>Down', _('Search for a directory'), self.__dirswitch_cb)
         ]
         self.__action_group = gtk.ActionGroup('HotwireActions')
         self.__action_group.add_actions(self.__actions)
