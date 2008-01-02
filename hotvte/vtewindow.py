@@ -171,16 +171,16 @@ class VteWindow(gtk.Window):
         self.__using_accels = True
         self.__ag = ag = gtk.ActionGroup('WindowActions')
         self.__actions = actions = [
-            ('FileMenu', None, 'File'),
-            ('DetachTab', None, '_Detach Tab', '<control><shift>D', 'Move tab into new window', self.__detach_cb),                       
-            ('Close', gtk.STOCK_CLOSE, '_Close', '<control><shift>W',
+            ('FileMenu', None, _('File')),
+            ('DetachTab', None, _('_Detach Tab'), '<control><shift>D', 'Move tab into new window', self.__detach_cb),                       
+            ('Close', gtk.STOCK_CLOSE, _('_Close'), '<control><shift>W',
              'Close the current tab', self.__close_cb),
-            ('EditMenu', None, 'Edit'),
-            ('Copy', None, '_Copy', '<control><shift>c', 'Copy selected text', self.__copy_cb),
-            ('Paste', None, '_Paste', '<control><shift>V', 'Paste text', self.__paste_cb),                   
-            ('ViewMenu', None, 'View'),
-            ('ToolsMenu', None, 'Tools'),                    
-            ('About', gtk.STOCK_ABOUT, '_About', None, 'About HotVTE', self.__help_about_cb),
+            ('EditMenu', None, _('Edit')),
+            ('Copy', 'gtk-copy', _('_Copy'), '<control><shift>C', 'Copy selected text', self.__copy_cb),
+            ('Paste', 'gtk-paste', _('_Paste'), '<control><shift>V', 'Paste text', self.__paste_cb),                   
+            ('ViewMenu', None, _('View')),
+            ('ToolsMenu', None, _('Tools')),                    
+            ('About', gtk.STOCK_ABOUT, _('_About'), None, 'About HotVTE', self.__help_about_cb),
             ]
         ag.add_actions(actions)
         self.__ui = gtk.UIManager()
@@ -435,6 +435,8 @@ class VteMain(object):
         _logger.debug("logging initialized")
 
         locale.setlocale(locale.LC_ALL, '')
+        import gettext
+        gettext.install('hotwire')        
     
         gobject.threads_init()
         
