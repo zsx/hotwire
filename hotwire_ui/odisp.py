@@ -22,6 +22,7 @@ import gtk, gobject
 
 from hotwire.command import CommandQueue
 from hotwire_ui.render import ClassRendererMapping, DefaultObjectsRenderer
+from hotwire.logutil import log_except
 import hotwire_ui.widgets as hotwidgets
 
 _logger = logging.getLogger("hotwire.ui.ODisp")
@@ -70,14 +71,20 @@ class ObjectsDisplay(gtk.VBox):
         self.emit('status-changed')
         self.do_autoscroll()
 
+    @log_except(_logger)
     def __on_keypress(self, e):
         if e.keyval in (gtk.gdk.keyval_from_name('s'), gtk.gdk.keyval_from_name('f')) and e.state & gtk.gdk.CONTROL_MASK:
             try:
-                self.start_search(None)
+                return self.start_search(None)
             except NotImplementedError, e:
                 pass
 
     def start_search(self, old_focus):
+        try:
+            self.__display.start_search()
+            return True
+        except NotImplementedError, e:
+            pass        
         if self.__search is None:
             self.__search = self.__display.get_search()
             if self.__search is not True:
@@ -87,6 +94,8 @@ class ObjectsDisplay(gtk.VBox):
         if self.__search is not True:
             self.__search.show_all()
             self.__search.focus()
+            return True
+        return False
 
     def __on_search_close(self, search):
         if self.__search is not True:

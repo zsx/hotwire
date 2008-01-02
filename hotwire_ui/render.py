@@ -76,6 +76,9 @@ class ObjectsRenderer(gobject.GObject):
     def get_objects(self):
         raise NotImplementedError()
 
+    def start_search(self):
+        raise NotImplementedError()
+
     def get_search(self):
         raise NotImplementedError()
     
@@ -129,10 +132,6 @@ class TreeObjectsRenderer(ObjectsRenderer):
         func(iter)
         self.context.push_msg('Execution of <b>%s</b> successful' % (gobject.markup_escape_text(func.func_name),),
                               markup=True)
-
-    def get_search(self):
-        res = gtk.bindings_activate(self._table, gtk.keysyms.f, gtk.gdk.CONTROL_MASK)
-        return True
 
     def get_widget(self):
         return self._table
@@ -284,7 +283,16 @@ class TreeObjectsRenderer(ObjectsRenderer):
         self._onclick_iter(iter)
         from hotwire_ui.shell import locate_current_shell
         hw = locate_current_shell(self._table)
-        hw.grab_focus()        
+        hw.grab_focus()
+        
+    def start_search(self):
+        if not self._table.get_enable_search():
+            _logger.debug("search not enabled")            
+            raise NotImplementedError()
+        _logger.debug("starting search")
+        self._table.grab_focus()         
+        self._table.emit('start-interactive-search')
+        return True
         
 class DefaultObjectsRenderer(TreeObjectsRenderer):
     pass
