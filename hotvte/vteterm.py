@@ -76,6 +76,13 @@ class VteTerminalWidget(gtk.VBox):
         
         self.pid = None
         self.exited = False
+        
+        self.__actions = [
+            ('Copy', 'gtk-copy', _('_Copy'), '<control><shift>C', _('Copy selected text'), self.__copy_cb),
+            ('Paste', 'gtk-paste', _('_Paste'), '<control><shift>V', _('Paste text'), self.__paste_cb),
+        ]
+        self.__action_group = gtk.ActionGroup('TerminalActions')
+        self.__action_group.add_actions(self.__actions)        
 
         # Various defaults
         self.__term.set_emulation('xterm')
@@ -105,7 +112,9 @@ class VteTerminalWidget(gtk.VBox):
         self.__match_http = self.__term.match_add("\\<(www|ftp)[" + _HOSTCHARS + "]*\\.["  + _HOSTCHARS + ".]+" + \
                                                   "(:[0-9]+)?(" + _URLPATH + ")?\\>/?")
         
-        self.__term.connect('button-press-event', self.__on_button_press)     
+        self.__term.connect('button-press-event', self.__on_button_press)
+        self.__term.connect('selection-changed', self.__on_selection_changed)
+        self.__on_selection_changed()
 
             # disable all this for now; the g-t default has an ugly foreground, let's just use
             # the theme.
@@ -154,24 +163,56 @@ class VteTerminalWidget(gtk.VBox):
         
     def __on_button_press(self, term, event):
         match = self.__term.match_check(int(event.x/term.get_char_width()), int(event.y/term.get_char_height()))
-        if not match:
-            return
-        (matchstr, mdata) = match
-        if event.state & gtk.gdk.CONTROL_MASK:
+        if event.button == 1 and event.state & gtk.gdk.CONTROL_MASK:
+            if not match:
+                return
+            (matchstr, mdata) = match            
             if mdata == self.__match_http:
                 url = 'http://' + matchstr
             else:
                 url = matchstr
-            # Older webbrowser.py didn't check gconf
-            if sys.version_info[0] == 2 and sys.version_info[1] < 6:
-                try:
-                    import hotwire.externals.webbrowser as webbrowser
-                except ImportError, e:
-                    _logger.warn("Couldn't import hotwire.externals.webbrowser", exc_info=True)
-                    import webbrowser
-            else:
-                import webbrowser            
-            webbrowser.open(url)
+            self.__open_url(url)
+            return True
+        elif event.button == 3:
+            menu = gtk.Menu()
+            menuitem = self.__action_group.get_action('Copy').create_menu_item()
+            menu.append(menuitem)
+            menuitem = self.__action_group.get_action('Paste').create_menu_item()
+            menu.append(menuitem)
+            if match:
+                (matchstr, mdata) = match
+                menuitem = gtk.ImageMenuItem(_('Open Link'))
+                menuitem.set_property('image', gtk.image_new_from_stock('gtk-go-to', gtk.ICON_SIZE_MENU))
+                menuitem.connect('activate', lambda menu: self.__open_url(url))
+                menu.append(gtk.SeparatorMenuItem())
+                menu.append(menuitem)
+            menu.popup(None, None, None, event.button, event.time)            
+            return True
+        return False             
+
+    def __open_url(self, url):
+        # Older webbrowser.py didn't check gconf
+        if sys.version_info[0] == 2 and sys.version_info[1] < 6:
+            try:
+                import hotwire.externals.webbrowser as webbrowser
+            except ImportError, e:
+                _logger.warn("Couldn't import hotwire.externals.webbrowser", exc_info=True)
+                import webbrowser
+        else:
+            import webbrowser            
+        webbrowser.open(url)        
+            
+    def __on_selection_changed(self, *args):
+        have_selection = self.__term.get_has_selection()
+        self.__action_group.get_action('Copy').set_sensitive(have_selection)
+
+    def __copy_cb(self, a):
+        _logger.debug("doing copy")
+        self.__term.copy_clipboard()
+
+    def __paste_cb(self, a):
+        _logger.debug("doing paste")        
+        self.__term.paste_clipboard()            
             
     def _on_child_exited(self, term):
         _logger.debug("Caught child exited")
@@ -180,6 +221,9 @@ class VteTerminalWidget(gtk.VBox):
    
     def get_vte(self):
         return self.__term
+    
+    def get_action_group(self):
+        return self.__action_group
     
     def __sync_colors(self):
         if self.__colors_default:
