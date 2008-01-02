@@ -44,6 +44,7 @@ class HelpItemRenderer(UnicodeRenderer):
         builtins.sort(lambda a,b: cmp(a.name, b.name))
         for builtin in builtins:
             self.__append_builtin_base_help(builtin)
+            self.__append_builtin_aliases(builtin)
             self.__append_builtin_arghelp(builtin)            
             self.__append_builtin_doc(builtin)
             
@@ -61,6 +62,14 @@ class HelpItemRenderer(UnicodeRenderer):
                                    gobject.markup_escape_text(str(builtin.get_input_type())),
                                    _('out'),
                                    gobject.markup_escape_text(str(builtin.get_output_type()))))
+        
+    def __append_builtin_aliases(self, builtin):
+        if not builtin.aliases:
+            return
+        self._buf.insert_markup('    Aliases: ')
+        names = ['<b>%s</b>' % (gobject.markup_escape_text(x),) for x in builtin.aliases]
+        self._buf.insert_markup(', '.join(names))
+        self._buf.insert_markup('\n')
 
     def __append_builtin_doc(self, builtin):
         if builtin.__doc__:
@@ -81,6 +90,7 @@ class HelpItemRenderer(UnicodeRenderer):
         for name in items:
             builtin = builtins[name]
             self.__append_builtin_base_help(builtin)
+            self.__append_builtin_aliases(builtin)
             self.__append_builtin_arghelp(builtin)
             self.__append_builtin_doc(builtin)
 
