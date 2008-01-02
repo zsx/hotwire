@@ -22,6 +22,7 @@ import gobject
 
 from hotwire_ui.render import ClassRendererMapping
 from hotwire_ui.renderers.unicode import UnicodeRenderer
+from hotwire.cmdalias import AliasRegistry
 from hotwire.builtin import BuiltinRegistry
 from hotwire.builtins.help import HelpItem
 from hotwire.version import __version__
@@ -45,6 +46,12 @@ class HelpItemRenderer(UnicodeRenderer):
             self.__append_builtin_base_help(builtin)
             self.__append_builtin_arghelp(builtin)            
             self.__append_builtin_doc(builtin)
+            
+        self._buf.insert_markup('\n\n<larger>%s:</larger>\n' % (_('Aliases'),))
+        aliases = list(AliasRegistry.getInstance())
+        aliases.sort(lambda a,b: cmp(a.name,b.name))
+        for alias in aliases:
+            self._buf.insert_markup('  <b>%s</b> - %s\n' % (alias.name, alias.target))
 
     def __append_builtin_base_help(self, builtin):
         self._buf.insert_markup('  <b>%s</b> - %s%s: <i>%s</i> %s: <i>%s</i>\n' \
