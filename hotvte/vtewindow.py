@@ -160,6 +160,11 @@ class VteWindow(gtk.Window):
              e.state & gtk.gdk.MOD1_MASK:
             self.__notebook.set_current_page(e.keyval-ord('0')-1) #extra -1 because tabs are 0-indexed
             return True
+        elif e.keyval == gtk.gdk.keyval_from_name('Return'):
+            widget = self.__notebook.get_nth_page(self.__notebook.get_current_page())        
+            if widget.get_exited():
+                self.__close_tab(widget)
+                return True
         return False        
         
     def __create_ui(self):

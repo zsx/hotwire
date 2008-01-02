@@ -105,7 +105,7 @@ class VteTerminalWidget(gtk.VBox):
         self.__match_http = self.__term.match_add("\\<(www|ftp)[" + _HOSTCHARS + "]*\\.["  + _HOSTCHARS + ".]+" + \
                                                   "(:[0-9]+)?(" + _URLPATH + ")?\\>/?")
         
-        self.__term.connect('button-press-event', self.__on_button_press)      
+        self.__term.connect('button-press-event', self.__on_button_press)     
 
             # disable all this for now; the g-t default has an ugly foreground, let's just use
             # the theme.

@@ -184,6 +184,9 @@ class SshTerminalWidget(gtk.VBox):
         self.__cmd_exited = True
         self.__msg.set_text('Connection terminated')
         
+    def get_exited(self):
+        return self.__cmd_exited        
+        
     def get_vte(self):
         return self.__term.get_vte()
         

@@ -108,6 +108,9 @@ class SudoTerminalWidget(gtk.VBox):
         self.__headerbox.pack_start(msg)
         self.__headerbox.show_all()
         
+    def get_exited(self):
+        return self.__term.exited
+        
     def get_vte(self):
         return self.__term.get_vte()
         
