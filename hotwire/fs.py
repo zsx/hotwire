@@ -20,7 +20,7 @@
 # THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import os, sys, fnmatch, stat, shutil, platform
-import posixpath, locale
+import posixpath, locale, urllib
 
 import hotwire
 from hotwire.async import MiniThreadPool
@@ -43,6 +43,12 @@ def path_unabs(path, base):
             return path[len(base)+1:]
         return path[len(base):]
     return path
+
+def path_fromurl(url):
+    """Return a local pathname from a file:// URL."""
+    if url.startswith('file://'):
+        url = url[7:]
+    return urllib.unquote(url)
 
 path_fastnormalize = lambda x: x
 path_normalize = os.path.normpath
