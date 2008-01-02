@@ -16,7 +16,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-import os,sys
+import os,sys,logging
 
 # Older webbrowser.py didn't check gconf
 if sys.version_info[0] == 2 and sys.version_info[1] < 6:
@@ -29,8 +29,11 @@ import gtk, gobject, pango
 import hotwire
 from hotwire.sysdep import is_unix, is_windows
 from hotwire.text import MarkupText
+from hotwire.logutil import log_except
 import hotwire_ui.widgets as hotwidgets
 from hotwire_ui.render import ObjectsRenderer, ClassRendererMapping
+
+_logger = logging.getLogger("hotwire.ui.render.Unicode")
 
 class SearchArea(gtk.HBox):
     __gsignals__ = {
@@ -414,20 +417,22 @@ class UnicodeRenderer(ObjectsRenderer):
         self._buf.insert(self._buf.get_end_iter(), '\n')
 
     def __spawn_terminal(self, fd, buf):
-        w = gtk.Window(gtk.WINDOW_TOPLEVEL)
-        from hotvte.vteterm import VteTerminalScreen
-        self.__term = term = VteTerminalScreen()
-        w.add(term)
+        # Undo terminal mode changes from sh.py
         import termios
         attrs = termios.tcgetattr(fd)
-        attrs[1] = attrs[1] & (termios.ONLCR)
-        termios.tcsetattr(fd, termios.TCSANOW, attrs)                 
-        term.term.set_pty(fd)
-        # Undo our newline stripping
-        buf = buf.replace('\n', '\r\n')
-        term.term.feed_child(buf)
-        w.show_all()        
+        attrs[1] = attrs[1] | (termios.ONLCR)
+        termios.tcsetattr(fd, termios.TCSANOW, attrs) 
+        buf = buf.replace('\n', '\r\n')        
+                
+        from hotwire_ui.shell import locate_current_window
+        title = 'FIXME title'
+        hotwin = locate_current_window(self.__text)
+        from hotwire.sysdep.term import Terminal
+        term = Terminal.getInstance().get_terminal_widget_ptyfd(None, fd, title, initbuf=buf)
+        hotwin.new_win_widget(term, title)
+        self._buf.insert_markup('\n\n<b>(%s)</b>' % (_('Entered Terminal Compatibility Mode'),))
 
+    @log_except(_logger)
     def __on_fd(self, src, condition):
         if (condition & gobject.IO_IN):
             buf = os.read(src, 8192)

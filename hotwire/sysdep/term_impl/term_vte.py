@@ -31,13 +31,16 @@ _logger = logging.getLogger("hotwire.sysdep.VteTerminal")
 
 class VteTerminalFactory(object):
     def get_terminal_widget_cmd(self, cwd, cmd, title):
-        return VteTerminal(cwd=cwd, cmd=cmd, title=title)        
+        return VteTerminal(cwd=cwd, cmd=cmd, title=title)
+    
+    def get_terminal_widget_ptyfd(self, cwd, ptyfd, title, initbuf=None):
+        return VteTerminal(cwd=cwd, ptyfd=ptyfd, title=title, initbuf=initbuf)       
 
 class VteTerminal(gtk.VBox):
     __gsignals__ = {
         "closed" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, ()),
     }
-    def __init__(self, cwd=None, cmd=None, title=''):
+    def __init__(self, cwd=None, cmd=None, title='', ptyfd=None, initbuf=None):
         super(VteTerminal, self).__init__()
         self.__ui_string = """
 <ui>
@@ -54,7 +57,7 @@ class VteTerminal(gtk.VBox):
   </menubar>
 </ui>"""         
         self.__actions = [
-            ('Copy', None, '_Copy', '<control><shift>c', 'Copy selected text', self.__copy_cb),
+            ('Copy', None, '_Copy', '<control><shift>C', 'Copy selected text', self.__copy_cb),
             ('Paste', None, '_Paste', '<control><shift>V', 'Paste text', self.__paste_cb),
         ]
         self.__action_group = gtk.ActionGroup('TerminalActions')
@@ -77,6 +80,10 @@ class VteTerminal(gtk.VBox):
             termargs['cmd'] = ['/bin/sh', '-c', cmd]
         else:
             termargs['cmd'] = cmd
+        if ptyfd is not None:
+            termargs['ptyfd'] = ptyfd
+        if initbuf is not None:
+            termargs['initbuf'] = initbuf
         _logger.debug("creating term, cmd=%r", termargs['cmd'])
         self.__term = term = VteTerminalWidget(cwd=cwd, **termargs)
         self.pack_start(self.__term, expand=True)
@@ -126,7 +133,8 @@ class VteTerminal(gtk.VBox):
         
     def _set_pid(self, pid):
         self.__pid = pid
-        self.__msg.set_text('Running (pid %s)' % (pid,))
+        if pid is not None:
+            self.__msg.set_text('Running (pid %s)' % (pid,))
 
     def __on_child_exited(self, term):
         _logger.debug("Caught child exited")

@@ -67,7 +67,7 @@ class VteTerminalWidget(gtk.VBox):
         "child-exited" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, ()),
         "fork-child" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, ()),        
     }    
-    def __init__(self, cwd=None, cmd=None, **kwargs):
+    def __init__(self, cwd=None, cmd=None, ptyfd=None, initbuf=None, **kwargs):
         super(VteTerminalWidget, self).__init__()
         
         self.__screen = screen = VteTerminalScreen()
@@ -123,23 +123,32 @@ class VteTerminalWidget(gtk.VBox):
 #            gconf_client.notify_add(bg_key, on_color_change)
 #            on_color_change()            
 
-        # http://code.google.com/p/hotwire-shell/issues/detail?id=35
-        # We do the command in an idle to hopefully have more state set up by then;
-        # For example, "top" seems to be sized correctly on the first display
-        # this way
-        gobject.timeout_add(250, self.__idle_do_cmd_fork, cmd, cwd)
+        if ptyfd is not None:
+            # If we have a PTY, set it up immediately
+            self.__idle_do_cmd_fork(None, cwd, ptyfd, initbuf)
+        else:
+            # http://code.google.com/p/hotwire-shell/issues/detail?id=35
+            # We do the command in an idle to hopefully have more state set up by then;
+            # For example, "top" seems to be sized correctly on the first display
+            # this way            
+            gobject.timeout_add(250, self.__idle_do_cmd_fork, cmd, cwd, ptyfd, initbuf)
             
-    def __idle_do_cmd_fork(self, cmd, cwd):
+    def __idle_do_cmd_fork(self, cmd, cwd, ptyfd, initbuf):
         _logger.debug("Forking cmd: %s", cmd)
         self.__term.connect("child-exited", self._on_child_exited)
         if cwd:
             kwargs = {'directory': cwd}
         else:
             kwargs = {}
-        if cmd:
+        if ptyfd:
+            self.__term.set_pty(ptyfd)
+            pid = None
+        elif cmd:
             pid = self.__term.fork_command(cmd[0], cmd, **kwargs)
         else:
             pid = self.__term.fork_command(**kwargs)
+        if initbuf is not None:
+            self.__term.feed(initbuf)            
         self.pid = pid
         self.emit('fork-child')
         
