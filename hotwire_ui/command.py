@@ -304,10 +304,14 @@ class CommandExecutionHeader(gtk.VBox):
             return True
         elif (not self.__overview_mode) and e.button in (1,3):
             menu = gtk.Menu()
-            for action in ['Cancel', 'Undo', 'RemovePipeline', 'UndoRemovePipeline']:
-                menuitem = self.__context.get_ui().get_action('/Menubar/WidgetMenuAdditions/ControlMenu/' + action).create_menu_item()
-                menuitem.show_all()
-                menu.append(menuitem)
+            def makemenu(name):
+                return self.__context.get_ui().get_action('/Menubar/WidgetMenuAdditions/ControlMenu/' + action).create_menu_item()                
+            for action in ['Cancel', 'Undo']:
+                menu.append(makemenu(action))
+            menu.append(gtk.SeparatorMenuItem())
+            for action in ['RemovePipeline', 'UndoRemovePipeline']:
+                menu.append(makemenu(action))
+            menu.show_all()            
             menu.popup(None, None, None, e.button, e.time)                
             return True
         return False
