@@ -27,7 +27,7 @@ class PyBuiltin(Builtin):
         super(PyBuiltin, self).__init__('py', 
                                         nostatus=True)
 
-    def execute(self, context):
+    def execute(self, context, args):
         context.hotwire.open_pyshell()
         return []
         
