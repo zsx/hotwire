@@ -115,7 +115,7 @@ class MatchView(gtk.VBox):
         self.set_total(nchildren)
             
     def set_total(self, total):
-        self.__label.set_markup('%s - <b>%d</b> total' % \
+        self.__label.set_markup(' %s - <b>%d</b> total ' % \
                                 (gobject.markup_escape_text(self.__title),
                                  total))
 
