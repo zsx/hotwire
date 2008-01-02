@@ -193,7 +193,7 @@ class GnomeVFSFilesystem(UnixFilesystem):
                 iconpath = desktop.get_icon(self.__itheme)
             else:
                 iconpath = None
-            menuitem = gtk.ImageMenuItem('Open with %s' % (app[1],))
+            menuitem = gtk.ImageMenuItem(_('Open with %s') % (app[1],))
             if iconpath:
                 pbuf = pbcache.get(iconpath)
                 img = gtk.image_new_from_pixbuf(pbuf)
