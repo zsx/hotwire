@@ -490,8 +490,8 @@ class PipelineRunTests(PipelineRunTestFramework):
         p.execute_sync()
         results = list(p.get_output())
         self.assertEquals(len(results), 2)
-        self.assertEquals(results[0], '22596363b3de40b06f981fb85d82312e8c0ed511')
-        self.assertEquals(results[1], '84b5d4093c8ffaf2eca0feaf014a53b9f41d28ed')
+        self.assertEquals(results[0], '2aae6c35c94fcfb415dbe95f408b9ce91ee846ed')
+        self.assertEquals(results[1], 'd8d4c749ea2cbdc7c8469367d1601509d4a213ef')
               
 
 def suite():

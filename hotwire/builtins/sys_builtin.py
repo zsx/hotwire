@@ -229,7 +229,7 @@ class SysBuiltin(Builtin):
             else:
                 stdin_stream = subproc.stdin
             # FIXME hack - need to rework input streaming                
-            if context.input_is_first:
+            if context.input_is_first and hasattr(context.input, 'connect'):
                 context.attribs['input_connected'] = True
                 context.input.connect(self.__on_input, stdin_stream)
             else:

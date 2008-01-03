@@ -139,6 +139,26 @@ class CommandQueue(IterableQueue):
             
     def cancel(self):
         self.put(None)
+        
+class CommandFileQueue(object):
+    """Implements command queue protocol, yielding lines from a file."""
+    def __init__(self, f):
+        self.__f = f
+        
+    def negotiate(self, out_fmts, in_fmts):
+        pass
+        
+    def __iter__(self):
+        for line in self.__f:
+            yield line[:-1]
+        self.__f.close()
+        self.__f = None
+        
+    def cancel(self):
+        if self.__f is None:
+            return
+        self.__f.close()
+        self.__f = None
 
 class CommandAuxStream(object):
     def __init__(self, command, schema):
@@ -264,7 +284,7 @@ class Command(gobject.GObject):
                 kwargs['out_opt_format'] = self.output.opt_type
             if self.in_redir:
                 _logger.debug("input redirected, opening %s", self.in_redir)
-                self.context.input = open(self.in_redir, 'r')
+                self.context.input = CommandFileQueue(open(self.in_redir, 'r'))
             if self.out_redir:
                 _logger.debug("output redirected, opening %s", self.out_redir)
                 outfile = open(self.out_redir, self.out_append and 'a+' or 'w')

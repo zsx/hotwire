@@ -24,7 +24,7 @@ import os,sys,time
 import hotwire
 from hotwire.command import *
 from hotwire.test_command import PipelineRunTestFramework
-from hotwire.fs import unix_basename
+from hotwire.fs import unix_basename, path_join
 
 class PipelineRunTestsUnix(PipelineRunTestFramework):
     def testSh(self):
@@ -81,3 +81,17 @@ class PipelineRunTestsUnix(PipelineRunTestFramework):
         p.cancel()
         results = list(p.get_output())
         self.assertEquals(len(results), 0)
+
+    def testRedir1(self):
+        self._setupTree2()
+        outpath = path_join(self._tmpd, 'redirtest.txt')
+        f= open(outpath, 'w')
+        testdata = 'hello world\nhow are you?\n'
+        f.write(testdata)
+        f.close()
+        p = Pipeline.parse("sys cat < redirtest.txt > same_redirtest.txt", self._context)
+        p.execute_sync()
+        newoutpath = path_join(self._tmpd, 'same_redirtest.txt')
+        self.assertEquals(os.access(newoutpath, os.R_OK), True)
+        same_testdata = open(newoutpath).read()
+        self.assertEquals(same_testdata, testdata)
