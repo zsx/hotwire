@@ -459,7 +459,9 @@ class UnicodeRenderer(ObjectsRenderer):
             return False
         import termios
         attrs = termios.tcgetattr(self.__term_fd)
-        return (attrs[3] & (termios.ECHO)) == 0      
+        echoflag = attrs[3] & (termios.ECHO)
+        _logger.debug("echo flag is %s", echoflag) 
+        return echoflag == 0      
 
     def get_autoscroll(self):
         return True
