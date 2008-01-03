@@ -74,6 +74,7 @@ class HotSshBuiltin(Builtin):
         return OpenSshKnownHostCompleter()
 
     def execute(self, context, args, options=[]):
+        # TODO replace this with SysBuiltin
         argv = ['hotwire-ssh']
         argv.extend(args)
         newenv = dict(os.environ)

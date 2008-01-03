@@ -197,6 +197,13 @@ class SysBuiltin(Builtin):
             subproc_args['universal_newlines'] = True
         elif is_unix():
             subproc_args['close_fds'] = True
+            
+            # Support startup notification
+            if context.gtk_event_time:
+                env = dict(os.environ)
+                env['DESKTOP_STARTUP_ID'] = 'hotwire%d_TIME%d' % (os.getpid(), context.gtk_event_time,)
+                subproc_args['env'] = env
+            
             def preexec():
                 os.setsid()                        
                 if using_pty_out and hasattr(termios, 'TIOCSCTTY'):
