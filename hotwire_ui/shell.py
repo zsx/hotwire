@@ -553,6 +553,7 @@ for obj in curshell.get_current_output():
                    (unix_basename(text) == unix_basename(target.path) or fs.path_inexact_executable_match(completion.matchbase)):
                     resolution_match = completion
                     break
+            _logger.debug("resolution match is %s", resolution_match)                
             if resolution_match:
                 if isinstance(resolution_match.target, Alias):
                     tokens = list(Pipeline.tokenize(resolution_match.target.target))                   
@@ -585,6 +586,7 @@ for obj in curshell.get_current_output():
 
     def __on_completions_loaded(self, compls):
         assert self.__completion_async_blocking
+        _logger.debug("completions loaded")        
         self.__insert_completion()
 
     def __do_completion(self):
@@ -805,6 +807,7 @@ for obj in curshell.get_current_output():
             prev_token = verb.text
             cmdargs = cmd[1:]
             cmdlen = len(cmdargs)
+            _logger.debug("not in verb, examining %d tokens for %r", cmdlen, verbcmd)
             for i,token in enumerate(cmdargs):
                 if not ((pos >= token.start) and (pos <= token.end)) and not (i == cmdlen-1):
                     _logger.debug("skipping token (%s %s) out of %d: %s ", token.start, token.end, pos, token.text)
@@ -814,6 +817,7 @@ for obj in curshell.get_current_output():
                 self.__completion_token = token
                 break
             if not self.__completion_token:
+                _logger.debug("no completion token found, position at end")
                 self.__completion_token = hotwire.command.ParsedToken('', start=pos)              
             completer = verbcmd.builtin.get_completer(self.context, cmd, i)
             if not completer:
@@ -823,6 +827,7 @@ for obj in curshell.get_current_output():
                 else:
                     completer = self.__token_completer
         self.__completer = completer
+        _logger.debug("generating completions from token: %r completer: %r", self.__completion_token, self.__completer)
         if self.__completer:
             self.__completions.set_completion(completer, self.__completion_token.text, self.context)
         else:
