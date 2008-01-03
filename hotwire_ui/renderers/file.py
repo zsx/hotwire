@@ -132,8 +132,12 @@ class FilePathRenderer(TreeObjectsRenderer):
         obj = self._file_for_iter(model, iter)
         path = obj.path
         if self.__basedir:
-            # Add one to strip leading /
-            text = path[len(self.__basedir)+1:]
+            # Strip leading / unless we're in root
+            if len(self.__basedir) > 1:
+                offset = 1
+            else:
+                offset = 0 
+            text = path[len(self.__basedir)+offset:]
         else:
             text = path
         cell.set_text(text)
@@ -192,11 +196,17 @@ class FilePathRenderer(TreeObjectsRenderer):
         if self.__basedir is not False:
             bn,fn = os.path.split(row[1].path)
             if self.__basedir is None:
+                _logger.debug("using basedir %s", bn)
                 self.__basedir = bn
-            elif bn == self.__basedir:
+                for row in self._model:
+                    self._model.row_changed(row.path, row.iter)
+            elif bn.startswith(self.__basedir):
                 pass
             else:
+                _logger.debug("basedir %s does not match %s", self.__basedir, bn)                
                 self.__basedir = False
+                for row in self._model:
+                    self._model.row_changed(row.path, row.iter)                
         self._model.append(row)
 
     def _onclick_iter(self, iter):
