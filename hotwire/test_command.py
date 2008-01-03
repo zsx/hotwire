@@ -114,6 +114,11 @@ class PipelineParserTests(unittest.TestCase):
         self.assertEquals(len(pt), 3)
         self.assertEquals(pt[2].text, 'Ω')
         self.assertEquals(pt[2].quoted, True)
+        
+    def testBracket1(self):
+        pt = list(Pipeline.tokenize('echo f>bar{baz}', self._context))
+        self.assertEquals(len(pt), 4)
+        self.assertEquals(pt[3].text, 'bar{baz}')        
 
 class PipelineInstantiateTests(unittest.TestCase):
     def setUp(self):
