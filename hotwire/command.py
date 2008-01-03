@@ -586,7 +586,7 @@ class Pipeline(gobject.GObject):
             utext = unicode(text, 'utf-8')
         countstream = CountingStream(StringIO(utext))
         parser = shlex.shlex(countstream, posix=True)
-        parser.wordchars += '-_*/~.=:+@,[]{}'
+        parser.wordchars += './[]{}~!@$%^&*()-_=+:;'
         return (countstream, parser)
 
     @staticmethod

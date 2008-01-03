@@ -118,7 +118,22 @@ class PipelineParserTests(unittest.TestCase):
     def testBracket1(self):
         pt = list(Pipeline.tokenize('echo f>bar{baz}', self._context))
         self.assertEquals(len(pt), 4)
-        self.assertEquals(pt[3].text, 'bar{baz}')        
+        self.assertEquals(pt[3].text, 'bar{baz}')
+        
+    def testParens1(self):
+        pt = list(Pipeline.tokenize('echo foo(bar)', self._context))
+        self.assertEquals(len(pt), 2)
+        self.assertEquals(pt[1].text, 'foo(bar)')
+        
+    def testDollar1(self):
+        pt = list(Pipeline.tokenize('echo $foo', self._context))
+        self.assertEquals(len(pt), 2)
+        self.assertEquals(pt[1].text, '$foo')  
+        
+    def testAt1(self):
+        pt = list(Pipeline.tokenize('echo foo@bar', self._context))
+        self.assertEquals(len(pt), 2)
+        self.assertEquals(pt[1].text, 'foo@bar')
 
 class PipelineInstantiateTests(unittest.TestCase):
     def setUp(self):
