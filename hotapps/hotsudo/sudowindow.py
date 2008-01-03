@@ -103,7 +103,7 @@ class SudoTerminalWidget(gtk.VBox):
         
     def __on_child_exited(self, term):
         _logger.debug("disconnected")
-        msg = gtk.Label('Command exited')
+        msg = gtk.Label(_('Command exited (Enter to close)'))
         msg.set_alignment(0.0, 0.5)
         self.__headerbox.pack_start(msg)
         self.__headerbox.show_all()
