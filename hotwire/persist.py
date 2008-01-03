@@ -27,7 +27,7 @@ import hotwire
 from hotwire.externals.singletonmixin import Singleton
 from hotwire.async import MiniThreadPool
 from hotwire.sysdep.fs import Filesystem
-from hotwire.util import atomic_rename
+from hotwire.fs import atomic_rename
 
 _logger = logging.getLogger("hotwire.Persist")
 

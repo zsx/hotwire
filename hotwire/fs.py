@@ -25,6 +25,7 @@ import posixpath, locale, urllib
 import hotwire
 from hotwire.async import MiniThreadPool
 from hotwire.externals.glob2 import iglob
+from hotwire.sysdep import is_windows, is_unix
 
 def dirglob(dir, pat):
     for result in iglob(pat, dir):
@@ -49,6 +50,10 @@ def path_fromurl(url):
     if url.startswith('file://'):
         url = url[7:]
     return urllib.unquote(url)
+
+def path_tourl(path):
+    """Return a file:// URL for a pathname."""
+    return 'file://' + urllib.quote(path)
 
 path_fastnormalize = lambda x: x
 path_normalize = os.path.normpath
@@ -133,3 +138,9 @@ def iterd(dpath, fpath=False):
 def iterd_sorted(dpath, **kwargs):
     for v in sorted(iterd(dpath, **kwargs), locale.strcoll):
         yield v
+
+def atomic_rename(oldp, newp):
+    if is_windows():
+        if os.access(newp, os.R_OK):
+            os.unlink(newp)
+    os.rename(oldp, newp)

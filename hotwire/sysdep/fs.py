@@ -19,13 +19,13 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR 
 # THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import os,sys,shutil,stat,platform,logging
+import os,sys,shutil,stat,platform,logging,tempfile
 from cStringIO import StringIO
 
 import gobject
 
 import hotwire
-from hotwire.fs import unix_basename, FilePath, path_expanduser
+from hotwire.fs import unix_basename, FilePath, path_expanduser, path_fromurl, path_tourl, atomic_rename
 from hotwire.async import MiniThreadPool
 from hotwire.logutil import log_except
 from hotwire.sysdep import is_windows, is_unix
@@ -309,13 +309,28 @@ class BaseBookmarks(Singleton):
         self.__bookmarks = []
         self.__read_bookmarks()
         
+    def add(self, path):
+        if path in self.__bookmarks:
+            return
+        self.__bookmarks.append(path) 
+        (bdir, bname) = os.path.split(self.__bookmarks_path)
+        (fd, temppath) = tempfile.mkstemp('.tmp', bname, bdir)
+        f = os.fdopen(fd, 'w')
+        for mark in self.__bookmarks:
+            f.write(path_tourl(mark))
+            f.write('\n')
+        f.close()
+        atomic_rename(temppath, self.__bookmarks_path)  
+        # Might as well signal now             
+        dispatcher.send(sender=self)
+        
     def __on_bookmarks_changed(self, *args):
         self.__read_bookmarks()
         dispatcher.send(sender=self)
         
     def __read_bookmarks(self):
         f = open(self.__bookmarks_path)
-        self.__bookmarks = map(lambda x: x.strip(), list(f))
+        self.__bookmarks = map(lambda x: path_fromurl(x).strip(), list(f))
         f.close()
         
     def __iter__(self):

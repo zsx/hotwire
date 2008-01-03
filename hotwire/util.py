@@ -23,7 +23,6 @@ import os, sys, traceback, shlex, string, platform
 import fnmatch, commands
 
 import gobject
-from hotwire.sysdep import is_windows, is_unix
 
 try:
     import threadframe
@@ -99,8 +98,3 @@ def quote_arg(arg):
 def quote_shell_arg(cmd):
   return commands.mkarg(cmd)
 
-def atomic_rename(oldp, newp):
-    if is_windows():
-        if os.access(newp, os.R_OK):
-            os.unlink(newp)
-    os.rename(oldp, newp)

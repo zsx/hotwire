@@ -135,6 +135,8 @@ class Hotwire(gtk.VBox):
         <separator/>              
         <menuitem action='DirSwitch'/>
         <separator/>
+        <menuitem action='AddBookmark'/>
+        <separator/>
         <menuitem action='Home'/>
       </menu>
     </placeholder>
@@ -145,6 +147,7 @@ class Hotwire(gtk.VBox):
             ('Up', 'gtk-go-up', _('Up'), '<alt>Up', _('Go to parent directory'), self.__up_cb),
             ('Back', 'gtk-go-back', _('Back'), '<alt>Left', _('Go to previous directory'), self.__back_cb),
             ('Forward', 'gtk-go-forward', _('Forward'), '<alt>Right', _('Go to next directory'), self.__forward_cb),
+            ('AddBookmark', None, _('Add Bookmark'), '<alt><shift>B', _('Set a bookmark at this directory'), self.__add_bookmark_cb),
             ('Home', 'gtk-home', _('_Home'), '<alt>Home', _('Go to home directory'), self.__home_cb),
             ('DirSwitch', 'gtk-find', _('Quick Switch'), '<alt>Down', _('Search for a directory'), self.__dirswitch_cb)
         ]
@@ -298,6 +301,10 @@ for obj in curshell.get_current_output():
         else:
             self.__msgline.set_markup(msg)
             
+    def __add_bookmark_cb(self, action):
+        bookmarks = Filesystem.getInstance().get_bookmarks()
+        bookmarks.add(self.__cwd)
+            
     def __handle_bookmark_change(self, signal=None, sender=None):
         self.__sync_bookmarks()
         
@@ -321,7 +328,7 @@ for obj in curshell.get_current_output():
             gomenu.append(menuitem)
             
     def __on_bookmark_activate(self, menu, bookmark):
-        self.internal_execute('cd', path_fromurl(bookmark))
+        self.internal_execute('cd', bookmark)
 
     def __sync_cwd(self):
         max_recentdir_len = self.MAX_RECENTDIR_LEN
@@ -353,6 +360,8 @@ for obj in curshell.get_current_output():
         self.__action_group.get_action('Forward').set_sensitive(idx is not None and idx > 0)
         n_total = self.__recentdirs.get_model().iter_n_children(None)
         self.__action_group.get_action('Back').set_sensitive((idx is None and n_total > 1) or (idx is not None and idx < n_total-1))
+        bookmarkable = self.__cwd != path_expanduser("~") and self.__cwd not in Filesystem.getInstance().get_bookmarks()
+        self.__action_group.get_action('AddBookmark').set_sensitive(bookmarkable)
 
     def __up_cb(self, action):
         _logger.debug("up")
@@ -372,7 +381,7 @@ for obj in curshell.get_current_output():
         iter = model.iter_nth_child(None, self.__recentdir_navigation_index)
         path = path_expanduser(model.get_value(iter, 0))
         self.__doing_recentdir_navigation = True
-        self.internal_execute('cd ', path)            
+        self.internal_execute('cd', path)            
 
     def __back_cb(self, action):
         _logger.debug("back")
