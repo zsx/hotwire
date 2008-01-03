@@ -701,26 +701,34 @@ class Pipeline(gobject.GObject):
                 _logger.error("unknown in parse stream: %r", builtin_token)
                 assert False
                 
+            # We maintain the set of all tokens we processed in the command so that the completion system can use them.
+            alltokens = [builtin_token]
+            cmdargs = map(forcetoken, cmdargs)            
+            alltokens.extend(cmdargs)
+                
             in_redir = None
             out_redir = None
 
             # Pull from the stream to get all the arguments
             while tokens:
-                cmdarg = pull_token()
+                cmdarg = forcetoken(pull_token())
                 if cmdarg == hotwire.script.PIPE:
                     break
                 elif cmdarg == hotwire.script.REDIR_IN:
                     if not tokens:
                         raise PipelineParseException(_('Must specify target for input redirection'))
-                    in_redir = pull_token().text
+                    in_redir_token = pull_token()
+                    in_redir = in_redir_token.text
+                    alltokens.append(in_redir_token)
                 elif cmdarg == hotwire.script.REDIR_OUT:
                     if not tokens:
-                        raise PipelineParseException(_('Must specify target for output redirection'))
-                    out_redir = pull_token().text                    
+                        raise PipelineParseException(_('Must specify target for output redirection'))                   
+                    out_redir_token = pull_token()
+                    out_redir = out_redir_token.text                     
+                    alltokens.append(out_redir_token)               
                 else:
-                    cmdargs.append(cmdarg)
-                    
-            cmdargs = map(forcetoken, cmdargs)                    
+                    alltokens.append(cmdarg)
+                    cmdargs.append(cmdarg)         
 
             builtin_opts = b.get_options()
             def arg_to_opts(arg):
@@ -752,7 +760,7 @@ class Pipeline(gobject.GObject):
                         expanded_cmdargs.append(token.text)
             cmdtokens = [builtin_token]
             cmdtokens.extend(cmdargs)
-            cmd = Command(b, expanded_cmdargs, options, context, tokens=cmdtokens, in_redir=in_redir, out_redir=out_redir)
+            cmd = Command(b, expanded_cmdargs, options, context, tokens=alltokens, in_redir=in_redir, out_redir=out_redir)
             components.append(cmd)
             if (not in_redir) and prev:
                 cmd.set_input(prev.output)
