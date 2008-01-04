@@ -449,6 +449,9 @@ for obj in curshell.get_current_output():
     
     def grab_focus(self):
         self.__input.grab_focus()
+        
+    def completions_hide(self):
+        self.__completions.hide_all()
 
     def __update_status(self):
         self.emit("title", self.get_title())
@@ -1223,6 +1226,9 @@ along with Hotwire; if not, write to the Free Software Foundation, Inc.,
                 self.__old_char_width = cw
                 self.__old_char_height = ch
                 self.__old_geom_widget = widget
+        
+        if old_is_hw:
+            old_widget.completions_hide()
         
         self.__curtab_is_hotwire = is_hw
                 
