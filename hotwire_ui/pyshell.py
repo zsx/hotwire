@@ -25,7 +25,7 @@ from hotwire_ui.editor import HotEditorWindow
 _logger = logging.getLogger("hotwire.PyShell")
 
 class OutputWindow(gtk.Window):
-    def __init__(self, content):
+    def __init__(self, content, parent=None):
         super(OutputWindow, self).__init__(gtk.WINDOW_TOPLEVEL)
         vbox = gtk.VBox()
         self.add(vbox)
@@ -49,7 +49,9 @@ class OutputWindow(gtk.Window):
         scroll.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_ALWAYS)
         scroll.add(self.output_view)
         vbox.pack_start(scroll, True, True)
-        self.set_size_request(640, 480)        
+        if parent:
+            self.set_transient_for(parent)
+        self.set_size_request(640, 480)      
         
     def __create_ui(self):
         self.__actiongroup = ag = gtk.ActionGroup('OutputWindowActions')
@@ -70,6 +72,7 @@ class CommandShell(HotEditorWindow):
     DEFAULT_CONTENT = '''## Hotwire Python Pad
 ## Global values:
 ##   outln(val): (Function) Print a value and a newline to output stream
+##   inspect(val): (Function) Display object in visual object inspector
 ##   curshell(): (Function) Get current Hotwire object 
 ##   
 import os,sys,re
@@ -119,6 +122,11 @@ outln('''
         self.set_title('Hotwire Command Shell')
         self.input_view.modify_font(pango.FontDescription("monospace"))        
 
+    def __do_inspect(self, o):
+        from hotwire_ui.oinspect import InspectWindow
+        w = InspectWindow(o)
+        w.show_all()
+
     def __eval_cb(self, a):
         try:
             output_stream = StringIO.StringIO()
@@ -129,6 +137,7 @@ outln('''
                 locals[k] = v
             locals['output'] = output_stream
             locals['outln'] = lambda v: self.__outln(output_stream, v)
+            locals['inspect'] = self.__do_inspect
             exec code_obj in locals
             _logger.debug("execution complete with %d output characters" % (len(output_stream.getvalue())),)
             output_str = output_stream.getvalue()

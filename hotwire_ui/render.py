@@ -257,7 +257,8 @@ class TreeObjectsRenderer(ObjectsRenderer):
     
     def __on_inspect_activate(self, menuitem, o):
         from hotwire_ui.oinspect import InspectWindow
-        w = InspectWindow(o)
+        from hotwire_ui.shell import locate_current_window        
+        w = InspectWindow(o, parent=locate_current_window(self._table))
         w.show_all()
     
     def __get_object_menuitems(self, iter):
