@@ -199,8 +199,8 @@ class Command(gobject.GObject):
         self.map_fn = lambda x: x
         self.args = args
         self.options = options
-        self.in_redir = in_redir and FilePath(in_redir, self.context.cwd)
-        self.out_redir = out_redir and FilePath(out_redir, self.context.cwd)
+        self.in_redir = in_redir and FilePath(os.path.expanduser(in_redir), self.context.cwd)
+        self.out_redir = out_redir and FilePath(os.path.expanduser(out_redir), self.context.cwd)
         self.out_append = out_append
         self.__executing_sync = None
         self._cancelled = False
