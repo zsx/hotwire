@@ -654,6 +654,7 @@ for obj in curshell.get_current_output():
                 self.__do_completion()
             return True
         elif e.keyval == gtk.gdk.keyval_from_name('r') and e.state & gtk.gdk.CONTROL_MASK:
+            self.__do_parse()            
             if state is None:
                 if curtext:
                     self.__completions.popup_global_history()
