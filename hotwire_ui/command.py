@@ -404,7 +404,7 @@ class CommandExecutionControl(gtk.VBox):
   <menubar name='Menubar'>
     <menu action='FileMenu'>
       <placeholder name='FileDetachAdditions'>
-        <menuitem action='DetachCommand'/>
+        <menuitem action='DetachPipeline'/>
       </placeholder>
     </menu>
     <menu action='EditMenu'>
@@ -437,7 +437,7 @@ class CommandExecutionControl(gtk.VBox):
   <accelerator action='ScrollPgDown'/>  
 </ui>"""         
         self.__actions = [
-            ('DetachCommand', gtk.STOCK_JUMP_TO, _('Detach _Command'), '<control><shift>N', _('Create window from output'), self.__to_window_cb),                          
+            ('DetachPipeline', gtk.STOCK_JUMP_TO, _('Detach _Pipeline'), '<control><shift>N', _('Create window from output'), self.__to_window_cb),                          
             ('Copy', gtk.STOCK_COPY, _('_Copy'), '<control>c', _('Copy output'), self.__copy_cb),                          
             ('Cancel', gtk.STOCK_CANCEL, _('_Cancel'), '<control><shift>c', _('Cancel current command'), self.__cancel_cb),
             ('Undo', gtk.STOCK_UNDO, _('_Undo'), None, _('Undo current command'), self.__undo_cb),            
@@ -780,7 +780,7 @@ class CommandExecutionControl(gtk.VBox):
             
     def __sync_cmd_sensitivity(self, curpage=None):
         actions = map(self.__action_group.get_action, ['Copy', 'Cancel', 'PreviousCommand', 'NextCommand', 'Undo', 
-                                                       'Input', 'RemovePipeline', 'DetachCommand', 'UndoRemovePipeline'])
+                                                       'Input', 'RemovePipeline', 'DetachPipeline', 'UndoRemovePipeline'])
         if self.__history_visible:
             for action in actions:
                 action.set_sensitive(False)
