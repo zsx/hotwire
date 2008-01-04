@@ -98,3 +98,11 @@ def quote_arg(arg):
 def quote_shell_arg(cmd):
   return commands.mkarg(cmd)
 
+def ellipsize(buf, l):
+    """Return a possibly-truncated version of buf to maximum length l, adding
+    ellipsis if the string is truncated."""
+    if l < 4:
+        l = 4
+    if len(buf) >= l:
+        buf = buf[:l-3] + '...'
+    return buf

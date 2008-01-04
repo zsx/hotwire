@@ -254,6 +254,18 @@ class TreeObjectsRenderer(ObjectsRenderer):
         if potential_path is None:
             return None
         return potential_path
+    
+    def __on_inspect_activate(self, menuitem, o):
+        from hotwire_ui.oinspect import InspectWindow
+        w = InspectWindow(o)
+        w.show_all()
+    
+    def __get_object_menuitems(self, iter):
+        obj = self._model.get_value(iter, 0)        
+        menuitem = gtk.ImageMenuItem(_('Inspect Object'))
+        menuitem.set_property('image', gtk.image_new_from_stock('gtk-info', gtk.ICON_SIZE_MENU))
+        menuitem.connect('activate', self.__on_inspect_activate, obj)
+        return [menuitem]
 
     def __on_button_press(self, table, e):
         potential_path = self._get_path_at_pos_no_headers(int(e.x), int(e.y))
@@ -272,9 +284,12 @@ class TreeObjectsRenderer(ObjectsRenderer):
                 menu.append(menuitem)
                 have_menuitems = True
             if have_menuitems:
-                menu.show_all()
-                menu.popup(None, None, None, e.button, e.time)
-                return True
+                menu.append(gtk.SeparatorMenuItem())
+            for menuitem in self.__get_object_menuitems(iter):
+                menu.append(menuitem)
+            menu.show_all()
+            menu.popup(None, None, None, e.button, e.time)
+            return True
 
         return False
     
