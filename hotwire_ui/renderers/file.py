@@ -38,7 +38,7 @@ _logger = logging.getLogger("hotwire.ui.render.File")
 class FilePathRenderer(TreeObjectsRenderer):
     def __init__(self, *args, **kwargs):
         if not 'column_types' in kwargs.iterkeys():
-            kwargs['column_types'] = [gobject.TYPE_PYOBJECT, gobject.TYPE_PYOBJECT]
+            kwargs['column_types'] = [gobject.TYPE_PYOBJECT]
         self.__fs = Filesystem.getInstance()
         self.__basedir = None            
         super(FilePathRenderer, self).__init__(*args,
@@ -114,7 +114,7 @@ class FilePathRenderer(TreeObjectsRenderer):
         col.set_resizable(True)                
 
     def _file_for_iter(self, model, iter):
-        return model.get_value(iter, 1)
+        return model.get_value(iter, 0)
 
     def _render_icon(self, col, cell, model, iter):
         obj = self._file_for_iter(model, iter)
@@ -189,12 +189,12 @@ class FilePathRenderer(TreeObjectsRenderer):
         else:
             fobj = self.__fs.get_file(obj)
         dispatcher.connect(self.__handle_file_change, sender=fobj)
-        return (fobj.path, fobj)
+        return (fobj,)
     
     def append_obj(self, obj, **kwargs):
         row = self._get_row(obj)
         if self.__basedir is not False:
-            bn,fn = os.path.split(row[1].path)
+            bn,fn = os.path.split(row[0].path)
             if self.__basedir is None:
                 _logger.debug("using basedir %s", bn)
                 self.__basedir = bn

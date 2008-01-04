@@ -154,7 +154,8 @@ class SysBuiltin(Builtin):
         # (determined by text/chunked).
         
         using_pty_out = pty_available and (out_opt_format is not None)
-        using_pty_in = pty_available and context.input_is_first
+        # FIXME need in_opt_format
+        using_pty_in = pty_available and context.input_is_first and hasattr(context.input, 'connect')
         _logger.debug("using pty in: %s out: %s", using_pty_in, using_pty_out)
         # TODO - we need to rework things so that we allocate only one pty per pipeline.
         # In the very common case of exactly one command, this doesn't matter, but 

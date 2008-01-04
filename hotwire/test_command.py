@@ -331,10 +331,10 @@ class PipelineRunTests(PipelineRunTestFramework):
         results = list(p.get_output())
         results.sort()
         self.assertEquals(len(results), 2)
-        self.assertEquals(os.path.dirname(results[0]), self._tmpd)
-        self.assertEquals(unix_basename(results[0]), 'testdir')
-        self.assertEquals(os.path.dirname(results[1]), self._tmpd)
-        self.assertEquals(unix_basename(results[1]), 'testf')
+        self.assertEquals(os.path.dirname(results[0].path), self._tmpd)
+        self.assertEquals(unix_basename(results[0].path), 'testdir')
+        self.assertEquals(os.path.dirname(results[1].path), self._tmpd)
+        self.assertEquals(unix_basename(results[1].path), 'testf')
 
     def testLs2(self):
         p = Pipeline.parse("ls ~", self._context)
@@ -349,12 +349,12 @@ class PipelineRunTests(PipelineRunTestFramework):
 
     def testLs4(self):
         self._setupTree1()
-        p = Pipeline.parse("ls | filter spac", self._context)
+        p = Pipeline.parse("ls | filter spac path", self._context)
         p.execute_sync()
         results = list(p.get_output())
         self.assertEquals(len(results), 1)
-        self.assertEquals(os.path.dirname(results[0]), self._tmpd)
-        self.assertEquals(unix_basename(results[0]), 'dir with spaces')
+        self.assertEquals(os.path.dirname(results[0].path), self._tmpd)
+        self.assertEquals(unix_basename(results[0].path), 'dir with spaces')
 
     def testLs5(self):
         self._setupTree1()
@@ -391,7 +391,7 @@ class PipelineRunTests(PipelineRunTestFramework):
         p.execute_sync()
         results = list(p.get_output())
         self.assertEquals(len(results), 1)
-        self.assertEquals(results[0], bglobpath)
+        self.assertEquals(results[0].path, bglobpath)
         
     def testLs9(self):
         self._setupTree1()
@@ -400,8 +400,8 @@ class PipelineRunTests(PipelineRunTestFramework):
         results = list(p.get_output())
         results.sort()
         self.assertEquals(len(results), 1)
-        self.assertEquals(os.path.dirname(results[0]), self._tmpd)
-        self.assertEquals(unix_basename(results[0]), 'testf')                     
+        self.assertEquals(os.path.dirname(results[0].path), self._tmpd)
+        self.assertEquals(unix_basename(results[0].path), 'testf')                     
 
     def testLsQuoted(self):
         self._setupTree1()
@@ -471,7 +471,7 @@ class PipelineRunTests(PipelineRunTestFramework):
         
     def testRedir1(self):
         self._setupTree2()
-        p = Pipeline.parse("ls testdir2 > outtest.txt", self._context)
+        p = Pipeline.parse("ls testdir2 | prop path > outtest.txt", self._context)
         p.execute_sync()
         outpath = path_join(self._tmpd, 'outtest.txt')
         self.assertEquals(os.access(outpath, os.R_OK), True)

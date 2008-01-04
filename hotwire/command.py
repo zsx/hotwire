@@ -280,7 +280,7 @@ class Command(gobject.GObject):
             kwargs = {}
             if options:
                 kwargs['options'] = options
-            if self.output.opt_type:
+            if self.output.opt_type and not self.out_redir:
                 kwargs['out_opt_format'] = self.output.opt_type
             if self.in_redir:
                 _logger.debug("input redirected, opening %s", self.in_redir)

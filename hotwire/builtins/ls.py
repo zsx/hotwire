@@ -23,7 +23,7 @@ import os, os.path, stat, logging, locale
 
 from hotwire.builtin import Builtin, BuiltinRegistry, InputStreamSchema
 from hotwire.fs import FilePath,iterd_sorted
-from hotwire.sysdep.fs import Filesystem
+from hotwire.sysdep.fs import Filesystem,File
 from hotwire.util import xmap
 
 _logger = logging.getLogger("hotwire.builtins.ls")
@@ -33,7 +33,7 @@ class LsBuiltin(Builtin):
     def __init__(self):
         super(LsBuiltin, self).__init__('ls', aliases=['dir'],
                                         input=InputStreamSchema(str, optional=True),
-                                        output=FilePath,
+                                        output=File,
                                         idempotent=True,
                                         threaded=True,
                                         options=[['-l', '--long'],['-a', '--all']])
@@ -42,33 +42,30 @@ class LsBuiltin(Builtin):
         fs = Filesystem.getInstance()
         for x in iterd_sorted(dir):
             if show_all:
-                yield x
+                yield fs.get_file_sync(x)
             else:
                 bn = os.path.basename(x)
                 if not (fs.get_basename_is_ignored(bn)):
-                    yield x
+                    yield fs.get_file_sync(x)
 
     def execute(self, context, args, options=[]):
         show_all = '-a' in options
         long_fmt = '-l' in options
             
-        if len(args) in (0, 1):
-            if len(args) == 1:
-                arg0_path = FilePath(args[0], context.cwd)
-                stbuf = os.stat(arg0_path)
+        fs = Filesystem.getInstance()            
+            
+        if len(args) == 0:
+            generator = self.__ls_dir(context.cwd, show_all)
+        elif len(args) == 1:
+            path = FilePath(args[0], context.cwd)
+            fobj = fs.get_file_sync(path)
+            if fobj.is_directory():
+                generator = self.__ls_dir(path, show_all)
             else:
-                stbuf = None
-                arg0_path = None
-            if stbuf and stat.S_ISDIR(stbuf.st_mode):
-                dir = arg0_path
-            elif stbuf:
-                yield arg0_path
-                return
-            else:
-                dir = context.cwd
-            generator = self.__ls_dir(dir, show_all)
+                yield fobj
+                return      
         else:
-            generator = xmap(lambda arg: FilePath(arg, context.cwd), args)
+            generator = xmap(lambda arg: fs.get_file_sync(FilePath(arg, context.cwd)), args)
         for x in generator:
             yield x
 BuiltinRegistry.getInstance().register(LsBuiltin())
