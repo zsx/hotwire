@@ -287,7 +287,8 @@ import gtk, gobject
 for obj in curshell.get_current_output():
   ''' % (self.get_current_output_type(),)
         shell = hotwire_ui.pyshell.CommandShell({'curshell': self},
-                                                content=PYCMD_CONTENT)
+                                                content=PYCMD_CONTENT,
+                                                parent=locate_current_window(self))
         shell.set_icon_name('hotwire')        
         shell.set_title(_('Hotwire Python Command'))
         shell.show_all()  
@@ -1065,7 +1066,8 @@ class HotWindow(gtk.Window):
         if self.__pyshell:
             self.__pyshell.destroy()
         self.__pyshell = hotwire_ui.pyshell.CommandShell({'curshell': lambda: locate_current_shell(self)},
-                                                         savepath=os.path.join(Filesystem.getInstance().get_conf_dir(), 'pypad.py'))
+                                                         savepath=os.path.join(Filesystem.getInstance().get_conf_dir(), 'pypad.py'),
+                                                         parent=self)
         self.__pyshell.set_icon_name('hotwire')        
         self.__pyshell.set_title(_('Hotwire PyShell'))
         self.__pyshell.show_all()      
