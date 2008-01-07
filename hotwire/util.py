@@ -93,7 +93,9 @@ def tracefn(f):
 def quote_arg(arg):
     """Quote arg for processing by a shell.
     If arg would pass through unquoted, return unmodified arg."""
-    safechars = './~'
+    if not isinstance(arg, unicode):
+        arg = unicode(arg, 'utf-8')
+    safechars = './~_-+'
     safeonly = True
     safe_space_only = True
     for c in arg:
