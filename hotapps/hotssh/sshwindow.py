@@ -27,7 +27,60 @@ from hotvte.vteterm import VteTerminalWidget
 from hotvte.vtewindow import VteWindow
 from hotvte.vtewindow import VteApp
 
+from hotwire.externals.dispatch import dispatcher
+from hotwire_ui.quickfind import QuickFindWindow
+from hotwire.sshutil import OpenSSHKnownHosts
+
 _logger = logging.getLogger("hotssh.SshWindow")
+
+class ConnectDialog(gtk.Dialog):
+    def __init__(self, parent=None):
+        super(ConnectDialog, self).__init__(title=_("New SSH Connection"),
+                                            parent=parent,
+                                            flags=gtk.DIALOG_DESTROY_WITH_PARENT,
+                                            buttons=(gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL,
+                                                     _('Connect'), gtk.RESPONSE_ACCEPT))
+        
+        self.connect('response', lambda *args: self.hide())
+        self.connect('delete-event', self.hide_on_delete)
+                
+        self.set_has_separator(False)
+        self.set_border_width(5)
+        
+        self.__vbox = gtk.VBox()
+        self.vbox.add(self.__vbox)   
+        self.vbox.set_spacing(6)
+
+        self.__response_value = None
+   
+        self.__idle_search_id = 0
+   
+        self.__hosts = OpenSSHKnownHosts.getInstance()
+        dispatcher.connect(self.__reload_entry)
+   
+        self.__entry = gtk.combo_box_entry_new_text()
+        self.__entrycompletion = gtk.EntryCompletion()
+        self.__entrycompletion.set_model(self.__entry.get_property('model'))
+        self.__entrycompletion.set_text_column(0)     
+        self.__entry.child.set_completion(self.__entrycompletion)
+        self.__vbox.add(self.__entry)
+        self.__reload_entry()
+       
+    def __reload_entry(self, *args, **kwargs):
+        _logger.debug("reloading")
+        self.__entry.get_property('model').clear()
+        for host in self.__hosts.get_hosts():
+            self.__entry.append_text(host)
+            
+    def run_get_cmd(self):
+        self.show_all()        
+        resp = self.run()
+        if resp != gtk.RESPONSE_ACCEPT:
+            return None
+        active = self.__entry.get_active_text() 
+        if not active:
+            return None
+        return [active]
 
 _CONTROLPATH = None
 def get_controlpath():
@@ -208,15 +261,14 @@ class SshWindow(VteWindow):
   <menubar name='Menubar'>
     <menu action='FileMenu'>
       <placeholder name='FileAdditions'>
+        <menuitem action='NewConnection'/>
         <menuitem action='CopyConnection'/>    
         <menuitem action='OpenSFTP'/>
+        <separator/>
+        <menuitem action='Reconnect'/>
+        <separator/>        
       </placeholder>
     </menu>
-    <placeholder name='TermAppAdditions'>
-      <menu action='ConnectionMenu'>
-        <menuitem action='Reconnect'/>
-      </menu>
-    </placeholder>
   </menubar>
 </ui>
 """       
@@ -300,6 +352,8 @@ class SshWindow(VteWindow):
     def __merge_ssh_ui(self):
         self.__using_accels = True
         self.__actions = actions = [
+            ('NewConnection', gtk.STOCK_NEW, 'Connect to host', '<control><shift>C',
+             'Open a new SSH connection', self.__new_connection_cb),                                      
             ('CopyConnection', gtk.STOCK_NEW, 'New tab for connection', '<control><shift>t',
              'Open a new tab for the same remote computer', self.__copy_connection_cb),              
             ('OpenSFTP', gtk.STOCK_NEW, 'Open SFTP', '<control><shift>S',
@@ -317,6 +371,13 @@ class SshWindow(VteWindow):
         args = list(opts)
         args.append(host)
         self.new_tab(args, None)
+        
+    def __new_connection_cb(self, action):
+        win = ConnectDialog(parent=self)
+        sshargs = win.run_get_cmd()
+        if not sshargs:
+            return
+        self.new_tab(sshargs, None)
         
     def __open_sftp_cb(self, action):
         notebook = self._get_notebook()        

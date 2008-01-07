@@ -25,34 +25,7 @@ from hotwire.builtin import Builtin, BuiltinRegistry
 from hotwire.externals.singletonmixin import Singleton
 from hotwire.completion import Completer, Completion
 from hotwire.sysdep.fs import Filesystem
-
-class OpenSSHKnownHosts(Singleton):
-    def __init__(self):
-        self.__path = os.path.expanduser('~/.ssh/known_hosts')
-        self.__monitor = None
-        self.__hostcache = None
-        
-    def __on_hostchange(self):
-        try:
-            f = open(self.__path)
-        except:
-            _logger.debug("failed to open known hosts")
-        hosts = []
-        for line in f:
-            hostip,rest = line.split(' ', 1)
-            if hostip.find(',') > 0:
-                host = hostip.split(',', 1)[0]
-            else:
-                host = hostip
-            hosts.append(host)
-        self.__hostcache = hosts
-        
-    def get_hosts(self):
-        if self.__monitor is None:
-            self.__monitor = Filesystem.getInstance().get_monitor(self.__path, self.__on_hostchange)            
-        if self.__hostcache is None:
-            self.__on_hostchange()
-        return self.__hostcache            
+from hotwire.sshutil import OpenSSHKnownHosts       
         
 class OpenSshKnownHostCompleter(Completer):
     def __init__(self):
