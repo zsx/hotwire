@@ -74,7 +74,7 @@ def _mkfile_completion(text, fpath, fileobj=None):
         textbase = unix_basename(text)
     fobj = fileobj or fs.get_file_sync(fpath)
     startidx = fpath.rindex(fname)
-    suffix = fpath[startidx+len(textbase):]
+    suffix = quote_arg(unicode(fpath[startidx+len(textbase):], 'utf-8'))
     if fobj.is_directory(follow_link=True):
         suffix += '/'
     return Completion(suffix, fobj, fname)     
