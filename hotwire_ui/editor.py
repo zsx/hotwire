@@ -36,7 +36,7 @@ except ImportError, e:
     _logger.debug("gtksourceview not available")
 
 class HotEditorWindow(gtk.Window):
-    def __init__(self, filename=None, content=None, title=None):
+    def __init__(self, filename=None, content=None, title=None, parent=None):
         gtk.Window.__init__(self, type=gtk.WINDOW_TOPLEVEL)
         vbox = gtk.VBox()
         self.add(vbox)
@@ -113,6 +113,8 @@ class HotEditorWindow(gtk.Window):
 
         self.connect("delete-event", lambda w, e: False)
         self.set_title(title or (filename and self.__filename) or 'Untitled Editor')
+        if parent:
+            self.set_transient_for(parent)
         self.set_size_request(640, 480)
 
     def __idle_save_text(self):

@@ -79,8 +79,8 @@ import os,sys,re
 import gtk, gobject
 
 outln('''
-    def __init__(self, locals={}, savepath=None, content=None):
-        super(CommandShell, self).__init__(content=(content or self.DEFAULT_CONTENT), filename=savepath)
+    def __init__(self, locals={}, savepath=None, content=None, parent=None):
+        super(CommandShell, self).__init__(content=(content or self.DEFAULT_CONTENT), filename=savepath, parent=parent)
         self._locals = locals
         self.__ui_string = """
 <ui>
@@ -142,11 +142,11 @@ outln('''
             _logger.debug("execution complete with %d output characters" % (len(output_stream.getvalue())),)
             output_str = output_stream.getvalue()
             if output_str:
-                owin = OutputWindow(output_str)
+                owin = OutputWindow(output_str, parent=self)
                 owin.show_all()
         except:
             _logger.debug("caught exception executing", exc_info=True)
-            owin = OutputWindow(traceback.format_exc())
+            owin = OutputWindow(traceback.format_exc(), parent=self)
             owin.show_all()
             
     def __reset_cb(self, a):

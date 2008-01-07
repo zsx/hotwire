@@ -159,4 +159,27 @@ class CompletionTests(unittest.TestCase):
         self.assertEquals(result.results[0].target.path, path_join(self._tmpd, '.bar'))
         self.assertEquals(result.results[0].suffix, '.bar')        
         self.assertEquals(result.results[2].target.path, path_join(self._tmpd, '.foo'))
-        self.assertEquals(result.results[2].suffix, '.foo')        
+        self.assertEquals(result.results[2].suffix, '.foo')
+        
+    def testSafechar1(self):
+        self._setupTree1()
+        bpath = path_join(self._tmpd, 'bar_foo')
+        f=open(bpath, 'w')
+        f.write('hi')
+        f.close()              
+        result = self.cc.sync_complete(self.pc, 'ba', self._tmpd)
+        self.assertEquals(len(result.results), 1)
+        self.assertEquals(result.common_prefix, None)
+        self.assertEquals(result.results[0].target.path, bpath)
+        self.assertEquals(result.results[0].suffix, 'r_foo')
+        
+    def testSafechar2(self):
+        self._setupTree1()
+        bpath = path_join(self._tmpd, 'bar+')
+        os.mkdir(bpath)    
+        result = self.cc.sync_complete(self.pc, 'ba', self._tmpd)
+        self.assertEquals(len(result.results), 1)
+        self.assertEquals(result.common_prefix, None)
+        self.assertEquals(result.results[0].target.path, bpath)
+        self.assertEquals(result.results[0].suffix, 'r+/')
+                  

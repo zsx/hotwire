@@ -167,10 +167,10 @@ class SysBuiltin(Builtin):
             # control the buffering used by subprocesses.
             (master_fd, slave_fd) = pty.openpty()
                       
+            # Set the terminal to not do any processing; if you changet this, you'll also
+            # need to update unicode.py most likely.
             attrs = termios.tcgetattr(master_fd)
-            # We should probably move more terminal logic into renderers/unicode.py,
-            # but for now ensure that lines end in \n, not \r\n.
-            attrs[1] = attrs[1] & (~termios.ONLCR)
+            attrs[1] = attrs[1] & (~termios.OPOST)
             termios.tcsetattr(master_fd, termios.TCSANOW, attrs)            
             
             _logger.debug("allocated pty fds %d %d", master_fd, slave_fd)
