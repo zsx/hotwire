@@ -21,6 +21,7 @@
 
 import os, sys, traceback, shlex, string, platform
 import fnmatch, commands
+import unicodedata
 
 import gobject
 
@@ -90,9 +91,22 @@ def tracefn(f):
     return _do_trace
 
 def quote_arg(arg):
-    if arg.find(' ') >= 0 or arg.find("'") >= 0:
-        return quote_shell_arg(arg)
-    return arg
+    """Quote arg for processing by a shell.
+    If arg would pass through unquoted, return unmodified arg."""
+    safechars = './~'
+    safeonly = True
+    safe_space_only = True
+    for c in arg:
+        ccat = unicodedata.category(c)
+        if ccat[0] not in ('L', 'N') and c not in safechars:
+            safeonly = False
+            if c != ' ':
+                safe_space_only = False
+    if safeonly:
+        return arg
+    if safe_space_only:
+        return arg.replace(' ', '\\ ')
+    return quote_shell_arg(arg)
 
 # FIXME - is this right?
 def quote_shell_arg(cmd):
