@@ -141,6 +141,11 @@ class ObjectsDisplay(gtk.VBox):
             for obj in self.__display.get_objects():
                 yield obj
             
+    def get_selected_objects(self):
+        if self.__display:
+            for obj in self.__display.get_selected_objects():
+                yield obj
+            
     def get_output_type(self):
         return self.__output_type
                 
@@ -244,6 +249,10 @@ class MultiObjectsDisplay(gtk.Notebook):
     def get_objects(self):
         for obj in self.__default_odisp.get_objects():
             yield obj
+        
+    def get_selected_objects(self):
+        for obj in self.__default_odisp.get_selected_objects():
+            yield obj        
 
     def append_ostream(self, otype, name, queue, merged):
         label = name or ''

@@ -77,6 +77,9 @@ class HotwireClientContext(hotwire.command.HotwireContext):
 
     def get_current_output(self):
         return self.__hotwire.get_current_output()
+    
+    def get_current_selected_output(self):
+        return self.__hotwire.get_current_selected_output()    
 
     def get_history(self):
         # FIXME arbitrary limit
@@ -429,7 +432,13 @@ for obj in curshell.get_current_output():
         odisp = self.__outputs.get_current()
         if not odisp:
             return None
-        return odisp.get_objects()        
+        return odisp.get_objects()
+    
+    def get_current_selected_output(self):
+        odisp = self.__outputs.get_current()
+        if not odisp:
+            return None
+        return odisp.get_selected_objects()          
     
     def do_copy_url_drag_to_dir(self, urls, path):
         def fstrip(url):

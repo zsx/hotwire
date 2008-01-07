@@ -75,6 +75,9 @@ class ObjectsRenderer(gobject.GObject):
 
     def get_objects(self):
         raise NotImplementedError()
+    
+    def get_selected_objects(self):
+        raise NotImplementedError()    
 
     def start_search(self):
         raise NotImplementedError()
@@ -142,6 +145,11 @@ class TreeObjectsRenderer(ObjectsRenderer):
             val = self._model.get_value(iter, 0)
             yield val
             iter = self._model.iter_next(iter)
+            
+    def get_selected_objects(self):
+        (model, rows) = self._table.get_selection().get_selected_rows()
+        for row in rows:
+            yield model[row][0]
 
     def _create_model(self, column_types):
         return gtk.ListStore(*column_types)

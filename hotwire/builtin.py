@@ -199,6 +199,7 @@ def load():
     import hotwire.builtins.py
     import hotwire.builtins.rm
     import hotwire.builtins.sechash
+    import hotwire.builtins.selection    
     import hotwire.builtins.setenv
     import hotwire.builtins.sys_builtin    
     import hotwire.builtins.term

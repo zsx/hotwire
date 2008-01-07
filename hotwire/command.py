@@ -72,6 +72,9 @@ class HotwireContext(gobject.GObject):
     
     def get_current_output(self):
         return None
+    
+    def get_current_selected_output(self):
+        return None
 
 class CommandContext(object):
     """An execution snapshot for a Command.  Holds the working directory
@@ -87,7 +90,8 @@ class CommandContext(object):
         # currently displayed output when executing a new command.
         # We should be sure this isn't creating circular references.
         self.current_output_type = hotwire.get_current_output_type()
-        self.current_output = hotwire.get_current_output()        
+        self.current_output = hotwire.get_current_output()
+        self.selected_output = hotwire.get_current_selected_output()
         self.hotwire = hotwire
         self.__auxstreams = {}
         self.__metadata_handler = None
