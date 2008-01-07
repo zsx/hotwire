@@ -23,6 +23,7 @@ import gtk, gobject, pango
 from hotwire.state import Preferences
 from hotwire.logutil import log_except
 import hotwire_ui.widgets as hotwidgets
+from hotwire_ui.pixbufcache import PixbufCache
 from hotwire.state import History
 from hotwire.util import markup_for_match
 
@@ -59,6 +60,9 @@ class QuickFindWindow(gtk.Dialog):
         self.__scroll.set_policy(gtk.POLICY_NEVER, gtk.POLICY_AUTOMATIC)
         self.__results = gtk.TreeView()
         self.__scroll.add(self.__results)
+        colidx = self.__results.insert_column_with_data_func(-1, '',
+                                                             gtk.CellRendererPixbuf(),
+                                                             self.__render_icon)
         colidx = self.__results.insert_column_with_data_func(-1, '',
                                                              hotwidgets.CellRendererText(ellipsize=True),
                                                              self.__render_match)        
@@ -99,7 +103,7 @@ class QuickFindWindow(gtk.Dialog):
     def __do_search(self):
         text = self.__entry.get_property('text')
         results = self._do_search(text)
-        model = gtk.ListStore(gobject.TYPE_PYOBJECT, gobject.TYPE_PYOBJECT)
+        model = gtk.ListStore(gobject.TYPE_PYOBJECT, gobject.TYPE_PYOBJECT, gobject.TYPE_PYOBJECT)
         have_results = False
         for result in results:
             have_results = True
@@ -162,6 +166,17 @@ class QuickFindWindow(gtk.Dialog):
         else:
             cell.set_property('text', model.get_value(iter, 0))    
     
+    def __render_icon(self, col, cell, model, iter):
+        icon_name = model.get_value(iter, 2)
+        if icon_name:
+            if icon_name.startswith(os.sep):
+                pixbuf = PixbufCache.getInstance().get(icon_name)
+                cell.set_property('pixbuf', pixbuf)
+            else:
+                cell.set_property('icon-name', icon_name)
+        else:
+            cell.set_property('icon-name', None)    
+    
     def get_response_value(self):
         return self.__response_value
         
@@ -190,4 +205,4 @@ class DirSwitchWindow(QuickFindWindow):
                 markup = markup_for_match(v, idx, idx+len(text))
             else:
                 markup = None        
-            yield (v, markup)
+            yield (v, markup, 'gtk-directory')
