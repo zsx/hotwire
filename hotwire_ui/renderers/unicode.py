@@ -417,11 +417,12 @@ class UnicodeRenderer(ObjectsRenderer):
         self._buf.insert(self._buf.get_end_iter(), '\n')
 
     def __spawn_terminal(self, fd, buf):
-        # Undo terminal mode changes from sh.py
+        # Undo terminal mode changes from sys_builtin.py
         import termios
         attrs = termios.tcgetattr(fd)
-        attrs[1] = attrs[1] | (termios.ONLCR)
-        termios.tcsetattr(fd, termios.TCSANOW, attrs) 
+        # If you change this, be sure to update sys_builtin.py
+        attrs[1] = attrs[1] | (termios.OPOST)
+        termios.tcsetattr(fd, termios.TCSANOW, attrs)
         buf = buf.replace('\n', '\r\n')        
                 
         from hotwire_ui.shell import locate_current_window
