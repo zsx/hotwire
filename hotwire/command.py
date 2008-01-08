@@ -82,6 +82,7 @@ class CommandContext(object):
     the execution context."""
     def __init__(self, hotwire):
         self.input = None
+        self.input_type = None
         self.input_is_first = False
         self.pipeline = None
         self.cwd = hotwire.get_cwd()
@@ -190,7 +191,8 @@ class Command(gobject.GObject):
         "exception" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (gobject.TYPE_PYOBJECT,)),
     }
 
-    def __init__(self, builtin, args, options, hotwire, tokens=None, in_redir=None, out_redir=None, out_append=False):
+    def __init__(self, builtin, args, options, hotwire, tokens=None, in_redir=None, out_redir=None, 
+                  out_append=False):
         super(Command, self).__init__()
         self.builtin = builtin
         self.context = CommandContext(hotwire) 
@@ -206,6 +208,7 @@ class Command(gobject.GObject):
         self.in_redir = in_redir and FilePath(os.path.expanduser(in_redir), self.context.cwd)
         self.out_redir = out_redir and FilePath(os.path.expanduser(out_redir), self.context.cwd)
         self.out_append = out_append
+        
         self.__executing_sync = None
         self._cancelled = False
         self.__tokens = tokens
@@ -217,6 +220,10 @@ class Command(gobject.GObject):
         self.input = input       
         self.context.input = self.input
         self.context.input_is_first = is_first
+        
+    def set_input_type(self, in_type):
+        """Note the pipeline object type used for input."""
+        self.context.input_type = in_type
         
     def disconnect(self):
         self.context = None
@@ -788,6 +795,8 @@ class Pipeline(gobject.GObject):
             components.append(cmd)
             if (not in_redir) and prev:
                 cmd.set_input(prev.output)
+            if pipeline_output_type:
+                cmd.set_input_type(pipeline_output_type)
             input_accepts_type = cmd.builtin.get_input_type()
             input_optional = cmd.builtin.get_input_optional()
             if pipeline_input_optional == 'unknown':

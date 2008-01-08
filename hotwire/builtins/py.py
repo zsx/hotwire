@@ -19,16 +19,73 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR 
 # THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-from hotwire.builtin import Builtin, BuiltinRegistry
+import os,sys,re,subprocess,sha,tempfile
+
+from hotwire.builtin import Builtin, BuiltinRegistry, InputStreamSchema, OutputStreamSchema
+
+from hotwire.fs import path_join
+from hotwire.sysdep.fs import Filesystem
 
 class PyBuiltin(Builtin):
     __doc__ = _("""Process objects using Python code.""")
+ 
+    PYCMD_NOINPUT_CONTENT = '''## Python Command
+import os,sys,re
+import gtk, gobject
+
+# No input given
+def execute(context, input):
+  yield''' 
+    
+    PYCMD_WITHINPUT_CONTENT = '''## Python Command
+import os,sys,re
+import gtk, gobject
+
+# Input type: %r
+def execute(context, input):
+  for obj in input:
+    yield ''' 
     def __init__(self):
-        super(PyBuiltin, self).__init__('py', 
-                                        nostatus=True)
+        super(PyBuiltin, self).__init__('py',
+                                        threaded=True,
+                                        input=InputStreamSchema('any', optional=True),
+                                        output=OutputStreamSchema('any'))
 
     def execute(self, context, args):
-        context.hotwire.open_pyshell()
-        return []
-        
+        fs = Filesystem.getInstance()
+        scriptdir = fs.make_conf_subdir('scripts')
+        (fd, fpath) = tempfile.mkstemp('.py', 'script', scriptdir)
+        shasum = sha.new()
+        if context.input_type is not None:
+            content = self.PYCMD_WITHINPUT_CONTENT % (context.input_type,)
+        else:
+            content = self.PYCMD_NOINPUT_CONTENT
+        f = os.fdopen(fd, 'w')
+        shasum.update(content)
+        f.write(content)
+        f.close()
+        sum_hex = shasum.hexdigest()
+        subprocess.check_call([os.environ['EDITOR'], fpath], cwd=context.cwd, close_fds=True)
+        buf = open(fpath).read()
+        new_sum = sha.new()        
+        new_sum.update(buf)
+        new_sum_hex = new_sum.hexdigest() 
+        if new_sum_hex == sum_hex:
+            os.unlink(fpath)
+            raise ValueError(_("Script not modified, aborting"))
+        new_fpath = os.path.join(scriptdir, new_sum_hex+'.py')
+        os.rename(fpath, new_fpath)
+        code = compile(buf, '<input>', 'exec')
+        locals = {}
+        exec code in locals
+        execute = locals['execute']
+        custom_out = execute(context, context.input)
+        if custom_out is None:
+            return
+        if hasattr(custom_out, '__iter__'):
+            for o in custom_out:
+                yield o
+        else:
+            yield custom_out
+
 BuiltinRegistry.getInstance().register(PyBuiltin())

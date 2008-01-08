@@ -94,9 +94,6 @@ class HotwireClientContext(hotwire.command.HotwireContext):
     def open_term(self, cwd, pipeline, arg, window=False):
         gobject.idle_add(self.__idle_open_term, cwd, pipeline, arg, window)
 
-    def open_pyshell(self):
-        gobject.idle_add(self.__idle_open_pyshell)
-
     def __idle_open_term(self, cwd, pipeline, arg, do_window):
         title = str(pipeline)
         window = locate_current_window(self.__hotwire)
@@ -106,9 +103,6 @@ class HotwireClientContext(hotwire.command.HotwireContext):
         else:
             window.new_tab_widget(term, title)
         
-    def __idle_open_pyshell(self):
-        self.__hotwire.open_pyshell()
-    
     def get_ui(self):
         return self.__hotwire.get_global_ui()
 
@@ -280,21 +274,6 @@ class Hotwire(gtk.VBox):
 
     def get_ui_pairs(self):
         return [self.__outputs.get_ui(), (self.__ui_string, self.__action_group)]
-
-    def open_pyshell(self):
-        PYCMD_CONTENT = '''## Python Command
-import os,sys,re
-import gtk, gobject
-
-# input type: %s
-for obj in curshell.get_current_output():
-  ''' % (self.get_current_output_type(),)
-        shell = hotwire_ui.pyshell.CommandShell({'curshell': self},
-                                                content=PYCMD_CONTENT,
-                                                parent=locate_current_window(self))
-        shell.set_icon_name('hotwire')        
-        shell.set_title(_('Hotwire Python Command'))
-        shell.show_all()  
 
     def append_tab(self, widget, title):
         self.emit("new-tab-widget", widget, title)
