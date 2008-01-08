@@ -266,7 +266,7 @@ class SshWindow(VteWindow):
         <menuitem action='OpenSFTP'/>
         <separator/>
         <menuitem action='Reconnect'/>
-        <separator/>        
+        <separator/>
       </placeholder>
     </menu>
   </menubar>

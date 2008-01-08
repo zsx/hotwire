@@ -25,7 +25,22 @@ import dbus,dbus.glib,dbus.service
 
 from hotvte.vteterm import VteTerminalWidget
 
+from hotwire_ui.quickfind import QuickFindWindow
+
 _logger = logging.getLogger("hotvte.VteWindow")
+
+class QuickSwitchTabWindow(QuickFindWindow):
+    def __init__(self, vtewin):
+        self.__vtewin = vtewin        
+        super(QuickSwitchTabWindow, self).__init__(_('Tab Search'),
+                                                   parent=vtewin)
+        
+    def _do_search(self, text):
+        for widget in self.__vtewin.get_tabs():
+            title = widget.get_title()
+            markup = self._markup_search(title, text)
+            if markup is not None:
+                yield (title, markup, None)
 
 class TabbedVteWidget(VteTerminalWidget):
     def __init__(self, cmd=None, *args, **kwargs):
@@ -54,7 +69,8 @@ class VteWindow(gtk.Window):
     <menu action='FileMenu'>
       <placeholder name='FileAdditions'/>
       <separator/>
-      <menuitem action='DetachTab'/>      
+      <menuitem action='TabSearch'/>      
+      <menuitem action='DetachTab'/>
       <separator/>
       <menuitem action='Close'/>
     </menu>
@@ -172,7 +188,8 @@ class VteWindow(gtk.Window):
         self.__ag = ag = gtk.ActionGroup('WindowActions')
         self.__actions = actions = [
             ('FileMenu', None, _('File')),
-            ('DetachTab', None, _('_Detach Tab'), '<control><shift>D', 'Move tab into new window', self.__detach_cb),                       
+            ('DetachTab', None, _('_Detach Tab'), '<control><shift>D', 'Move tab into new window', self.__detach_cb),
+            ('TabSearch', None, '_Search Tabs', '<control><shift>L', 'Search across tab names', self.__quickswitch_tab_cb),
             ('Close', gtk.STOCK_CLOSE, _('_Close'), '<control><shift>W',
              'Close the current tab', self.__close_cb),
             ('EditMenu', None, _('Edit')),
@@ -249,11 +266,26 @@ along with HotVTE; if not, write to the Free Software Foundation, Inc.,
         comments = "An extended interface for terminal applications\n\n"
         dialog.set_property('comments', comments)
         dialog.run()
-        dialog.destroy()                
+        dialog.destroy()
+        
+    def get_tabs(self):
+        return self.__notebook.get_children()
+        
+    def __quickswitch_tab_cb(self, action):
+        w = QuickSwitchTabWindow(self)
+        tabtitle = w.run_get_value()
+        if tabtitle is None:
+            return
+        _logger.debug("got switch title: %r", tabtitle)
+        for child in self.__notebook.get_children():
+            if child.get_title() == tabtitle:
+                self.__notebook.set_current_page(self.__notebook.page_num(child))
+                break
         
     def __sync_tabs_visible(self):
         multitab = self.__notebook.get_n_pages() > 1
         self.__ag.get_action('DetachTab').set_sensitive(multitab)
+        self.__ag.get_action('TabSearch').set_sensitive(multitab)        
         self.__notebook.set_show_tabs(multitab)        
         
     def __remove_page_widget(self, w):

@@ -30,9 +30,9 @@ from hotwire.util import markup_for_match
 _logger = logging.getLogger("hotwire.ui.QuickFind")
 
 class QuickFindWindow(gtk.Dialog):
-    def __init__(self, title):
+    def __init__(self, title, parent=None):
         super(QuickFindWindow, self).__init__(title=title,
-                                              parent=None,
+                                              parent=parent,
                                               flags=gtk.DIALOG_DESTROY_WITH_PARENT,
                                               buttons=(gtk.STOCK_CLOSE, gtk.RESPONSE_ACCEPT))
         
@@ -99,6 +99,13 @@ class QuickFindWindow(gtk.Dialog):
         self.__idle_search_id = 0
         self.__do_search()
         return False
+        
+    def _markup_search(self, text, searchq):
+        idx = text.find(searchq)
+        if idx >= 0:
+            return markup_for_match(text, idx, idx+len(searchq))
+        else:
+            return None          
         
     def __do_search(self):
         text = self.__entry.get_property('text')

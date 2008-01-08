@@ -39,9 +39,6 @@ class DirSwitchWindow(QuickFindWindow):
         hist = History.getInstance()
         for usage in hist.search_dir_usage(text):
             v = usage[0]
-            idx = v.find(text)
-            if idx >= 0:
-                markup = markup_for_match(v, idx, idx+len(text))
-            else:
-                markup = None        
-            yield (v, markup, 'gtk-directory')
+            markup = self._markup_search(v, text)
+            if markup is not None:      
+                yield (v, markup, 'gtk-directory')
