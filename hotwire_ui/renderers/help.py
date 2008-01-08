@@ -79,6 +79,7 @@ class HelpItemRenderer(UnicodeRenderer):
                 
     def __append_builtin_arghelp(self, builtin):
         if not builtin.options:
+            self._buf.insert_markup('    <i>%s</i>\n' % (_('(No options)'),))
             return
         argstr = '  '.join(map(lambda x: ','.join(x), builtin.options))
         self._buf.insert_markup('    %s: ' % (_('Options'),))
