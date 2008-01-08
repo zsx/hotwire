@@ -126,7 +126,8 @@ class CommandExecutionHeader(gtk.VBox):
         self.__objects.connect("primary-complete", self.__on_primary_complete)        
         self.__objects.connect("changed", lambda o: self.__update_titlebox())
 
-        self.__exception_text = gtk.Label() 
+        self.__exception_text = gtk.Label()
+        self.__exception_text.set_alignment(0.0, 0.5) 
         self.pack_start(self.__exception_text, expand=False)
         if overview_mode:
             self.pack_start(gtk.HSeparator(), expand=False)
@@ -292,7 +293,7 @@ class CommandExecutionHeader(gtk.VBox):
             self.__state_image.set_from_stock('gtk-dialog-error', gtk.ICON_SIZE_MENU)            
             self.__exception_text.show()
             excinfo = self.__pipeline.get_exception_info()
-            self.__exception_text.set_text("Exception %s: %s" % (excinfo[0], excinfo[1]))
+            self.__exception_text.set_text(" Caught %s: %s" % (excinfo[0], excinfo[1]))
         else:
             raise Exception("Unknown state %s" % (state,))
         self.emit("complete")
