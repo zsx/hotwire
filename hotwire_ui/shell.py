@@ -369,7 +369,7 @@ for obj in curshell.get_current_output():
 
     def __up_cb(self, action):
         _logger.debug("up")
-        self.execute_internal_str("cd ..")
+        self.internal_execute('cd', '..')
         
     @log_except(_logger)
     def __dirswitch_cb(self, action):
@@ -402,7 +402,7 @@ for obj in curshell.get_current_output():
 
     def __home_cb(self, action):
         _logger.debug("home")
-        self.execute_internal_str('cd')
+        self.internal_execute('cd')
 
     def __on_commands_new_window(self, outputs, cmdview):
         _logger.debug("got new window request for %s", cmdview)
@@ -1135,7 +1135,7 @@ class HotWindow(gtk.Window):
         widget = self.__notebook.get_nth_page(self.__notebook.get_current_page())
         is_hw = widget.get_data('hotwire-is-hotwire')
         if is_hw:
-            widget.execute_internal_str('help')
+            widget.internal_execute('help')
         else:
             self.new_tab_hotwire(initcmd='help')
 
