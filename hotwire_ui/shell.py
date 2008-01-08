@@ -1207,7 +1207,7 @@ along with Hotwire; if not, write to the Free Software Foundation, Inc.,
         old_idx = self.__notebook.get_current_page()
         if old_idx != pn and old_idx >= 0:
             old_widget = self.__notebook.get_nth_page(old_idx)
-            old_is_hw = widget.get_data('hotwire-is-hotwire')
+            old_is_hw = old_widget.get_data('hotwire-is-hotwire')
             if hasattr(old_widget, 'hide_internals'):
                 _logger.debug("hiding widget at idx %s", old_idx)
                 old_widget.hide_internals()
