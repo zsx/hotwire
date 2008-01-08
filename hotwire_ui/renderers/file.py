@@ -181,7 +181,7 @@ class FilePathRenderer(TreeObjectsRenderer):
     def __handle_file_change(self, signal=None, sender=None):
         fobj = sender
         _logger.debug("got file change for %r", fobj)
-        self._signal_obj_changed(fobj, colidx=1)
+        self._signal_obj_changed(fobj, colidx=0)
 
     def _get_row(self, obj):
         if isinstance(obj, File):
@@ -264,7 +264,7 @@ class FilePathRenderer(TreeObjectsRenderer):
     def __on_copypath_activated(self, menu, path):
         _logger.debug("got copypath for %s", path)
         from hotwire_ui.shell import locate_current_shell
-        hw = locate_current_shell(self._table)    
+        hw = locate_current_shell(self._table)
         hw.append_text(path)           
 
     def __on_drag_data_get(self, tv, context, selection, info, timestamp):

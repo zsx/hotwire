@@ -30,7 +30,7 @@ from hotwire.util import markup_for_match
 class FileStringMatchRenderer(FilePathRenderer):
     def __init__(self, *args, **kwargs):
         if not 'column_types' in kwargs.iterkeys():
-            kwargs['column_types'] = [gobject.TYPE_PYOBJECT, gobject.TYPE_PYOBJECT, gobject.TYPE_PYOBJECT]
+            kwargs['column_types'] = [gobject.TYPE_PYOBJECT, gobject.TYPE_PYOBJECT]
         super(FileStringMatchRenderer, self).__init__(*args,
                                                       **kwargs)
 
@@ -43,7 +43,7 @@ class FileStringMatchRenderer(FilePathRenderer):
         col.set_spacing(0)
 
     def _match_for_iter(self, model, iter):
-        return model.get_value(iter, 2)
+        return model.get_value(iter, 1)
 
     def _render_match(self, col, cell, model, iter):
         obj = self._match_for_iter(model, iter)
@@ -57,7 +57,7 @@ class FileStringMatchRenderer(FilePathRenderer):
     def get_objects(self):
         iter = self._model.get_iter_first()
         while iter:
-            val = self._model.get_value(iter, 2)
+            val = self._model.get_value(iter, 1)
             yield val
             iter = self._model.iter_next(iter)
 
