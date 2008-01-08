@@ -340,22 +340,35 @@ class UnicodeRenderer(ObjectsRenderer):
     def get_status_str(self):
         return "%d bytes" % (self.__bytecount,)
 
-    def get_objects(self):
-        iter = self._buf.get_start_iter()
-        if iter == self._buf.get_end_iter():
+    def __get_objects_from_iters(self, start, end):
+        if start == end:
             return
-        startline = iter.copy()
-        not_at_end = iter.forward_line()
-        iter.backward_char()
-        yield self._buf.get_slice(startline, iter)
-        iter.forward_char()
-        while not_at_end:
-            startline = iter
+        iter = start
+        realend = self._buf.get_end_iter()
+        while iter.compare(end) < 0:
+            startline = iter 
             iter = iter.copy()
             not_at_end = iter.forward_line()
-            iter.backward_char()
+            at_realend = iter.compare(realend) == 0            
+            if iter.compare(end) > 0:
+                not_at_end = False
+                iter = end
+            elif not_at_end or at_realend:
+                iter.backward_char()
             yield self._buf.get_slice(startline, iter)
-            iter.forward_char()
+            if not_at_end or at_realend:
+                iter.forward_char()
+
+    def get_objects(self):
+        for o in self.__get_objects_from_iters(self._buf.get_start_iter(), self._buf.get_end_iter()):
+            yield o
+    
+    def get_selected_objects(self):
+        bounds = self._buf.get_selection_bounds()
+        if not bounds:
+            return
+        for o in self.__get_objects_from_iters(bounds[0], bounds[1]):
+            yield o
 
     def get_opt_formats(self):
         if is_unix():
