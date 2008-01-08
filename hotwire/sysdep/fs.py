@@ -324,13 +324,14 @@ class BaseBookmarks(Singleton):
         # Might as well signal now             
         dispatcher.send(sender=self)
         
+    @log_except(_logger)
     def __on_bookmarks_changed(self, *args):
         self.__read_bookmarks()
         dispatcher.send(sender=self)
         
     def __read_bookmarks(self):
         f = open(self.__bookmarks_path)
-        self.__bookmarks = map(lambda x: path_fromurl(x).strip(), list(f))
+        self.__bookmarks = map(lambda x: path_fromurl(x).strip(), f)
         f.close()
         
     def __iter__(self):
