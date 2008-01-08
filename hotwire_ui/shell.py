@@ -1144,7 +1144,7 @@ class HotWindow(gtk.Window):
         dialog.set_property('website', 'http://hotwire-shell.org')
         dialog.set_property('version', hotwire.version.__version__)
         dialog.set_property('authors', ['Colin Walters <walters@verbum.org>'])
-        dialog.set_property('copyright', u'Copyright \u00A9 2007 Colin Walters <walters@verbum.org>')
+        dialog.set_property('copyright', u'Copyright \u00A9 2007,2008 Colin Walters <walters@verbum.org>')
         dialog.set_property('logo-icon-name', 'hotwire')
         dialog.set_property('license', 
                             '''Hotwire is free software; you can redistribute it and/or modify
