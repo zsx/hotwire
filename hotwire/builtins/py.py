@@ -29,18 +29,11 @@ from hotwire.sysdep.fs import Filesystem
 class PyBuiltin(Builtin):
     __doc__ = _("""Process objects using Python code.""")
  
-    PYCMD_NOINPUT_CONTENT = '''## Python Command
-import os,sys,re
-import gtk, gobject
-
-# No input given
+    PYCMD_NOINPUT_CONTENT = '''
 def execute(context, input):
   yield''' 
     
-    PYCMD_WITHINPUT_CONTENT = '''## Python Command
-import os,sys,re
-import gtk, gobject
-
+    PYCMD_WITHINPUT_CONTENT = '''
 # Input type: %r
 def execute(context, input):
   for obj in input:
