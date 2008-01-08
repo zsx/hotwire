@@ -209,6 +209,7 @@ class InputArea(gtk.HBox):
         self.pack_start(hotwidgets.Align(hbox, xscale=0.75), expand=True)        
 
     def __on_input_keypress(self, e):
+        self.__recheck_password_mode()
         if e.keyval == gtk.gdk.keyval_from_name('Escape'):
             self.__do_close()
             return True
@@ -228,9 +229,12 @@ class InputArea(gtk.HBox):
     def __do_send(self):
         self.emit('object-input', self.__input.get_property('text'), self.__password_button.get_active())
         self.reset()
+        
+    def __recheck_password_mode(self):
+        self.__password_button.set_active(self.__renderer.get_default_password_mode())
 
     def focus(self):
-        self.__password_button.set_active(self.__renderer.get_default_password_mode())
+        self.__recheck_password_mode()
         self.__input.grab_focus()
 
     def reset(self):
