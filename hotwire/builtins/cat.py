@@ -26,7 +26,7 @@ from hotwire.fs import FilePath
 from hotwire.builtin import Builtin, BuiltinRegistry
 
 class CatBuiltin(Builtin):
-    __doc__ = _("""Concatenate files.""")
+    __doc__ = _("""Yield content lines from file path arguments.""")
     def __init__(self):
         super(CatBuiltin, self).__init__('cat',
                                          output=str, # 'any'
