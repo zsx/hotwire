@@ -235,7 +235,7 @@ class SshTerminalWidget(gtk.VBox):
     def __on_child_exited(self, term):
         _logger.debug("disconnected")
         self.__cmd_exited = True
-        self.__msg.set_text('Connection terminated')
+        self.__msg.set_text(_('Connection terminated (Enter to close)'))
         
     def get_exited(self):
         return self.__cmd_exited        
