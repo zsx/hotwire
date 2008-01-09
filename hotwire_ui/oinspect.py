@@ -28,6 +28,9 @@ _logger = logging.getLogger("hotwire.ui.OInspect")
 class InspectWindow(gtk.Window):
     def __init__(self, obj, parent=None):
         gtk.Window.__init__(self, type=gtk.WINDOW_TOPLEVEL)
+        
+        self.__obj = None
+        
         vbox = gtk.VBox()
         self.add(vbox)
         self.__ui_string = """
@@ -46,11 +49,22 @@ class InspectWindow(gtk.Window):
         vbox.pack_start(contentvbox, expand=True)
         
         self.__orepr = gtk.Label()
-        self.__orepr.set_alignment(0.0, 0.5)        
+        self.__orepr.set_alignment(0.0, 0.5)
         self.__oclass = gtk.Label()
         self.__oclass.set_alignment(0.0, 0.5)
         contentvbox.pack_start(self.__orepr, expand=False)
         contentvbox.pack_start(self.__oclass, expand=False)
+        
+        hbox = gtk.HBox()
+        self.__definedin_label = gtk.Label()
+        self.__definedin_label.set_markup('<b>%s</b>' % (_("Defined in: "),))
+        hbox.pack_start(self.__definedin_label, expand=False)
+        self.__definedin = hotwidgets.Link()
+        self.__definedin.set_alignment(0.0, 0.5)
+        self.__definedin.set_ellipsize(True)
+        self.__definedin.connect('clicked', self.__on_definedin_clicked)
+        hbox.pack_start(self.__definedin, expand=True)
+        contentvbox.pack_start(hbox, expand=False)        
         
         metavbox = gtk.VBox()
         contentvbox.add(metavbox)
@@ -62,12 +76,17 @@ class InspectWindow(gtk.Window):
         metavbox.pack_start(docframe, expand=False)
         
         membersframe = gtk.Frame(_('Members'))
+        vbox = gtk.VBox()
+        membersframe.add(vbox)        
+        self.__hidden_check = gtk.CheckButton(_('Show _Hidden'))
+        vbox.pack_start(self.__hidden_check, expand=False)
+        self.__hidden_check.connect_after('toggled', self.__on_show_hidden_toggled)
         self.__members_model = gtk.ListStore(gobject.TYPE_STRING, gobject.TYPE_PYOBJECT)        
         self.__membersview = gtk.TreeView(self.__members_model)
         scroll = gtk.ScrolledWindow()
         scroll.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
         scroll.add(self.__membersview)
-        membersframe.add(scroll)
+        vbox.add(scroll)
         metavbox.pack_start(membersframe, expand=True)
         colidx = self.__membersview.insert_column_with_attributes(-1, _('Name'),
                                                                   hotwidgets.CellRendererText(),
@@ -92,15 +111,40 @@ class InspectWindow(gtk.Window):
         self.__set_object(obj)
         
     def __set_object(self, obj):
+        self.__obj = obj
         self.__orepr.set_markup(_('<b>Object</b>: %s')  % (gobject.markup_escape_text(repr(obj),)))
         self.__oclass.set_markup(_('<b>Type</b>: %s') % (gobject.markup_escape_text(repr(type(obj))),))
+        
+        try:
+            srcpath = inspect.getsourcefile(type(obj))
+        except TypeError, e:
+            _logger.debug("failed to get sourcefile", exc_info=True)
+            srcpath = None
+        if srcpath:
+            self.__definedin.set_text(srcpath)
+        
         doc = inspect.getdoc(obj)
         if doc:
             self.__doctext.get_buffer().set_text(doc)
         else:
-            self.__doctext.get_buffer().insert_at_cursor(_('(Not documented)'))        
-        for name,member in sorted(inspect.getmembers(obj), lambda a,b: locale.strcoll(a[0],b[0])):
+            self.__doctext.get_buffer().insert_at_cursor(_('(Not documented)'))
+        self.__set_members()
+            
+    def __set_members(self):
+        showhidden = self.__hidden_check.get_property('active')
+        self.__members_model.clear()
+        for name,member in sorted(inspect.getmembers(self.__obj), lambda a,b: locale.strcoll(a[0],b[0])):
+            if not showhidden and name.startswith('_'):
+                continue
             self.__members_model.append((name, member))
+            
+    def __on_show_hidden_toggled(self, *args):
+        self.__set_members()
+            
+    def __on_definedin_clicked(self, *args):
+        from hotwire.command import Pipeline
+        pl = Pipeline.create(None, None, 'edit', self.__definedin.get_text())
+        pl.execute_sync()
             
     def __render_member(self, col, cell, model, iter):
         member = model.get_value(iter, 1)
