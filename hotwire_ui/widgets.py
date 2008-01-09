@@ -30,6 +30,7 @@ class Link(gtk.EventBox):
     
     def __init__(self,**kwargs):
         super(Link, self).__init__(**kwargs)
+        self.__text = None
         self.__label = gtk.Label()
         self.add(self.__label)
         self.connect("button-press-event", self.__on_button_press)
@@ -41,6 +42,9 @@ class Link(gtk.EventBox):
 
     def set_alignment(self, x, y):
         self.__label.set_alignment(x, y)
+        
+    def set_ellipsize(self, do_ellipsize):
+        self.__label.set_ellipsize(do_ellipsize)
 
     def __on_button_press(self, self2, e):
         if e.button == 1:
@@ -48,7 +52,11 @@ class Link(gtk.EventBox):
             return True
         return False
 
+    def get_text(self):
+        return self.__text
+    
     def set_text(self, text):
+        self.__text = text
         self.set_markup(gobject.markup_escape_text(text))
         
     def set_markup(self, text):
