@@ -26,48 +26,26 @@ from hotwire.builtin import Builtin, BuiltinRegistry, InputStreamSchema, OutputS
 from hotwire.fs import path_join
 from hotwire.sysdep.fs import Filesystem
 
-class PyBuiltin(Builtin):
+class PyMapBuiltin(Builtin):
     __doc__ = _("""Process objects using Python code.""")
  
-    PYCMD_NOINPUT_CONTENT = '''
+    PYMAP_CONTENT = '''
+import os,sys,re
 def execute(context, input):
-  yield''' 
-    
-    PYCMD_WITHINPUT_CONTENT = '''
-# Input type: %r
-def execute(context, input):
-  for obj in input:
-    yield ''' 
+  for it in input:
+    yield %s''' 
     def __init__(self):
-        super(PyBuiltin, self).__init__('py',
-                                        threaded=True,
-                                        input=InputStreamSchema('any', optional=True),
-                                        output=OutputStreamSchema('any'))
+        super(PyMapBuiltin, self).__init__('py-map',
+                                           threaded=True,
+                                           input=InputStreamSchema('any', optional=True),
+                                           output=OutputStreamSchema('any'))
 
-    def execute(self, context, args):
-        fs = Filesystem.getInstance()
-        scriptdir = fs.make_conf_subdir('scripts')
-        (fd, fpath) = tempfile.mkstemp('.py', 'script', scriptdir)
-        shasum = sha.new()
-        if context.input_type is not None:
-            content = self.PYCMD_WITHINPUT_CONTENT % (context.input_type,)
-        else:
-            content = self.PYCMD_NOINPUT_CONTENT
-        f = os.fdopen(fd, 'w')
-        shasum.update(content)
-        f.write(content)
-        f.close()
-        sum_hex = shasum.hexdigest()
-        subprocess.check_call([os.environ['EDITOR'], fpath], cwd=context.cwd, close_fds=True)
-        buf = open(fpath).read()
-        new_sum = sha.new()        
-        new_sum.update(buf)
-        new_sum_hex = new_sum.hexdigest() 
-        if new_sum_hex == sum_hex:
-            os.unlink(fpath)
-            raise ValueError(_("Script not modified, aborting"))
-        new_fpath = os.path.join(scriptdir, new_sum_hex+'.py')
-        os.rename(fpath, new_fpath)
+    def execute(self, context, args, options=[]):
+        if len(args) > 1:
+            raise ValueError(_("Too many arguments specified"))
+        if len(args) < 1:
+            raise ValueError(_("Too few arguments specified"))
+        buf = self.PYMAP_CONTENT % (args[0],)
         code = compile(buf, '<input>', 'exec')
         locals = {}
         exec code in locals
@@ -81,4 +59,4 @@ def execute(context, input):
         else:
             yield custom_out
 
-BuiltinRegistry.getInstance().register(PyBuiltin())
+BuiltinRegistry.getInstance().register(PyMapBuiltin())

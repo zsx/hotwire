@@ -28,6 +28,31 @@ from hotwire.externals.dispatch import dispatcher
 
 _logger = logging.getLogger("hotwire.ui.Scripts")
 
+def _unused():
+        fs = Filesystem.getInstance()
+        scriptdir = fs.make_conf_subdir('scripts')
+        (fd, fpath) = tempfile.mkstemp('.py', 'script', scriptdir)
+        shasum = sha.new()
+        if context.input_type is not None:
+            content = self.PYCMD_WITHINPUT_CONTENT % (context.input_type,)
+        else:
+            content = self.PYCMD_NOINPUT_CONTENT
+        f = os.fdopen(fd, 'w')
+        shasum.update(content)
+        f.write(content)
+        f.close()
+        sum_hex = shasum.hexdigest()
+        subprocess.check_call([os.environ['EDITOR'], fpath], cwd=context.cwd, close_fds=True)
+        buf = open(fpath).read()
+        new_sum = sha.new()        
+        new_sum.update(buf)
+        new_sum_hex = new_sum.hexdigest() 
+        if new_sum_hex == sum_hex:
+            os.unlink(fpath)
+            raise ValueError(_("Script not modified, aborting"))
+        new_fpath = os.path.join(scriptdir, new_sum_hex+'.py')
+        os.rename(fpath, new_fpath)
+
 class ScriptFile(object):
     def __init__(self, id):
         if id is None:
