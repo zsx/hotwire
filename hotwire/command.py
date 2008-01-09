@@ -671,6 +671,8 @@ class Pipeline(gobject.GObject):
         
     @staticmethod
     def create(context, resolver, *tokens):
+        if context is None:
+            context = HotwireContext()
         components = []
         undoable = None
         idempotent = True
