@@ -70,6 +70,8 @@ class ClassInspectorSidebar(gtk.VBox):
     def __set_members(self):
         showhidden = self.__hidden_check.get_property('active')
         self.__members_model.clear()
+        if self.__otype is None:
+            return
         for name,member in sorted(inspect.getmembers(self.__otype), lambda a,b: locale.strcoll(a[0],b[0])):
             if not showhidden and name.startswith('_'):
                 continue
@@ -112,7 +114,8 @@ class CommandStatusDisplay(gtk.HBox):
 
 class CommandExecutionHeader(gtk.VBox):
     __gsignals__ = {
-        "action" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, []),                    
+        "action" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, []),
+        "expand-inspector" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (gobject.TYPE_BOOLEAN,)),                            
         "setvisible" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, []),
         "complete" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, ()),
     }
@@ -138,6 +141,11 @@ class CommandExecutionHeader(gtk.VBox):
         self.__pipeline.connect("state-changed", self.__on_pipeline_state_change)   
         self.__pipeline.connect("metadata", self.__on_pipeline_metadata)
         
+        self.__main_hbox = gtk.HBox()
+        self.pack_start(self.__main_hbox, expand=True)
+        self.__cmdstatus_vbox = gtk.VBox()
+        self.__main_hbox.pack_start(self.__cmdstatus_vbox, expand=True)
+        
         self.__titlebox_ebox = gtk.EventBox()
         if overview_mode:
             self.__titlebox_ebox.add_events(gtk.gdk.BUTTON_PRESS_MASK
@@ -149,7 +157,7 @@ class CommandExecutionHeader(gtk.VBox):
 
         self.__titlebox = gtk.HBox()
         self.__titlebox_ebox.add(self.__titlebox)
-        self.pack_start(hotwidgets.Align(self.__titlebox_ebox), expand=False)
+        self.__cmdstatus_vbox.pack_start(hotwidgets.Align(self.__titlebox_ebox), expand=False)
         self.__pipeline_str = self.__pipeline.__str__()
         self.__title = gtk.Label()
         self.__title.set_alignment(0, 0.5)
@@ -159,7 +167,7 @@ class CommandExecutionHeader(gtk.VBox):
         self.__titlebox.pack_start(self.__state_image, expand=False)
         self.__titlebox.pack_start(hotwidgets.Align(self.__title, padding_left=4), expand=True)
         self.__statusbox = gtk.HBox()
-        self.pack_start(self.__statusbox, expand=False)
+        self.__cmdstatus_vbox.pack_start(self.__statusbox, expand=False)
         self.__status_left = gtk.Label()
         self.__status_right = gtk.Label()
         self.__statusbox.pack_start(hotwidgets.Align(self.__status_left, padding_left=4), expand=False)
@@ -188,9 +196,21 @@ class CommandExecutionHeader(gtk.VBox):
 
         self.__exception_text = gtk.Label()
         self.__exception_text.set_alignment(0.0, 0.5) 
-        self.pack_start(self.__exception_text, expand=False)
+        self.__cmdstatus_vbox.pack_start(self.__exception_text, expand=False)
         if overview_mode:
-            self.pack_start(gtk.HSeparator(), expand=False)
+            self.__cmdstatus_vbox.pack_start(gtk.HSeparator(), expand=False)
+            self.__otype_expander = None
+        else:
+            self.__otype_expander = gtk.Expander('')
+            self.__otype_expander.set_use_markup(True)
+            self.__otype_expander.connect('notify::expanded', self.__on_otype_expander_toggled)
+            self.__main_hbox.pack_start(self.__otype_expander, expand=False)
+        
+    def __on_otype_expander_toggled(self, *args):
+        self.emit('expand-inspector', self.__otype_expander.get_property('expanded'))        
+
+    def set_inspector_expander_active(self, active):
+        self.__otype_expander.set_property('expanded', active)
 
     def get_pipeline(self):
         return self.__pipeline
@@ -311,6 +331,10 @@ class CommandExecutionHeader(gtk.VBox):
             set_status_action(_('Executing'), None)
         elif state == 'complete':
             set_status_action(_markupif('b', _('Complete'), self.__complete_unseen), None, status_markup=True)
+        if self.__otype_expander is not None:
+            otype = self.__objects.get_output_common_supertype()
+            if otype is not None:
+                self.__otype_expander.get_property('label-widget').set_markup('<b>%s</b> %s' % (_('Type:'), gobject.markup_escape_text(otype.__name__)))
 
     def __on_pipeline_metadata(self, pipeline, cmdidx, cmd, key, flags, meta):
         _logger.debug("got pipeline metadata idx=%d key=%s flags=%s", cmdidx, key, flags)
@@ -609,6 +633,7 @@ class CommandExecutionControl(gtk.VBox):
         odisp = MultiObjectsDisplay(self.__context, pipeline) 
         cmd = CommandExecutionDisplay(self.__context, pipeline, odisp)
         cmd.cmd_header.connect('action', self.__handle_cmd_action)
+        cmd.cmd_header.connect('expand-inspector', self.__on_expand_inspector)        
         cmd.show_all()
         pgnum = self.__cmd_notebook.append_page(cmd)
         self.__cmd_notebook.set_current_page(pgnum)
@@ -797,9 +822,19 @@ class CommandExecutionControl(gtk.VBox):
     def __overview_cb(self, a): 
         self.__toggle_history_expanded()
         
+    def __on_expand_inspector(self, header, expand):
+        if self.__inspector_visible == (not not expand):
+            return
+        self.__action_group.get_action('Inspector').set_active(expand)
+        
     def __inspector_cb(self, a): 
         self.__inspector_visible = not self.__inspector_visible
-        self.__sync_visible()        
+        self.__sync_inspector_expanded()
+        
+    def __sync_inspector_expanded(self, nth=None):
+        self.__sync_visible()
+        curcmd = self.get_current_cmd(True, nth=nth)
+        curcmd.odisp.set_inspector_expander_active(self.__inspector_visible)
     
     def __vadjust(self, scroll, pos, full):
         adjustment = scroll.get_vadjustment()

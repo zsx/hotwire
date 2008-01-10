@@ -35,14 +35,18 @@ class ObjectInspectLink(hotwidgets.Link):
         
     def set_object(self, o):
         self.__o = o
-        name = o.__name__
-        self.set_text(name)
-        self.__tips.set_tip(repr(o))
+        if o is None:
+            self.set_text('')
+            self.__tips.set_tip(self, '')
+        else:
+            name = o.__name__
+            self.set_text(name)
+            self.__tips.set_tip(self, repr(o))
     
     @log_except(_logger)
     def __on_clicked(self, s2):
         inspect = InspectWindow(self.__o, parent=self.get_toplevel())
-        inspect.show_all()        
+        inspect.show_all() 
 
 class InspectWindow(gtk.Window):
     def __init__(self, obj, parent=None):
