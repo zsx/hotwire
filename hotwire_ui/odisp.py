@@ -24,71 +24,8 @@ from hotwire.command import CommandQueue
 from hotwire_ui.render import ClassRendererMapping, DefaultObjectsRenderer
 from hotwire.logutil import log_except
 import hotwire_ui.widgets as hotwidgets
-from hotwire_ui.oinspect import InspectWindow
 
 _logger = logging.getLogger("hotwire.ui.ODisp")
-        
-class ClassInspectorSidebar(gtk.VBox):
-    def __init__(self):
-        super(ClassInspectorSidebar, self).__init__()
-        self.__tooltips = gtk.Tooltips()        
-        self.__otype = None
-        self.__olabel = hotwidgets.Link()
-        self.__olabel.connect('clicked', self.__on_oclass_clicked)
-        self.__olabel.set_ellipsize(True)
-        self.pack_start(self.__olabel, expand=False)
-        membersframe = gtk.Frame(_('Members'))
-        vbox = gtk.VBox()
-        membersframe.add(vbox)        
-        self.__hidden_check = gtk.CheckButton(_('Show _Hidden'))
-        vbox.pack_start(self.__hidden_check, expand=False)
-        self.__hidden_check.connect_after('toggled', self.__on_show_hidden_toggled)
-        self.__members_model = gtk.ListStore(gobject.TYPE_STRING, gobject.TYPE_PYOBJECT)        
-        self.__membersview = gtk.TreeView(self.__members_model)
-        self.__membersview.connect('row-activated', self.__on_row_activated)
-        scroll = gtk.ScrolledWindow()
-        scroll.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
-        scroll.add(self.__membersview)
-        vbox.add(scroll)
-        self.pack_start(membersframe, expand=True)
-        col = self.__membersview.insert_column_with_attributes(-1, _('Name'),
-                                                               hotwidgets.CellRendererText(),
-                                                               text=0)
-        self.__membersview.set_search_column(0)
-        col.set_spacing(0)
-        col.set_resizable(True)
-        
-    def set_otype(self, typeobj):
-        if self.__otype == typeobj:
-            return
-        self.__otype = typeobj
-        orepr = repr(self.__otype)
-        self.__olabel.set_text(orepr)
-        self.__tooltips.set_tip(self.__olabel, orepr)    
-        self.__set_members()
-            
-    def __set_members(self):
-        showhidden = self.__hidden_check.get_property('active')
-        self.__members_model.clear()
-        for name,member in sorted(inspect.getmembers(self.__otype), lambda a,b: locale.strcoll(a[0],b[0])):
-            if not showhidden and name.startswith('_'):
-                continue
-            self.__members_model.append((name, member))
-            
-    def __on_show_hidden_toggled(self, *args):
-        self.__set_members()
-        
-    def __on_oclass_clicked(self, *args):
-        _logger.debug("inspecting oclass")
-        inspect = InspectWindow(self.__otype, parent=self.get_toplevel())
-        inspect.show_all()
-        
-    def __on_row_activated(self, tv, path, vc):
-        _logger.debug("row activated: %s", path)
-        model = self.__membersview.get_model()
-        iter = model.get_iter(path)
-        inspect = InspectWindow(model.get_value(iter, 1), parent=self.get_toplevel())
-        inspect.show_all()
 
 class ObjectsDisplay(gtk.VBox):
     __gsignals__ = {
@@ -98,12 +35,8 @@ class ObjectsDisplay(gtk.VBox):
     def __init__(self, output_spec, context, **kwargs):
         super(ObjectsDisplay, self).__init__(**kwargs)
         self.__context = context
-        self.__paned = gtk.HPaned()
-        self.add(self.__paned)        
-        self.__box = gtk.VBox()
-        self.__paned.pack1(self.__box, resize=True)
-        self.__inspector = ClassInspectorSidebar()
-        self.__paned.pack2(self.__inspector, resize=False)
+        self.__box = gtk.VBox()        
+        self.add(self.__box)
         self.__scroll = gtk.ScrolledWindow()
         self.__scroll.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
         vadjust = self.__scroll.get_vadjustment()
@@ -204,6 +137,8 @@ class ObjectsDisplay(gtk.VBox):
                 yield obj
             
     def get_output_type(self):
+        """Return the typespec for the current pipeline.  See Pipeline
+        for a description of typespecs."""
         return self.__output_type
                 
     def __recurse_get_common_superclass(self, c1, c2):
@@ -223,10 +158,14 @@ class ObjectsDisplay(gtk.VBox):
             return object
         return self.__recurse_get_common_superclass(c1, c2)        
                 
+    def get_output_common_supertype(self):
+        """Return the common Python supertype inspected from the current stream."""
+        return self._common_supertype
+                
     def append_object(self, obj, fmt=None, **kwargs):
         if fmt is None:
             otype = type(obj)
-        # This is kind of a hack
+        # This is kind of a hack.
         elif fmt in ('text/chunked' 'x-filedescriptor/special'):
             otype = str            
         # If we don't have a display at this point, it means we have a dynamically-typed
@@ -238,8 +177,7 @@ class ObjectsDisplay(gtk.VBox):
         if self._common_supertype is None:
             self._common_supertype = otype
         elif self._common_supertype is not object:
-            self._common_supertype = self.__get_common_superclass(otype, self._common_supertype)
-        self.__inspector.set_otype(self._common_supertype)        
+            self._common_supertype = self.__get_common_superclass(otype, self._common_supertype)       
         # Actually append.
         if fmt is not None:
             kwargs['fmt'] = fmt
@@ -335,6 +273,9 @@ class MultiObjectsDisplay(gtk.Notebook):
 
     def get_pipeline(self):
         return self.__pipeline
+
+    def get_output_common_supertype(self):
+        return self.__default_odisp.get_output_common_supertype()
 
     def get_objects(self):
         for obj in self.__default_odisp.get_objects():

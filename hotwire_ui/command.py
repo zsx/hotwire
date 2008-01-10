@@ -16,7 +16,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-import os, sys, logging, time
+import os, sys, logging, time, inspect, locale
 
 import gtk, gobject
 
@@ -27,8 +27,71 @@ from hotwire_ui.pixbufcache import PixbufCache
 from hotwire.command import CommandQueue
 from hotwire.async import QueueIterator
 from hotwire.logutil import log_except
+from hotwire_ui.oinspect import InspectWindow
 
 _logger = logging.getLogger("hotwire.ui.Command")
+        
+class ClassInspectorSidebar(gtk.VBox):
+    def __init__(self):
+        super(ClassInspectorSidebar, self).__init__()
+        self.__tooltips = gtk.Tooltips()        
+        self.__otype = None
+        self.__olabel = hotwidgets.Link()
+        self.__olabel.connect('clicked', self.__on_oclass_clicked)
+        self.__olabel.set_ellipsize(True)
+        self.pack_start(self.__olabel, expand=False)
+        membersframe = gtk.Frame(_('Members'))
+        vbox = gtk.VBox()
+        membersframe.add(vbox)        
+        self.__hidden_check = gtk.CheckButton(_('Show _Hidden'))
+        vbox.pack_start(self.__hidden_check, expand=False)
+        self.__hidden_check.connect_after('toggled', self.__on_show_hidden_toggled)
+        self.__members_model = gtk.ListStore(gobject.TYPE_STRING, gobject.TYPE_PYOBJECT)        
+        self.__membersview = gtk.TreeView(self.__members_model)
+        self.__membersview.connect('row-activated', self.__on_row_activated)
+        scroll = gtk.ScrolledWindow()
+        scroll.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
+        scroll.add(self.__membersview)
+        vbox.add(scroll)
+        self.pack_start(membersframe, expand=True)
+        col = self.__membersview.insert_column_with_attributes(-1, _('Name'),
+                                                               hotwidgets.CellRendererText(),
+                                                               text=0)
+        self.__membersview.set_search_column(0)
+        col.set_spacing(0)
+        col.set_resizable(True)
+        
+    def set_otype(self, typeobj):
+        if self.__otype == typeobj:
+            return
+        self.__otype = typeobj
+        orepr = repr(self.__otype)
+        self.__olabel.set_text(orepr)
+        self.__tooltips.set_tip(self.__olabel, orepr)    
+        self.__set_members()
+            
+    def __set_members(self):
+        showhidden = self.__hidden_check.get_property('active')
+        self.__members_model.clear()
+        for name,member in sorted(inspect.getmembers(self.__otype), lambda a,b: locale.strcoll(a[0],b[0])):
+            if not showhidden and name.startswith('_'):
+                continue
+            self.__members_model.append((name, member))
+            
+    def __on_show_hidden_toggled(self, *args):
+        self.__set_members()
+        
+    def __on_oclass_clicked(self, *args):
+        _logger.debug("inspecting oclass")
+        inspect = InspectWindow(self.__otype, parent=self.get_toplevel())
+        inspect.show_all()
+        
+    def __on_row_activated(self, tv, path, vc):
+        _logger.debug("row activated: %s", path)
+        model = self.__membersview.get_model()
+        iter = model.get_iter(path)
+        inspect = InspectWindow(model.get_value(iter, 1), parent=self.get_toplevel())
+        inspect.show_all()
 
 class CommandStatusDisplay(gtk.HBox):
     def __init__(self, cmdname):
@@ -419,6 +482,8 @@ class CommandExecutionControl(gtk.VBox):
     <menu action='ViewMenu'>
       <menuitem action='Overview'/>
       <separator/>
+      <menuitem action='Inspector'/>
+      <separator/>      
       <menuitem action='PreviousCommand'/>
       <menuitem action='NextCommand'/>
     </menu>
@@ -455,13 +520,19 @@ class CommandExecutionControl(gtk.VBox):
             ('NextCommand', gtk.STOCK_GO_DOWN, _('_Next'), '<control>Down', _('View next command'), self.__view_next_cb),
         ]
         self.__toggle_actions = [
-            ('Overview', None, _('_Overview'), '<control><shift>o', _('Toggle overview'), self.__overview_cb),                                   
+            ('Overview', None, _('_Overview'), '<control><shift>o', _('Toggle overview'), self.__overview_cb),
+            ('Inspector', None, _('_Inspector'), '<control><shift>I', _('Toggle inspector'), self.__inspector_cb),             
         ]
         self.__action_group = gtk.ActionGroup('HotwireActions')
         self.__action_group.add_actions(self.__actions) 
         self.__action_group.add_toggle_actions(self.__toggle_actions)
         self.__action_group.get_action('Overview').set_active(False)       
         self.__context = context
+        
+        # Holds a reference to the signal handler id for the "changed" signal on the current odisp
+        # so we know when to reload any metadata
+        self.__odisp_changed_connection = None
+        
         self.__header = gtk.HBox()    
         def create_arrow_button(action_name):
             action = self.__action_group.get_action(action_name)
@@ -477,11 +548,15 @@ class CommandExecutionControl(gtk.VBox):
         self.__header_exec_label = gtk.Label()
         self.__header.pack_start(self.__header_exec_label, expand=False)
         self.pack_start(self.__header, expand=False)
+        self.__cmd_paned = gtk.HPaned()
+        self.pack_start(self.__cmd_paned, expand=True)
         self.__cmd_notebook = gtk.Notebook()
+        self.__cmd_paned.pack1(self.__cmd_notebook, resize=True)
         self.__cmd_notebook.connect('switch-page', self.__on_page_switch)
         self.__cmd_notebook.set_show_tabs(False)
         self.__cmd_notebook.set_show_border(False)
-        self.pack_start(self.__cmd_notebook, expand=True)        
+        self.__inspector = ClassInspectorSidebar()
+        self.__cmd_paned.pack2(self.__inspector, resize=False)
         self.__cmd_overview = CommandExecutionHistory(self.__context)
         self.__cmd_overview.show_all()
         self.__cmd_overview.set_no_show_all(True)
@@ -497,6 +572,7 @@ class CommandExecutionControl(gtk.VBox):
 
         self.__complete_unseen_pipelines = set()
         self.__history_visible = False
+        self.__inspector_visible = False
         self.__prevcmd_count = 0
         self.__prevcmd_executing_count = 0
         self.__nextcmd_count = 0
@@ -633,7 +709,7 @@ class CommandExecutionControl(gtk.VBox):
             self.__action_group.get_action("Overview").activate()
             from hotwire_ui.shell import locate_current_shell
             hw = locate_current_shell(self)
-            hw.grab_focus()                        
+            hw.grab_focus()
  
     def get_current(self):
         cmd = self.get_current_cmd(full=True)
@@ -723,6 +799,10 @@ class CommandExecutionControl(gtk.VBox):
 
     def __overview_cb(self, a): 
         self.__toggle_history_expanded()
+        
+    def __inspector_cb(self, a): 
+        self.__inspector_visible = not self.__inspector_visible
+        self.__sync_visible()        
     
     def __vadjust(self, scroll, pos, full):
         adjustment = scroll.get_vadjustment()
@@ -762,12 +842,16 @@ class CommandExecutionControl(gtk.VBox):
     def __sync_visible(self):
         if self.__history_visible:
             self.__cmd_overview.show()
-            self.__cmd_notebook.hide()
+            self.__cmd_paned.hide()
             self.__header.hide()
             self.__footer.hide()
         else:
             self.__cmd_overview.hide()
-            self.__cmd_notebook.show() 
+            self.__cmd_paned.show()
+            if self.__inspector_visible:
+                self.__inspector.show()
+            else:
+                self.__inspector.hide() 
             self.__header.show()
             self.__footer.show()
             
@@ -824,7 +908,8 @@ class CommandExecutionControl(gtk.VBox):
             else:
                 label_exec.set_label('')
         # FIXME - this is a bit of a hackish place to put this
-        current = self.get_current_cmd(False, curpage=nth)
+        curcmd = self.get_current_cmd(True, curpage=nth)
+        (current, odisp) = (curcmd.cmd_header, curcmd.odisp)
         if current:
             pipeline = current.get_pipeline()
             _logger.debug("sync display, current=%s", pipeline)
@@ -854,6 +939,16 @@ class CommandExecutionControl(gtk.VBox):
         set_label(self.__header, self.__header_label, self.__prevcmd_count, self.__header_exec_label, self.__prevcmd_executing_count, self.__prevcmd_complete_count)
         set_label(self.__footer, self.__footer_label, self.__nextcmd_count, self.__footer_exec_label, self.__nextcmd_executing_count, self.__nextcmd_complete_count)
         self.__sync_cmd_sensitivity(curpage=nth)
+        
+        if self.__odisp_changed_connection is not None:
+            (o, id) = self.__odisp_changed_connection
+            o.disconnect(id)
+        self.__odisp_changed_connection = (odisp, odisp.connect("changed", self.__sync_odisp))
+        self.__sync_odisp(odisp)
+        
+    @log_except(_logger)
+    def __sync_odisp(self, odisp):
+        self.__inspector.set_otype(odisp.get_output_common_supertype())        
         
     def __iter_cmdslice(self, is_end, nth_src=None):
         if nth_src is not None:
