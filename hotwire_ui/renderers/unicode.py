@@ -185,6 +185,11 @@ class InputArea(gtk.HBox):
 
         self.__renderer = renderer
         self.__textview = textview
+        
+        # Whether the user manually changed the password mode - if so, take it off auto
+        self.__override_password_mode = False
+        # Whether we're modifying password mode programatically
+        self.__doing_auto_password_mode = False
 
         close = gtk.Button()
         close.set_focus_on_click(False)
@@ -202,7 +207,7 @@ class InputArea(gtk.HBox):
         self.__send.set_focus_on_click(False)
         self.__send.connect("clicked", lambda b: self.__do_send())
         hbox.pack_start(self.__send, expand=False)
-        self.__password_button = gtk.CheckButton(label='_Password mode')
+        self.__password_button = gtk.CheckButton(label=_('_Password mode'))
         self.__password_button.connect('toggled', self.__on_password_toggled)
         self.__password_button.set_focus_on_click(False)
         hbox.pack_start(hotwidgets.Align(self.__password_button, padding_left=8), expand=False)
@@ -219,11 +224,14 @@ class InputArea(gtk.HBox):
         return False
     
     def __on_password_toggled(self, tb):
+        if not self.__doing_auto_password_mode:
+            self.__override_password_mode = True
         self.__input.set_visibility(not tb.get_active())
 
     def __do_close(self):
         self.reset()
         self.hide()
+        self.__override_password_mode = False
         self.emit("close")
         
     def __do_send(self):
@@ -231,7 +239,11 @@ class InputArea(gtk.HBox):
         self.reset()
         
     def __recheck_password_mode(self):
+        if self.__override_password_mode:
+            return
+        self.__doing_auto_password_mode = True
         self.__password_button.set_active(self.__renderer.get_default_password_mode())
+        self.__doing_auto_password_mode = False
 
     def focus(self):
         self.__recheck_password_mode()
@@ -432,7 +444,7 @@ class UnicodeRenderer(ObjectsRenderer):
         else:
             self.__append_chunk(obj)
         self._buf.insert(self._buf.get_end_iter(), '\n')
-
+        
     def __spawn_terminal(self, fd, buf):
         # Undo terminal mode changes from sys_builtin.py
         import termios
@@ -505,7 +517,7 @@ class UnicodeRenderer(ObjectsRenderer):
         menuitem = gtk.SeparatorMenuItem()
         menuitem.show_all()
         menu.prepend(menuitem)
-        menuitem = gtk.CheckMenuItem(label='_Wrap lines', use_underline=True) 
+        menuitem = gtk.CheckMenuItem(label=_('_Wrap lines'), use_underline=True) 
         menuitem.set_active(self.__wrap_lines)
         menuitem.connect("activate", self.__on_toggle_wrap)
         menuitem.show_all()
