@@ -223,8 +223,12 @@ class ObjectsDisplay(gtk.VBox):
             return object
         return self.__recurse_get_common_superclass(c1, c2)        
                 
-    def append_object(self, obj, **kwargs):
-        otype = type(obj)
+    def append_object(self, obj, fmt=None, **kwargs):
+        if fmt is None:
+            otype = type(obj)
+        # This is kind of a hack
+        elif fmt in ('text/chunked' 'x-filedescriptor/special'):
+            otype = str            
         # If we don't have a display at this point, it means we have a dynamically-typed
         # object stream.  In that case, force the issue and add the default display.
         if not self.__display:
@@ -237,6 +241,8 @@ class ObjectsDisplay(gtk.VBox):
             self._common_supertype = self.__get_common_superclass(otype, self._common_supertype)
         self.__inspector.set_otype(self._common_supertype)        
         # Actually append.
+        if fmt is not None:
+            kwargs['fmt'] = fmt
         self.__display.append_obj(obj, **kwargs)
             
     def __vadjust(self, pos, full, forceuser=False):

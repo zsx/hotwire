@@ -419,6 +419,7 @@ class UnicodeRenderer(ObjectsRenderer):
         self.emit('status-changed')
 
     def append_obj(self, obj, fmt=None):
+        # If you change format types, be sure to update odisp.py:append_object
         if fmt == 'text/chunked':
             self.__append_chunk(obj)
             return
