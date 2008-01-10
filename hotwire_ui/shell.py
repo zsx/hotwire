@@ -518,6 +518,18 @@ class Hotwire(gtk.VBox):
                                        'sys', '/bin/sh', '-c', text[3:])
             self.execute_pipeline(pipeline)
             return
+        elif self.__meta_syntax == 'rb':
+            _logger.debug("using rb meta syntax")
+            pipeline = Pipeline.create(self.context, None,
+                                       'sys', 'ruby', '-e', text[3:])
+            self.execute_pipeline(pipeline)
+            return         
+        elif self.__meta_syntax == 'pl':
+            _logger.debug("using pl meta syntax")
+            pipeline = Pipeline.create(self.context, None,
+                                       'sys', 'perl', '-e', text[3:])
+            self.execute_pipeline(pipeline)
+            return        
         elif self.__meta_syntax == 'py':
             _logger.debug("using py meta syntax")
             pipeline = Pipeline.create(self.context, None,
@@ -839,6 +851,10 @@ class Hotwire(gtk.VBox):
         text = self.__input.get_property("text")
         if is_unix() and text.startswith('sh '):
             self.__meta_syntax = 'sh'
+        elif text.startswith('pl '):
+            self.__meta_syntax = 'pl'
+        elif text.startswith('rb '):
+            self.__meta_syntax = 'rb'                        
         elif text.startswith('py '):
             self.__meta_syntax = 'py'
         else:
