@@ -833,8 +833,8 @@ class CommandExecutionControl(gtk.VBox):
         
     def __sync_inspector_expanded(self, nth=None):
         self.__sync_visible()
-        curcmd = self.get_current_cmd(True, nth=nth)
-        curcmd.odisp.set_inspector_expander_active(self.__inspector_visible)
+        curcmd = self.get_current_cmd(True, curpage=nth)
+        curcmd.cmd_header.set_inspector_expander_active(self.__inspector_visible)
     
     def __vadjust(self, scroll, pos, full):
         adjustment = scroll.get_vadjustment()
