@@ -27,7 +27,7 @@ from hotwire_ui.pixbufcache import PixbufCache
 from hotwire.command import CommandQueue
 from hotwire.async import QueueIterator
 from hotwire.logutil import log_except
-from hotwire_ui.oinspect import InspectWindow
+from hotwire_ui.oinspect import InspectWindow, ObjectInspectLink
 
 _logger = logging.getLogger("hotwire.ui.Command")
         
@@ -36,8 +36,7 @@ class ClassInspectorSidebar(gtk.VBox):
         super(ClassInspectorSidebar, self).__init__()
         self.__tooltips = gtk.Tooltips()        
         self.__otype = None
-        self.__olabel = hotwidgets.Link()
-        self.__olabel.connect('clicked', self.__on_oclass_clicked)
+        self.__olabel = ObjectInspectLink()
         self.__olabel.set_ellipsize(True)
         self.pack_start(self.__olabel, expand=False)
         membersframe = gtk.Frame(_('Members'))
@@ -65,9 +64,7 @@ class ClassInspectorSidebar(gtk.VBox):
         if self.__otype == typeobj:
             return
         self.__otype = typeobj
-        orepr = repr(self.__otype)
-        self.__olabel.set_text(orepr)
-        self.__tooltips.set_tip(self.__olabel, orepr)    
+        self.__olabel.set_object(typeobj)  
         self.__set_members()
             
     def __set_members(self):

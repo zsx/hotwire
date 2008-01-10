@@ -22,8 +22,27 @@ import cairo, gtk, gobject, pango
 
 from hotwire.util import ellipsize
 import hotwire_ui.widgets as hotwidgets
+from hotwire.logutil import log_except
 
 _logger = logging.getLogger("hotwire.ui.OInspect")
+
+class ObjectInspectLink(hotwidgets.Link):
+    def __init__(self):
+        super(ObjectInspectLink, self).__init__()
+        self.__tips = gtk.Tooltips()
+        self.__o = None
+        self.connect('clicked', self.__on_clicked)
+        
+    def set_object(self, o):
+        self.__o = o
+        name = o.__name__
+        self.set_text(name)
+        self.__tips.set_tip(repr(o))
+    
+    @log_except(_logger)
+    def __on_clicked(self, s2):
+        inspect = InspectWindow(self.__o, parent=self.get_toplevel())
+        inspect.show_all()        
 
 class InspectWindow(gtk.Window):
     def __init__(self, obj, parent=None):
