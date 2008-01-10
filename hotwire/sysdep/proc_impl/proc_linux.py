@@ -26,14 +26,15 @@ from hotwire.sysdep.unix import getpwuid_cached, getgrgid_cached
 
 _pwdcache = {}
 
+_uid_re = re.compile(r'^Uid:\s+(\d+)')
+
 class LinuxProcess(UnixProcess):
-    uid_re = re.compile(r'^Uid:\s+(\d+)')
     def __init__(self, pid):
         bincmd = file(os.path.join('/proc', str(pid), 'cmdline'), 'rb').read()
         self.arguments = bincmd.split('\x00') 
         owner_uid = -1
         for line in file(os.path.join('/proc', str(pid), 'status')):
-            match = self.uid_re.search(line)
+            match = _uid_re.search(line)
             if match:
                 owner_uid = int(match.group(1))
         super(LinuxProcess, self).__init__(pid, string.join(self.arguments, ' '), getpwuid_cached(owner_uid).pw_name)
