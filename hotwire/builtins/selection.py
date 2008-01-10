@@ -22,17 +22,28 @@
 from hotwire.builtin import Builtin, BuiltinRegistry, OutputStreamSchema
 
 class SelectionBuiltin(Builtin):
-    __doc__ = _("""Returns currently selected objects.""")
+    __doc__ = _("""With no arguments, returns currently selected objects.
+Single integer argument selects object at that index.""")
     def __init__(self):
         super(SelectionBuiltin, self).__init__('selection', aliases=['sel'],
                                                output=OutputStreamSchema('any', 
                                                                          typefunc=lambda hotwire: hotwire.get_current_output_type()))
 
     def execute(self, context, args):
-        current = context.selected_output
-        if not current:
-            return
-        for obj in current:
-            yield obj
+        if len(args) == 0:
+            current = context.selected_output
+            if not current:
+                return
+            for obj in current:
+                yield obj
+        elif len(args) == 1:
+            idx = int(args[0])
+            for i,obj in enumerate(context.current_output):
+                if i == idx:
+                    yield obj
+                    return
+            raise ValueError(_("Index %d out of range") % (idx,))
+        elif len(args) > 2:
+            raise ValueError(_("Too many arguments specified"))            
     
 BuiltinRegistry.getInstance().register(SelectionBuiltin())
