@@ -36,6 +36,11 @@ from hotwire_ui.pixbufcache import PixbufCache
 _logger = logging.getLogger("hotwire.fs.GnomeVfs")
 
 class GnomeVfsFile(UnixFile):
+    """A File implementation based on the GnomeVFS virtual filesystem.
+Important members include the "vfsstat" and "uri"."""
+    
+    __slots__ = ['vfsstat', 'target_vfsstat', 'uri']
+
     def __init__(self, path, **kwargs):
         super(GnomeVfsFile, self).__init__(path, **kwargs)
         self.vfsstat = None

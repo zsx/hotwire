@@ -47,6 +47,7 @@ class UnixFilesystem(BaseFilesystem):
         return True
         
 class UnixFile(File): 
+    """A bare Unix file abstraction, using just the builtin Python methods."""
     def __init__(self, *args, **kwargs):
         super(UnixFile, self).__init__(*args, **kwargs)
   

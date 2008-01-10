@@ -29,6 +29,8 @@ _pwdcache = {}
 _uid_re = re.compile(r'^Uid:\s+(\d+)')
 
 class LinuxProcess(UnixProcess):
+    """Representation of a Linux operating system process; information is gathered
+from the /proc filesystem."""
     def __init__(self, pid):
         bincmd = file(os.path.join('/proc', str(pid), 'cmdline'), 'rb').read()
         self.arguments = bincmd.split('\x00') 

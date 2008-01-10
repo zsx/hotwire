@@ -162,6 +162,8 @@ class FileStatError(Exception):
 class File(object):
     """An extended crossplatform stat() container, essentially.  
     Extra data retrieved includes symbolic link target (if applicable) and icon."""
+    
+    __slots__ = ['path', 'fs', 'stat', 'xaccess', 'icon', 'icon_error', '__permstring', 'target_stat', 'stat_error']
     def __init__(self, path, fs=None):
         super(File, self).__init__()
         self.path = path
@@ -170,7 +172,7 @@ class File(object):
         self.xaccess = None
         self.icon = None
         self.icon_error = False
-        self.__permstring = None
+        self._permstring = None
         self.target_stat = None
         self.stat_error = None
 
@@ -208,8 +210,8 @@ class File(object):
         return '-'    
 
     def get_permissions_string(self):
-        if self.__permstring:
-            return self.__permstring
+        if self._permstring:
+            return self._permstring
         
         perms = self.get_permissions()
         if not perms:
@@ -241,8 +243,8 @@ class File(object):
         if perms & stat.S_IXOTH: buf.write('x')
         else: buf.write('-')
         
-        self.__permstring = buf.getvalue()
-        return self.__permstring
+        self._permstring = buf.getvalue()
+        return self._permstring
     
     def get_mime(self):
         return None
