@@ -32,7 +32,7 @@ class PyEvalBuiltin(Builtin):
     PYEVAL_CONTENT = '''
 import os,sys,re
 def execute(context, input):
-  yield %s''' 
+  return %s''' 
     def __init__(self):
         super(PyEvalBuiltin, self).__init__('py-eval',
                                             threaded=True,
@@ -49,12 +49,6 @@ def execute(context, input):
         exec code in locals
         execute = locals['execute']
         custom_out = execute(context, context.input)
-        if custom_out is None:
-            return
-        if hasattr(custom_out, '__iter__'):
-            for o in custom_out:
-                yield o
-        else:
-            yield custom_out
+        yield custom_out
 
 BuiltinRegistry.getInstance().register(PyEvalBuiltin())
