@@ -62,7 +62,8 @@ class Win32ProcessManager(BaseProcessManager):
                     #_logger.exception("Couldn't get process information for pid %d", pid)
                     continue
 
-    def interrupt_pid(self, pid):
+    def terminate_pidgroup(self, pid):
+        # FIXME - is this enough?  Is there a notion of process groups on win32?
         self.kill_pid(pid)
 
     def kill_pid(self, pid):

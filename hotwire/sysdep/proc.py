@@ -42,7 +42,7 @@ class BaseProcessManager(object):
             self.__proc_snapshot_time = curtime
         return self.__proc_snapshot
 
-    def interrupt_pid(self, pid):
+    def terminate_pidgroup(self, pid):
         raise NotImplementedError()
 
     def kill_pid(self, pid):

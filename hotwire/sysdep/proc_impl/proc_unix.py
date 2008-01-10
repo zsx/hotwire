@@ -30,7 +30,6 @@ class UnixProcess(Process):
         UnixProcessManager._kill_pid(self.pid)
 
 class UnixProcessManager(BaseProcessManager):
-    
     @staticmethod
     def signal_pid_recurse(pid, signum):
         """This function should be used with caution."""
@@ -52,8 +51,12 @@ class UnixProcessManager(BaseProcessManager):
             _logger.debug("Failed to send sig %s to pid %d", signum, pid)
             return False    
     
-    def interrupt_pid(self, pid):
-        UnixProcessManager.signal_pid_recurse(pid, signal.SIGINT)
+    def terminate_pidgroup(self, pid):
+        # THis is a bit racy...need to fix.  However for backwards compatibility
+        # it's best to send SIGHUP as well as SIGTERM.  In some special cases like
+        # setuid subprograms Unix allows SIGHUP but nothing else.
+        UnixProcessManager.signal_pid_recurse(pid, signal.SIGHUP)        
+        UnixProcessManager.signal_pid_recurse(pid, signal.SIGKILL)
 
     def kill_pid(self, pid):
         UnixProcessManager._kill_pid(pid)

@@ -116,7 +116,7 @@ class SysBuiltin(Builtin):
         if context.attribs.has_key('pid'):
             pid = context.attribs['pid']
             _logger.debug("cancelling pid %s", pid)
-            ProcessManager.getInstance().interrupt_pid(pid)
+            ProcessManager.getInstance().terminate_pidgroup(pid)
             
     def cleanup(self, context):
         try:
