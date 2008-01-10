@@ -28,3 +28,8 @@ _logger = logging.getLogger("hotwire.Script")
 
 (PIPE, REDIR_IN, REDIR_OUT, REDIR_OUT_APPEND) = xrange(4)
  
+def script(*args, **kwargs):
+    from hotwire.command import Pipeline,HotwireContext
+    if not 'context' in kwargs:
+        kwargs['context'] = HotwireContext(initcwd=(kwargs.get('cwd', None)))
+    return Pipeline.create(kwargs['context'], kwargs.get('resolver', None), *args)
