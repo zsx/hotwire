@@ -56,6 +56,7 @@ class BaseProcessManager(object):
         return None    
 
 class Process(object):
+    __slots__ = ['pid', 'cmd', 'owner_name']
     def __init__(self, pid, cmd, owner_name):
         self.pid = pid
         self.cmd = cmd
