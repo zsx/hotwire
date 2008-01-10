@@ -518,7 +518,13 @@ class Hotwire(gtk.VBox):
                                        'sys', '/bin/sh', '-c', text[3:])
             self.execute_pipeline(pipeline)
             return
-        else:
+        elif self.__meta_syntax == 'py':
+            _logger.debug("using py meta syntax")
+            pipeline = Pipeline.create(self.context, None,
+                                       'py-eval', text[3:])
+            self.execute_pipeline(pipeline)
+            return      
+        else:      
             assert self.__meta_syntax is None
                 
         _logger.debug("executing '%s'", self.__parsed_pipeline)
@@ -833,6 +839,8 @@ class Hotwire(gtk.VBox):
         text = self.__input.get_property("text")
         if is_unix() and text.startswith('sh '):
             self.__meta_syntax = 'sh'
+        elif text.startswith('py '):
+            self.__meta_syntax = 'py'
         else:
             self.__meta_syntax = None 
         try:
