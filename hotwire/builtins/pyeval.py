@@ -49,6 +49,10 @@ def execute(context, input):
         exec code in locals
         execute = locals['execute']
         custom_out = execute(context, context.input)
-        yield custom_out
+        if hasattr(custom_out, '__iter__'):
+            for v in custom_out:
+                yield v
+        else:
+            yield custom_out
 
 BuiltinRegistry.getInstance().register(PyEvalBuiltin())
