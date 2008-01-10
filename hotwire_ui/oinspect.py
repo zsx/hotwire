@@ -83,6 +83,7 @@ class InspectWindow(gtk.Window):
         self.__hidden_check.connect_after('toggled', self.__on_show_hidden_toggled)
         self.__members_model = gtk.ListStore(gobject.TYPE_STRING, gobject.TYPE_PYOBJECT)        
         self.__membersview = gtk.TreeView(self.__members_model)
+        self.__membersview.connect('row-activated', self.__on_row_activated)        
         scroll = gtk.ScrolledWindow()
         scroll.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
         scroll.add(self.__membersview)
@@ -149,6 +150,13 @@ class InspectWindow(gtk.Window):
     def __render_member(self, col, cell, model, iter):
         member = model.get_value(iter, 1)
         cell.set_property('text', repr(member))
+        
+    def __on_row_activated(self, tv, path, vc):
+        _logger.debug("row activated: %s", path)
+        model = self.__membersview.get_model()
+        iter = model.get_iter(path)
+        inspect = InspectWindow(model.get_value(iter, 1), parent=self)
+        inspect.show_all()
 
     def __close_cb(self, action):
         self.__handle_close()

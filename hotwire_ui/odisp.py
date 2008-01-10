@@ -16,16 +16,79 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-import Queue, logging
+import os,sys,re,Queue,logging,inspect,locale
 
-import gtk, gobject
+import gtk, gobject, pango
 
 from hotwire.command import CommandQueue
 from hotwire_ui.render import ClassRendererMapping, DefaultObjectsRenderer
 from hotwire.logutil import log_except
 import hotwire_ui.widgets as hotwidgets
+from hotwire_ui.oinspect import InspectWindow
 
 _logger = logging.getLogger("hotwire.ui.ODisp")
+        
+class ClassInspectorSidebar(gtk.VBox):
+    def __init__(self):
+        super(ClassInspectorSidebar, self).__init__()
+        self.__tooltips = gtk.Tooltips()        
+        self.__otype = None
+        self.__olabel = hotwidgets.Link()
+        self.__olabel.connect('clicked', self.__on_oclass_clicked)
+        self.__olabel.set_ellipsize(True)
+        self.pack_start(self.__olabel, expand=False)
+        membersframe = gtk.Frame(_('Members'))
+        vbox = gtk.VBox()
+        membersframe.add(vbox)        
+        self.__hidden_check = gtk.CheckButton(_('Show _Hidden'))
+        vbox.pack_start(self.__hidden_check, expand=False)
+        self.__hidden_check.connect_after('toggled', self.__on_show_hidden_toggled)
+        self.__members_model = gtk.ListStore(gobject.TYPE_STRING, gobject.TYPE_PYOBJECT)        
+        self.__membersview = gtk.TreeView(self.__members_model)
+        self.__membersview.connect('row-activated', self.__on_row_activated)
+        scroll = gtk.ScrolledWindow()
+        scroll.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
+        scroll.add(self.__membersview)
+        vbox.add(scroll)
+        self.pack_start(membersframe, expand=True)
+        col = self.__membersview.insert_column_with_attributes(-1, _('Name'),
+                                                               hotwidgets.CellRendererText(),
+                                                               text=0)
+        self.__membersview.set_search_column(0)
+        col.set_spacing(0)
+        col.set_resizable(True)
+        
+    def set_otype(self, typeobj):
+        if self.__otype == typeobj:
+            return
+        self.__otype = typeobj
+        orepr = repr(self.__otype)
+        self.__olabel.set_text(orepr)
+        self.__tooltips.set_tip(self.__olabel, orepr)    
+        self.__set_members()
+            
+    def __set_members(self):
+        showhidden = self.__hidden_check.get_property('active')
+        self.__members_model.clear()
+        for name,member in sorted(inspect.getmembers(self.__otype), lambda a,b: locale.strcoll(a[0],b[0])):
+            if not showhidden and name.startswith('_'):
+                continue
+            self.__members_model.append((name, member))
+            
+    def __on_show_hidden_toggled(self, *args):
+        self.__set_members()
+        
+    def __on_oclass_clicked(self, *args):
+        _logger.debug("inspecting oclass")
+        inspect = InspectWindow(self.__otype, parent=self.get_toplevel())
+        inspect.show_all()
+        
+    def __on_row_activated(self, tv, path, vc):
+        _logger.debug("row activated: %s", path)
+        model = self.__membersview.get_model()
+        iter = model.get_iter(path)
+        inspect = InspectWindow(model.get_value(iter, 1), parent=self.get_toplevel())
+        inspect.show_all()
 
 class ObjectsDisplay(gtk.VBox):
     __gsignals__ = {
@@ -35,11 +98,12 @@ class ObjectsDisplay(gtk.VBox):
     def __init__(self, output_spec, context, **kwargs):
         super(ObjectsDisplay, self).__init__(**kwargs)
         self.__context = context
-        self.__ebox = gtk.EventBox()
-        self.add(self.__ebox)
-        self.__ebox.connect("key-press-event", lambda ebox, e: self.__on_keypress(e))
+        self.__paned = gtk.HPaned()
+        self.add(self.__paned)        
         self.__box = gtk.VBox()
-        self.__ebox.add(self.__box)
+        self.__paned.pack1(self.__box, resize=True)
+        self.__inspector = ClassInspectorSidebar()
+        self.__paned.pack2(self.__inspector, resize=False)
         self.__scroll = gtk.ScrolledWindow()
         self.__scroll.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
         vadjust = self.__scroll.get_vadjustment()
@@ -54,6 +118,7 @@ class ObjectsDisplay(gtk.VBox):
         self.__doing_autoscroll = False
         self.__user_scrolled = False
         self.__autoscroll_id = 0
+        self._common_supertype = None
 
     def __add_display(self, output_spec, force=False):
         if output_spec != 'any':
@@ -70,14 +135,6 @@ class ObjectsDisplay(gtk.VBox):
     def __on_status_changed(self, renderer):
         self.emit('status-changed')
         self.do_autoscroll()
-
-    @log_except(_logger)
-    def __on_keypress(self, e):
-        if e.keyval in (gtk.gdk.keyval_from_name('s'), gtk.gdk.keyval_from_name('f')) and e.state & gtk.gdk.CONTROL_MASK:
-            try:
-                return self.start_search(None)
-            except NotImplementedError, e:
-                pass
 
     def start_search(self, old_focus):
         try:
@@ -149,11 +206,38 @@ class ObjectsDisplay(gtk.VBox):
     def get_output_type(self):
         return self.__output_type
                 
-    def append_object(self, object, **kwargs):
-        # just in time!
+    def __recurse_get_common_superclass(self, c1, c2):
+        for base in c1.__bases__:
+            if base == c2:
+                return base
+            tmp = self.__recurse_get_common_superclass(base, c2)
+            if tmp:
+                return tmp
+        
+    def __get_common_superclass(self, c1, c2):
+        if c1 == c2:
+            return c1
+        if isinstance(c2, c1):
+            (c1, c2) = (c2, c1)
+        elif not isinstance(c1, c2):
+            return object
+        return self.__recurse_get_common_superclass(c1, c2)        
+                
+    def append_object(self, obj, **kwargs):
+        otype = type(obj)
+        # If we don't have a display at this point, it means we have a dynamically-typed
+        # object stream.  In that case, force the issue and add the default display.
         if not self.__display:
-            self.__add_display(object.__class__, force=True)
-        self.__display.append_obj(object, **kwargs)
+            self.__add_display(otype, force=True)
+
+        # Determine common supertype so we can display it.
+        if self._common_supertype is None:
+            self._common_supertype = otype
+        elif self._common_supertype is not object:
+            self._common_supertype = self.__get_common_superclass(otype, self._common_supertype)
+        self.__inspector.set_otype(self._common_supertype)        
+        # Actually append.
+        self.__display.append_obj(obj, **kwargs)
             
     def __vadjust(self, pos, full, forceuser=False):
         adjustment = self.__scroll.get_vadjustment()
