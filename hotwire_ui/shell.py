@@ -20,7 +20,7 @@ import os, sys, re, logging, string
 
 import gtk, gobject, pango
 
-from hotwire.command import Pipeline,Command,HotwireContext
+from hotwire.command import PipelineFactory,Pipeline,Command,HotwireContext
 from hotwire.completion import Completion, VerbCompleter, TokenCompleter
 import hotwire.command
 import hotwire.version
@@ -237,8 +237,9 @@ class Hotwire(gtk.VBox):
 
         self.__idle_parse_id = 0
         self.__parse_stale = False
-        self.__meta_syntax = None
+        self.__pipeline_factory = PipelineFactory(self.context, self.__resolve_command)
         self.__parsed_pipeline = None
+        self.__langtype = None
         self.__verb_completer = VerbCompleter()
         self.__token_completer = TokenCompleter()
         self.__completion_active = False
@@ -267,7 +268,7 @@ class Hotwire(gtk.VBox):
             self.__unset_welcome()            
             self.__outputs.add_cmd_widget(initcmd_widget)
         elif initcmd:
-            gobject.idle_add(lambda: self.execute_pipeline(Pipeline.parse(initcmd, self.context), add_history=False, reset_input=False))
+            gobject.idle_add(self.internal_execute_str, initcmd)
 
     def get_global_ui(self):
         return self.__ui
@@ -454,6 +455,9 @@ class Hotwire(gtk.VBox):
         if curtext and curtext[-1] != ' ':
             text = ' ' + text
         self.__input.set_property('text', curtext + text)
+        
+    def internal_execute_str(self, cmdtext):
+        self.internal_execute(*Pipeline.tokenize(cmdtext))     
 
     def internal_execute(self, *args):
         pipeline = Pipeline.create(self.context, None, *args)
@@ -462,17 +466,16 @@ class Hotwire(gtk.VBox):
     def execute_pipeline(self, pipeline,
                             add_history=True,
                             reset_input=True,
-                            tree=None):
+                            origtext=None):
         _logger.debug("pipeline: %s", pipeline)
 
         if pipeline.is_nostatus():
             pipeline.execute_sync()
 
         if add_history:
-            text = self.__input.get_property("text").strip()
+            text = origtext.strip()
             self.context.history.append_command(text, self.context.get_cwd())
-            if tree:
-                History.getInstance().record_pipeline(self.__cwd, self.__parsed_pipeline)
+            #History.getInstance().record_pipeline(self.__cwd, pipeline)
             self.__tabhistory.insert(0, text)
             if len(self.__tabhistory) >= self.MAX_TABHISTORY:
                 self.__tabhistory.pop(-1)
@@ -506,38 +509,11 @@ class Hotwire(gtk.VBox):
             try:
                 self.__do_parse(throw=True)
             except hotwire.command.PipelineParseException, e:
-                if self.__meta_syntax is None:
+                if self.__langtype is None:
                     self.push_msg(_("Failed to parse pipeline: %s") % (e.args[0],))
                     return
                 
         text = self.__input.get_property("text")
-
-        if self.__meta_syntax == 'sh':
-            _logger.debug("using sh meta syntax")
-            pipeline = Pipeline.create(self.context, None,
-                                       'sys', '/bin/sh', '-c', text[3:])
-            self.execute_pipeline(pipeline)
-            return
-        elif self.__meta_syntax == 'rb':
-            _logger.debug("using rb meta syntax")
-            pipeline = Pipeline.create(self.context, None,
-                                       'sys', 'ruby', '-e', text[3:])
-            self.execute_pipeline(pipeline)
-            return         
-        elif self.__meta_syntax == 'pl':
-            _logger.debug("using pl meta syntax")
-            pipeline = Pipeline.create(self.context, None,
-                                       'sys', 'perl', '-e', text[3:])
-            self.execute_pipeline(pipeline)
-            return        
-        elif self.__meta_syntax == 'py':
-            _logger.debug("using py meta syntax")
-            pipeline = Pipeline.create(self.context, None,
-                                       'py-eval', text[3:])
-            self.execute_pipeline(pipeline)
-            return      
-        else:      
-            assert self.__meta_syntax is None
                 
         _logger.debug("executing '%s'", self.__parsed_pipeline)
         if not self.__parsed_pipeline:
@@ -546,34 +522,33 @@ class Hotwire(gtk.VBox):
 
         # clear message if any
         self.push_msg('')
-
+        
+        self.execute_pipeline(self.__parsed_pipeline, origtext=text)
+        
+    def __resolve_command(self, text):
         resolutions = []
         vc = self.__verb_completer
         fs = Filesystem.getInstance()
-        
-        def resolver(text):
-            resolution_match = None
-            for completion in vc.completions(text, self.__cwd):
-                target = completion.target
-                if isinstance(target, Alias) and text == target.name:
-                    resolution_match = completion
-                    break
-                if isinstance(target, File) and \
-                   not target.is_directory() and \
-                   (unix_basename(text) == unix_basename(target.path) or fs.path_inexact_executable_match(completion.matchbase)):
-                    resolution_match = completion
-                    break
-            _logger.debug("resolution match is %s", resolution_match)                
-            if resolution_match:
-                if isinstance(resolution_match.target, Alias):
-                    tokens = list(Pipeline.tokenize(resolution_match.target.target))                   
-                    return (BuiltinRegistry.getInstance()[tokens[0].text], tokens[1:])               
-                elif isinstance(resolution_match.target, File):
-                    return (BuiltinRegistry.getInstance()['sys'], [resolution_match.target.path])
-            return (None, None)
-        
-        self.__parsed_pipeline = Pipeline.parse(text, context=self.context, resolver=resolver)
-        self.execute_pipeline(self.__parsed_pipeline)
+            
+        resolution_match = None
+        for completion in vc.completions(text, self.__cwd):
+            target = completion.target
+            if isinstance(target, Alias) and text == target.name:
+                resolution_match = completion
+                break
+            if isinstance(target, File) and \
+               not target.is_directory() and \
+               (unix_basename(text) == unix_basename(target.path) or fs.path_inexact_executable_match(completion.matchbase)):
+                resolution_match = completion
+                break
+        _logger.debug("resolution match is %s", resolution_match)                
+        if resolution_match:
+            if isinstance(resolution_match.target, Alias):
+                tokens = list(Pipeline.tokenize(resolution_match.target.target))                   
+                return (BuiltinRegistry.getInstance()[tokens[0].text], tokens[1:])               
+            elif isinstance(resolution_match.target, File):
+                return (BuiltinRegistry.getInstance()['sys'], [resolution_match.target.path])
+        return (None, None)        
 
     @log_except(_logger)
     def __on_histitem_selected(self, popup, histitem):
@@ -782,6 +757,7 @@ class Hotwire(gtk.VBox):
         self.__do_parse()
         self.__requeue_parse()
 
+    @log_except(_logger)
     def __idle_do_parse_and_complete(self):
         self.__idle_parse_id = 0
         if not self.__parse_stale:
@@ -800,7 +776,8 @@ class Hotwire(gtk.VBox):
         verbcmd = None
         addprefix = None
         # can happen when input is empty
-        if not self.__parsed_pipeline:
+        # Also for now disable completion when we're 
+        if not self.__parsed_pipeline or (self.__langtype is not None):
             _logger.debug("no tree, disabling completion")
             self.__completions.invalidate()
             return
@@ -849,21 +826,12 @@ class Hotwire(gtk.VBox):
         if not self.__parse_stale:
             return True
         text = self.__input.get_property("text")
-        if is_unix() and text.startswith('sh '):
-            self.__meta_syntax = 'sh'
-        elif text.startswith('pl '):
-            self.__meta_syntax = 'pl'
-        elif text.startswith('rb '):
-            self.__meta_syntax = 'rb'                        
-        elif text.startswith('py '):
-            self.__meta_syntax = 'py'
-        else:
-            self.__meta_syntax = None 
         try:
-            self.__parsed_pipeline = Pipeline.parse(text, self.context, accept_unclosed=(not throw))
+            (self.__langtype, self.__parsed_pipeline) = self.__pipeline_factory.parse(text, accept_unclosed=(not throw))
         except hotwire.command.PipelineParseException, e:
-            _logger.debug("parse failed, current syntax=%s", self.__meta_syntax)
+            _logger.debug("parse failed, current syntax=%s", self.__langtype)
             self.__parsed_pipeline = None
+            self.__langtype = None
             if throw:
                 raise e
             return False

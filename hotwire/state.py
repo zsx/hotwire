@@ -176,17 +176,10 @@ class History(Singleton):
     def search_usage(self, colkey, *args, **kwargs):
         return getattr(self, 'search_%s_usage' % (colkey,))(*args, **kwargs)        
         
-    def record_pipeline(self, cwd, pipeline_tree):
+    def record_pipeline(self, cwd, pipeline):
         if self.__no_save:
             return
         self.append_dir_usage(cwd)
-        for cmd in pipeline_tree:
-            verb = cmd[0]
-            if verb.text in ('term', 'sh') and len(cmd) > 1:
-                self.set_autoterm(os.path.basename(cmd[1].text), verb.text == 'term')
-
-            for arg in cmd[1:]:
-                self.append_token_usage(arg.text)
 
     def search_command_input(self, cmd, searchterm, limit=20):
         cursor = self.__conn.cursor()

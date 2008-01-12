@@ -33,6 +33,7 @@ import hotwire.util
 from hotwire.util import quote_arg, assert_strings_equal
 import hotwire.script
 import hotwire.externals.shlex as shlex
+from hotwire.externals.singletonmixin import Singleton
 
 _logger = logging.getLogger("hotwire.Command")
 
@@ -684,7 +685,6 @@ class Pipeline(gobject.GObject):
         pipeline_type_validates = True
         pushback = []
         tokens = list(tokens)
-        is_first = True
         def pull_token():
             if pushback:
                 return pushback.pop(0)
@@ -692,14 +692,7 @@ class Pipeline(gobject.GObject):
                 return tokens.pop(0)            
         while tokens or pushback:
             builtin_token = pull_token()
-            _logger.debug("token = %r", builtin_token)
-
-            if is_first and builtin_token == hotwire.script.PIPE:
-                _logger.debug("doing current rewrite")
-                pushback.insert(0, builtin_token)                
-                pushback.insert(0, 'current')
-                continue
-            is_first = False            
+            _logger.debug("token = %r", builtin_token)    
                 
             def forcetoken(t):
                 # Allow passing plain strings for convenience from Python.
@@ -874,3 +867,103 @@ class Pipeline(gobject.GObject):
 
     def __str__(self):
         return string.join(map(lambda x: x.__str__(), self.__components), ' | ')        
+
+class PipelineLanguage(object):
+    """Abstract class representing a supported input language."""
+    
+    prefix = property(lambda self: self._prefix, doc="""The syntax prefix typed by the user""")
+    fileext = property(lambda self: self._fileext, doc="""File extension used to denote this language.""")
+    langname = property(lambda self: self._langname, doc="""The human-readable name of the language (e.g. "Python")""")
+    pipelinecmd = property(lambda self: self._pipelinecmd, doc="""The HotwirePipe expansion to use for execution of this language""")
+    icon = property(lambda self: self._icon, doc="""Icon name for this language""")
+    
+    def __init__(self, prefix, fileext, langname, pipelinecmd, icon):
+        super(PipelineLanguage, self).__init__()
+        self._prefix = prefix
+        self._fileext = fileext
+        self._langname = langname
+        self._pipelinecmd = pipelinecmd
+        self._icon = icon
+    
+    def get_completer(self, text):
+        raise NotImplementedError()
+    
+    
+class PipelineLanguageRegistry(Singleton):
+    """Registry for supported pipeline languages."""
+    def __init__(self):
+        self.__langs = set()
+        
+    def get_by_fileext(self, ext):
+        for lang in self:
+            if lang.fileext == ext:
+                return lang
+        
+    def __iter__(self):
+        for x in self.__langs:
+            yield x
+
+    def register(self, lang):
+        self.__langs.add(lang)    
+    
+class HotwirePipeLanguage(PipelineLanguage):
+    """The built-in Hotwire object pipeline language."""
+    def __init__(self):
+        super(HotwirePipeLanguage, self).__init__(None, "hot", "Hotwire", None, 'hotwire')
+       
+    def get_completer(self, *args, **kwargs):
+        # FIXME - merge the stuff in from shell.py        
+        return 'hotwire'
+PipelineLanguageRegistry.getInstance().register(HotwirePipeLanguage())    
+    
+class PythonLanguage(PipelineLanguage):
+    def __init__(self):
+        super(PythonLanguage, self).__init__("py", "py", "Python", "py-eval", "python")
+PipelineLanguageRegistry.getInstance().register(PythonLanguage())              
+    
+class RubyLanguage(PipelineLanguage):
+    def __init__(self):
+        super(RubyLanguage, self).__init__("rb", "rb", "Ruby", "sys ruby -e", "ruby")
+PipelineLanguageRegistry.getInstance().register(RubyLanguage())        
+        
+class UnixShellLanguage(PipelineLanguage):
+    def __init__(self):
+        super(UnixShellLanguage, self).__init__("sh", "sh", "Unix Shell", "sys sh -c", None)
+PipelineLanguageRegistry.getInstance().register(UnixShellLanguage())        
+        
+class PerlLanguage(PipelineLanguage):
+    def __init__(self):
+        super(PerlLanguage, self).__init__("pl", "pl", "Perl", "sys perl -e", None)
+PipelineLanguageRegistry.getInstance().register(PerlLanguage())                
+
+class PipelineFactory(object):
+    def __init__(self, context, resolver=None):
+        super(PipelineFactory, self).__init__()
+        self.__context = context
+        self.__resolver = resolver
+        
+    def parse(self, text, **kwargs):
+        ispiped = text.startswith('|')
+        if ispiped:
+            text = "current | " + text[1:]
+        tokens = None
+        for lang in PipelineLanguageRegistry.getInstance():
+            # Skip languages which don't have a specified prefix - but we allow
+            # setting them manually.
+            if lang.prefix is None:
+                continue
+            if not text.startswith(lang.prefix):
+                continue
+            _logger.debug("matched lang %r", lang)
+            rest = text[len(lang.prefix):]
+            if rest.strip() == '':
+                return (lang, Pipeline.create(self.__context, self.__resolver, 'hotscript', lang.fileext))
+            else:
+                # Require a space - should probably handle this better
+                if not text.startswith(lang.prefix + " "):
+                    continue
+                tokens = list(Pipeline.tokenize(lang.pipelinecmd, context=self.__context))
+                tokens.append(rest)
+                return (lang, Pipeline.create(self.__context, self.__resolver, *tokens))
+        # Try parsing as HotwirePipe
+        return (None, Pipeline.parse(text, context=self.__context, resolver=self.__resolver, **kwargs))

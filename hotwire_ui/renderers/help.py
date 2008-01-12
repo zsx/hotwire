@@ -23,6 +23,7 @@ import gobject
 from hotwire_ui.render import ClassRendererMapping
 from hotwire_ui.renderers.unicode import UnicodeRenderer
 from hotwire.cmdalias import AliasRegistry
+from hotwire.command import PipelineLanguageRegistry
 from hotwire.builtin import BuiltinRegistry
 from hotwire.builtins.help import HelpItem
 from hotwire.version import __version__
@@ -39,6 +40,16 @@ class HelpItemRenderer(UnicodeRenderer):
         self.append_link(_('View Tutorial'), 'http://hotwire-shell.org/trac/wiki/GettingStarted')
         self._buf.insert_markup('\n\n')
 
+        self._buf.insert_markup('<larger>%s:</larger>\n' % (_('Languages'),))
+        languages = list(PipelineLanguageRegistry.getInstance())
+        languages.sort(lambda a,b: cmp(a.langname, b.langname))
+        for language in languages:
+            if not language.prefix:
+                continue
+            self._buf.insert_markup('  <b>%s</b> - prefix: <tt>%s</tt>\n' \
+                                % tuple(map(gobject.markup_escape_text, (language.langname, language.prefix))))
+        self._buf.insert_markup('\n')                    
+
         self._buf.insert_markup('<larger>%s:</larger>\n' % (_('Builtin Commands'),))
         builtins = list(BuiltinRegistry.getInstance())
         builtins.sort(lambda a,b: cmp(a.name, b.name))
@@ -48,15 +59,15 @@ class HelpItemRenderer(UnicodeRenderer):
             self.__append_builtin_arghelp(builtin)            
             self.__append_builtin_doc(builtin)
             
-        self._buf.insert_markup('\n\n<larger>%s:</larger>\n' % (_('Aliases'),))
+        self._buf.insert_markup('\n<larger>%s:</larger>\n' % (_('Aliases'),))
         aliases = list(AliasRegistry.getInstance())
         aliases.sort(lambda a,b: cmp(a.name,b.name))
         for alias in aliases:
-            self._buf.insert_markup('  <b>%s</b> - %s\n' % (alias.name, alias.target))
+            self._buf.insert_markup('  <b>%s</b> - %s\n' % tuple(map(gobject.markup_escape_text, (alias.name, alias.target))))
 
     def __append_builtin_base_help(self, builtin):
         self._buf.insert_markup('  <b>%s</b> - %s%s: <i>%s</i> %s: <i>%s</i>\n' \
-                                % (builtin.name,
+                                % (gobject.markup_escape_text(builtin.name),
                                    _('in'),
                                    builtin.get_input_optional() and ' (opt)' or '',
                                    gobject.markup_escape_text(str(builtin.get_input_type())),
