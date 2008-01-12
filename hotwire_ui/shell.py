@@ -145,6 +145,7 @@ class PipelineLanguageComboBox(gtk.ComboBox):
         
     def __render_lang_icon(self, celllayout, cell, model, iter):
         lang = model.get_value(iter, 0)
+        if lang is None: return        
         if lang.icon is None:
             cell.set_property('pixbuf', None)
         else:
@@ -155,6 +156,7 @@ class PipelineLanguageComboBox(gtk.ComboBox):
         
     def __render_lang_name(self, celllayout, cell, model, iter):
         lang = model.get_value(iter, 0)
+        if lang is None: return        
         cell.set_property('text', lang.langname)
         
     def set_lang(self, lang):
