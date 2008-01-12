@@ -23,8 +23,20 @@ import cairo, gtk, gobject, pango
 from hotwire.util import ellipsize
 import hotwire_ui.widgets as hotwidgets
 from hotwire.logutil import log_except
+from hotwire_ui.pixbufcache import PixbufCache
 
 _logger = logging.getLogger("hotwire.ui.OInspect")
+
+def _render_member_icon(member, cell):
+    pbcache = PixbufCache.getInstance()
+    if inspect.ismethod(member):
+        pbname = 'dfeet-method.png'
+    elif inspect.ismemberdescriptor(member):
+        pbname = 'dfeet-property.png'
+    else:
+        pbname = 'dfeet-object.png'
+    pixbuf = pbcache.get(pbname, size=16, trystock=True, stocksize=gtk.ICON_SIZE_MENU)             
+    cell.set_property('pixbuf', pixbuf)
 
 class ObjectInspectLink(hotwidgets.Link):
     def __init__(self):
@@ -54,6 +66,74 @@ class ObjectInspectLink(hotwidgets.Link):
     def __on_clicked(self, s2):
         inspect = InspectWindow(self.__o, parent=self.get_toplevel())
         inspect.show_all() 
+        
+class ClassInspectorSidebar(gtk.VBox):
+    def __init__(self):
+        super(ClassInspectorSidebar, self).__init__()
+        self.__tooltips = gtk.Tooltips()        
+        self.__otype = None
+        self.__olabel = ObjectInspectLink()
+        self.__olabel.set_ellipsize(True)
+        self.pack_start(self.__olabel, expand=False)
+        membersframe = gtk.Frame(_('Members'))
+        vbox = gtk.VBox()
+        membersframe.add(vbox)        
+        self.__hidden_check = gtk.CheckButton(_('Show _Hidden'))
+        vbox.pack_start(self.__hidden_check, expand=False)
+        self.__hidden_check.connect_after('toggled', self.__on_show_hidden_toggled)
+        self.__members_model = gtk.ListStore(gobject.TYPE_STRING, gobject.TYPE_PYOBJECT)        
+        self.__membersview = gtk.TreeView(self.__members_model)
+        self.__membersview.connect('row-activated', self.__on_row_activated)
+        scroll = gtk.ScrolledWindow()
+        scroll.set_policy(gtk.POLICY_NEVER, gtk.POLICY_AUTOMATIC)
+        scroll.add(self.__membersview)
+        vbox.add(scroll)
+        self.pack_start(membersframe, expand=True)
+        colidx = self.__membersview.insert_column_with_data_func(-1, '',
+                                                                 gtk.CellRendererPixbuf(),
+                                                                 self.__render_icon)
+        col = self.__membersview.insert_column_with_attributes(-1, _('Name'),
+                                                               hotwidgets.CellRendererText(),
+                                                               text=0)
+        self.__membersview.set_search_column(0)
+        col.set_spacing(0)
+        col.set_resizable(True)
+        
+    def set_otype(self, typeobj):
+        if self.__otype == typeobj:
+            return
+        self.__otype = typeobj
+        self.__olabel.set_object(typeobj)  
+        self.__set_members()
+            
+    def __set_members(self):
+        showhidden = self.__hidden_check.get_property('active')
+        self.__members_model.clear()
+        if self.__otype is None:
+            return
+        for name,member in sorted(inspect.getmembers(self.__otype), lambda a,b: locale.strcoll(a[0],b[0])):
+            if not showhidden and name.startswith('_'):
+                continue
+            self.__members_model.append((name, member))
+            
+    def __on_show_hidden_toggled(self, *args):
+        self.__set_members()
+        
+    def __render_icon(self, col, cell, model, iter):
+        member = model.get_value(iter, 1)
+        _render_member_icon(member, cell)
+        
+    def __on_oclass_clicked(self, *args):
+        _logger.debug("inspecting oclass")
+        inspect = InspectWindow(self.__otype, parent=self.get_toplevel())
+        inspect.show_all()
+        
+    def __on_row_activated(self, tv, path, vc):
+        _logger.debug("row activated: %s", path)
+        model = self.__membersview.get_model()
+        iter = model.get_iter(path)
+        inspect = InspectWindow(model.get_value(iter, 1), parent=self.get_toplevel())
+        inspect.show_all()
 
 class InspectWindow(gtk.Window):
     def __init__(self, obj, parent=None):
@@ -119,6 +199,9 @@ class InspectWindow(gtk.Window):
         scroll.add(self.__membersview)
         vbox.add(scroll)
         metavbox.pack_start(membersframe, expand=True)
+        colidx = self.__membersview.insert_column_with_data_func(-1, '',
+                                                                 gtk.CellRendererPixbuf(),
+                                                                 self.__render_icon)        
         colidx = self.__membersview.insert_column_with_attributes(-1, _('Name'),
                                                                   hotwidgets.CellRendererText(),
                                                                   text=0)
@@ -126,9 +209,6 @@ class InspectWindow(gtk.Window):
                                                                  hotwidgets.CellRendererText(),
                                                                  self.__render_member)
         self.__membersview.set_search_column(0)
-        col = self.__membersview.get_column(colidx-1)
-        col.set_spacing(0)
-        col.set_resizable(True)        
         col = self.__membersview.get_column(colidx-1)
         col.set_spacing(0)
         col.set_resizable(True)
@@ -176,6 +256,10 @@ class InspectWindow(gtk.Window):
         from hotwire.command import Pipeline
         pl = Pipeline.create(None, None, 'edit', self.__definedin.get_text())
         pl.execute_sync()
+        
+    def __render_icon(self, col, cell, model, iter):
+        member = model.get_value(iter, 1)
+        _render_member_icon(member, cell)        
             
     def __render_member(self, col, cell, model, iter):
         member = model.get_value(iter, 1)

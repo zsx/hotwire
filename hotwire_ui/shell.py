@@ -151,7 +151,7 @@ class PipelineLanguageComboBox(gtk.ComboBox):
         else:
             pbcache = PixbufCache.getInstance()
             # Right now use 16 since that's favicon size
-            pixbuf = pbcache.get(os.path.join('images', lang.icon), size=16, trystock=True, stocksize=gtk.ICON_SIZE_MENU)
+            pixbuf = pbcache.get(lang.icon, size=16, trystock=True, stocksize=gtk.ICON_SIZE_MENU)
             cell.set_property('pixbuf', pixbuf)      
         
     def __render_lang_name(self, celllayout, cell, model, iter):

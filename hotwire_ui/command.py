@@ -27,70 +27,9 @@ from hotwire_ui.pixbufcache import PixbufCache
 from hotwire.command import CommandQueue
 from hotwire.async import QueueIterator
 from hotwire.logutil import log_except
-from hotwire_ui.oinspect import InspectWindow, ObjectInspectLink
+from hotwire_ui.oinspect import InspectWindow, ObjectInspectLink, ClassInspectorSidebar
 
 _logger = logging.getLogger("hotwire.ui.Command")
-        
-class ClassInspectorSidebar(gtk.VBox):
-    def __init__(self):
-        super(ClassInspectorSidebar, self).__init__()
-        self.__tooltips = gtk.Tooltips()        
-        self.__otype = None
-        self.__olabel = ObjectInspectLink()
-        self.__olabel.set_ellipsize(True)
-        self.pack_start(self.__olabel, expand=False)
-        membersframe = gtk.Frame(_('Members'))
-        vbox = gtk.VBox()
-        membersframe.add(vbox)        
-        self.__hidden_check = gtk.CheckButton(_('Show _Hidden'))
-        vbox.pack_start(self.__hidden_check, expand=False)
-        self.__hidden_check.connect_after('toggled', self.__on_show_hidden_toggled)
-        self.__members_model = gtk.ListStore(gobject.TYPE_STRING, gobject.TYPE_PYOBJECT)        
-        self.__membersview = gtk.TreeView(self.__members_model)
-        self.__membersview.connect('row-activated', self.__on_row_activated)
-        scroll = gtk.ScrolledWindow()
-        scroll.set_policy(gtk.POLICY_NEVER, gtk.POLICY_AUTOMATIC)
-        scroll.add(self.__membersview)
-        vbox.add(scroll)
-        self.pack_start(membersframe, expand=True)
-        col = self.__membersview.insert_column_with_attributes(-1, _('Name'),
-                                                               hotwidgets.CellRendererText(),
-                                                               text=0)
-        self.__membersview.set_search_column(0)
-        col.set_spacing(0)
-        col.set_resizable(True)
-        
-    def set_otype(self, typeobj):
-        if self.__otype == typeobj:
-            return
-        self.__otype = typeobj
-        self.__olabel.set_object(typeobj)  
-        self.__set_members()
-            
-    def __set_members(self):
-        showhidden = self.__hidden_check.get_property('active')
-        self.__members_model.clear()
-        if self.__otype is None:
-            return
-        for name,member in sorted(inspect.getmembers(self.__otype), lambda a,b: locale.strcoll(a[0],b[0])):
-            if not showhidden and name.startswith('_'):
-                continue
-            self.__members_model.append((name, member))
-            
-    def __on_show_hidden_toggled(self, *args):
-        self.__set_members()
-        
-    def __on_oclass_clicked(self, *args):
-        _logger.debug("inspecting oclass")
-        inspect = InspectWindow(self.__otype, parent=self.get_toplevel())
-        inspect.show_all()
-        
-    def __on_row_activated(self, tv, path, vc):
-        _logger.debug("row activated: %s", path)
-        model = self.__membersview.get_model()
-        iter = model.get_iter(path)
-        inspect = InspectWindow(model.get_value(iter, 1), parent=self.get_toplevel())
-        inspect.show_all()
 
 class CommandStatusDisplay(gtk.HBox):
     def __init__(self, cmdname):
@@ -133,8 +72,8 @@ class CommandExecutionHeader(gtk.VBox):
         self.__exception = False
         self.__mouse_hovering = False
         
-        self.__throbber_pixbuf_done = PixbufCache.getInstance().get(os.path.join('images', 'throbber-done.gif'), size=None)
-        self.__throbber_pixbuf_ani = PixbufCache.getInstance().get(os.path.join('images', 'throbber.gif'), size=None, animation=True)
+        self.__throbber_pixbuf_done = PixbufCache.getInstance().get('throbber-done.gif', size=None)
+        self.__throbber_pixbuf_ani = PixbufCache.getInstance().get('throbber.gif', size=None, animation=True)
         
         self.__tooltips = gtk.Tooltips()
 
