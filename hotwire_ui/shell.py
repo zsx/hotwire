@@ -112,9 +112,11 @@ class PipelineLanguageComboBox(gtk.ComboBox):
         super(PipelineLanguageComboBox, self).__init__(model=gtk.ListStore(gobject.TYPE_PYOBJECT))
         
         self.set_focus_on_click(False)
-        self.__hotwire_lang = PipelineLanguageRegistry.getInstance().get_by_fileext('hot')        
+        langs = PipelineLanguageRegistry.getInstance()
+        self.__hotwire_lang = langs.get_by_fileext('hot')
+        self.__python_lang = langs.get_by_fileext('py')
         self.__reload_languages()
-                
+        self.set_row_separator_func(self.__is_row_separator)
         cell = gtk.CellRendererPixbuf()
         self.pack_start(cell, expand=False)
         self.set_cell_data_func(cell, self.__render_lang_icon)
@@ -124,17 +126,20 @@ class PipelineLanguageComboBox(gtk.ComboBox):
         
         dispatcher.connect(self.__reload_languages, sender=PipelineLanguageRegistry.getInstance())
         
+    def __is_row_separator(self, model, iter):
+        v = model.get_value(iter, 0)
+        return v is None
+        
     def __reload_languages(self, *args, **kwargs):
         langs = list(PipelineLanguageRegistry.getInstance())
         model = self.get_model() 
         model.clear()
-        for lang in langs:
-            if lang.prefix is not None:
-                continue
+        builtin_langs = [self.__hotwire_lang, self.__python_lang]
+        for lang in builtin_langs:
             model.append((lang,))
-            break
+        model.append((None,))
         for lang in sorted(langs, lambda a,b: locale.strcoll(a.langname, b.langname)):
-            if lang.prefix is None: 
+            if lang in builtin_langs:
                 continue
             model.append((lang,))
         
