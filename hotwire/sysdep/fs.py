@@ -163,7 +163,7 @@ class File(object):
     """An extended crossplatform stat() container, essentially.  
     Extra data retrieved includes symbolic link target (if applicable) and icon."""
     
-    __slots__ = ['path', 'fs', 'stat', 'xaccess', 'icon', 'icon_error', '__permstring', 'target_stat', 'stat_error']
+    __slots__ = ['path', 'fs', 'stat', 'xaccess', 'icon', 'icon_error', '_permstring', 'target_stat', 'stat_error']
     def __init__(self, path, fs=None):
         super(File, self).__init__()
         self.path = path
