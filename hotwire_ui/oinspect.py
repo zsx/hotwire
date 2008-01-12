@@ -30,18 +30,25 @@ class ObjectInspectLink(hotwidgets.Link):
     def __init__(self):
         super(ObjectInspectLink, self).__init__()
         self.__tips = gtk.Tooltips()
+        self.__nameonly = False
         self.__o = None
         self.connect('clicked', self.__on_clicked)
         
-    def set_object(self, o):
+    def set_object(self, o, nameonly=False):
         self.__o = o
+        self.__nameonly = nameonly
         if o is None:
             self.set_text('')
             self.__tips.set_tip(self, '')
+            return
+        
+        fullname = '%s.%s' % (o.__module__, o.__name__)
+        if nameonly:
+            text = o.__name__
         else:
-            name = o.__name__
-            self.set_text(name)
-            self.__tips.set_tip(self, repr(o))
+            text = fullname
+        self.set_text(text)
+        self.__tips.set_tip(self, fullname)
     
     @log_except(_logger)
     def __on_clicked(self, s2):
