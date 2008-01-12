@@ -16,7 +16,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-import os, sys, logging, time, inspect, locale
+import os, sys, logging, time, inspect, locale, gettext
 
 import gtk, gobject
 
@@ -930,7 +930,7 @@ class CommandExecutionControl(gtk.VBox):
                 container.hide_all()
                 return
             container.show_all()
-            label.set_label(_(' %d commands') % (n,))
+            label.set_label(gettext.ngettext(' %d pipeline' % (n,), ' %d pipelines' % (n,), n))
             if n_exec > 0 and n_done > 0:
                 label_exec.set_markup(_(' %d executing, <b>%d complete</b>') % (n_exec, n_done))
             elif n_done > 0:
