@@ -208,7 +208,7 @@ class Hotwire(gtk.VBox):
   </menubar>
 </ui>'''
         self.__actions = [
-            ('SwitchLanguage', 'hotwire', _('Switch Language'), '<control><shift>L', _('Change the input language'), self.__on_switch_language_cb),
+            ('SwitchLanguage', 'hotwire', _('Switch _Language'), '<control><shift>L', _('Change the input language'), self.__on_switch_language_cb),
             ('GoMenu', None, _('_Go')),
             ('Up', 'gtk-go-up', _('Up'), '<alt>Up', _('Go to parent directory'), self.__up_cb),
             ('Back', 'gtk-go-back', _('Back'), '<alt>Left', _('Go to previous directory'), self.__back_cb),
