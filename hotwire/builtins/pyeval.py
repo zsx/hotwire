@@ -27,7 +27,9 @@ from hotwire.fs import path_join
 from hotwire.sysdep.fs import Filesystem
 
 class PyEvalBuiltin(Builtin):
-    __doc__ = _("""Compile and execute Python expression.""")
+    __doc__ = _("""Compile and execute Python expression.
+Iterable return values (define __iter__) are expanded.  Other values are
+expressed as an iterable which yielded a single object.""")
  
     PYEVAL_CONTENT = '''
 import os,sys,re
