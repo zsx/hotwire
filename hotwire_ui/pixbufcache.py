@@ -33,7 +33,7 @@ def _get_datadirs():
         yield os.path.join(d, 'hotwire')
     uninst = os.getenv('HOTWIRE_UNINSTALLED') 
     if uninst:
-        yield uninst
+        yield os.path.join(uninst, 'images')
 
 def _find_in_datadir(fname):
     datadirs = _get_datadirs()
