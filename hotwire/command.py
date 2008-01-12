@@ -254,7 +254,7 @@ class Command(gobject.GObject):
             _logger.debug("executing async: %s", self)              
             self.__executing_sync = False             
             self.__thread = threading.Thread(target=self.__run)
-            self.__thread.run()
+            self.__thread.start()
 
     def set_output_queue(self, queue, map_fn):
         self.output = queue
@@ -878,7 +878,7 @@ class PipelineLanguage(object):
     langname = property(lambda self: self._langname, doc="""The human-readable name of the language (e.g. "Python")""")
     icon = property(lambda self: self._icon, doc="""Icon name for this language""")
     builtin_eval = property(lambda self: self._builtin_eval, doc="""The Hotwire Builtin object used for execution""")
-    interpreter_exec = property(lambda: self._interpreter_exec, doc="""The executable interpreter name (if required)""")
+    interpreter_exec = property(lambda self: self._interpreter_exec, doc="""The executable interpreter name (if required)""")
     exec_args = property(lambda self: self._exec_args, doc="""The interpreter arguments use for execution of a string""")    
     
     def __init__(self, prefix, fileext, langname, icon, builtin_eval=None, interpreter_exec=None, exec_args=None):
@@ -978,6 +978,6 @@ class PipelineFactory(object):
                 # Require a space - should probably handle this better
                 if not text.startswith(lang.prefix + " "):
                     continue
-                return self.__make_lang_pipeline(lang, rest)
+                return self.__make_lang_pipeline(lang, rest[1:])
         # Try parsing as HotwirePipe
         return (None, Pipeline.parse(text, context=self.__context, resolver=self.__resolver, **kwargs))
