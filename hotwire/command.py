@@ -210,6 +210,7 @@ class Command(gobject.GObject):
         self.out_redir = out_redir and FilePath(os.path.expanduser(out_redir), self.context.cwd)
         self.out_append = out_append
         
+        self.__thread = None
         self.__executing_sync = None
         self._cancelled = False
         self.__tokens = tokens
@@ -252,7 +253,8 @@ class Command(gobject.GObject):
         else:         
             _logger.debug("executing async: %s", self)              
             self.__executing_sync = False             
-            MiniThreadPool.getInstance().run(lambda: self.__run(**kwargs))
+            self.__thread = threading.Thread(target=self.__run)
+            self.__thread.run()
 
     def set_output_queue(self, queue, map_fn):
         self.output = queue
@@ -265,7 +267,7 @@ class Command(gobject.GObject):
     def get_tokens(self):
         return self.__tokens
 
-    def __run(self):
+    def __run(self, *args, **kwargs):
         if self._cancelled:
             _logger.debug("%s cancelled, returning", self)
             self.output.put(self.map_fn(None))
