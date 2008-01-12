@@ -191,7 +191,8 @@ widget "*hotwire-tab-close" style "hotwire-tab-close"
         theme = gtk.icon_theme_get_default()
         imgpath = os.path.join(os.getenv('HOTWIRE_UNINSTALLED'), 'images')
         _logger.debug("appending to icon theme: %s", imgpath)
-        theme.append_search_path(imgpath)
+        theme.prepend_search_path(imgpath)
+        theme.rescan_if_needed()
 
     w = HotWindowFactory.getInstance().create_initial_window(subtitle=(new_process and _(' (Unshared)') or ''))
     w.show()

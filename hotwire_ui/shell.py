@@ -16,14 +16,15 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-import os, sys, re, logging, string
+import os, sys, re, logging, string, locale
 
 import gtk, gobject, pango
 
-from hotwire.command import PipelineFactory,Pipeline,Command,HotwireContext
+from hotwire.command import PipelineFactory,Pipeline,Command,HotwireContext,PipelineLanguageRegistry
 from hotwire.completion import Completion, VerbCompleter, TokenCompleter
 import hotwire.command
 import hotwire.version
+from hotwire_ui.pixbufcache import PixbufCache
 import hotwire_ui.widgets as hotwidgets
 import hotwire_ui.pyshell
 from hotwire.externals.singletonmixin import Singleton
@@ -105,6 +106,66 @@ class HotwireClientContext(hotwire.command.HotwireContext):
         
     def get_ui(self):
         return self.__hotwire.get_global_ui()
+    
+class PipelineLanguageComboBox(gtk.ComboBox):
+    def __init__(self):
+        super(PipelineLanguageComboBox, self).__init__(model=gtk.ListStore(gobject.TYPE_PYOBJECT))
+        
+        self.set_focus_on_click(False)
+        self.__hotwire_lang = PipelineLanguageRegistry.getInstance().get_by_fileext('hot')        
+        self.__reload_languages()
+                
+        cell = gtk.CellRendererPixbuf()
+        self.pack_start(cell, expand=False)
+        self.set_cell_data_func(cell, self.__render_lang_icon)
+        cell = hotwidgets.CellRendererText(alignment=pango.ALIGN_RIGHT)
+        self.pack_start(cell)
+        self.set_cell_data_func(cell, self.__render_lang_name)
+        
+        dispatcher.connect(self.__reload_languages, sender=PipelineLanguageRegistry.getInstance())
+        
+    def __reload_languages(self, *args, **kwargs):
+        langs = list(PipelineLanguageRegistry.getInstance())
+        model = self.get_model() 
+        model.clear()
+        for lang in langs:
+            if lang.prefix is not None:
+                continue
+            model.append((lang,))
+            break
+        for lang in sorted(langs, lambda a,b: locale.strcoll(a.langname, b.langname)):
+            if lang.prefix is None: 
+                continue
+            model.append((lang,))
+        
+    def __render_lang_icon(self, celllayout, cell, model, iter):
+        lang = model.get_value(iter, 0)
+        if lang.icon is None:
+            cell.set_property('pixbuf', None)
+        else:
+            pbcache = PixbufCache.getInstance()
+            # Right now use 16 since that's favicon size
+            pixbuf = pbcache.get(os.path.join('images', lang.icon), size=16, trystock=True, stocksize=gtk.ICON_SIZE_MENU)
+            cell.set_property('pixbuf', pixbuf)      
+        
+    def __render_lang_name(self, celllayout, cell, model, iter):
+        lang = model.get_value(iter, 0)
+        cell.set_property('text', lang.langname)
+        
+    def set_lang(self, lang):
+        if lang is None:
+            lang = self.__hotwire_lang
+        for row in self.get_model():
+            val = row[0]
+            if val == lang:
+                self.set_active_iter(row.iter)
+                break
+            
+    def get_lang(self):
+        lang = self.get_model().get_value(self.get_active_iter(), 0)
+        if lang is self.__hotwire_lang:
+            return None
+        return lang
 
 class Hotwire(gtk.VBox):
     MAX_RECENTDIR_LEN = 10
@@ -124,6 +185,13 @@ class Hotwire(gtk.VBox):
         self.__ui_string = '''
 <ui>
   <menubar name='Menubar'>
+    <menu action='EditMenu'>
+      <placeholder name='EditMenuAdditions'>
+        <separator/>
+        <menuitem action='SwitchLanguage'/>
+        <separator/>
+      </placeholder>
+    </menu>  
     <placeholder name='WidgetMenuAdditions'>  
       <menu action='GoMenu'>
         <menuitem action='Up'/>
@@ -140,6 +208,7 @@ class Hotwire(gtk.VBox):
   </menubar>
 </ui>'''
         self.__actions = [
+            ('SwitchLanguage', 'hotwire', _('Switch Language'), '<control><shift>L', _('Change the input language'), self.__on_switch_language_cb),
             ('GoMenu', None, _('_Go')),
             ('Up', 'gtk-go-up', _('Up'), '<alt>Up', _('Go to parent directory'), self.__up_cb),
             ('Back', 'gtk-go-back', _('Back'), '<alt>Left', _('Go to previous directory'), self.__back_cb),
@@ -202,6 +271,10 @@ class Hotwire(gtk.VBox):
 
         self.__statusline = gtk.HBox()
         self.__statusbox.pack_start(hotwidgets.Align(self.__statusline), expand=False)
+        self.__lang_combo = PipelineLanguageComboBox()
+        self.__lang_combo.set_lang(None)
+        self.__lang_combo.connect('changed', self.__on_lang_combo_changed)
+        self.__statusline.pack_start(self.__lang_combo, expand=False)        
         self.__doing_recentdir_sync = False
         self.__doing_recentdir_navigation = False
         self.__recentdir_navigation_index = None
@@ -240,6 +313,7 @@ class Hotwire(gtk.VBox):
         self.__pipeline_factory = PipelineFactory(self.context, self.__resolve_command)
         self.__parsed_pipeline = None
         self.__langtype = None
+        self.__override_langtype = None
         self.__verb_completer = VerbCompleter()
         self.__token_completer = TokenCompleter()
         self.__completion_active = False
@@ -284,6 +358,16 @@ class Hotwire(gtk.VBox):
             self.__msgline.set_text(msg)
         else:
             self.__msgline.set_markup(msg)
+            
+    def __on_lang_combo_changed(self, *args):
+        self.__override_langtype = self.__lang_combo.get_lang()
+        _logger.debug("input language changed: %r", self.__override_langtype)
+        
+    def __on_switch_language_cb(self, action):
+        self.__lang_combo.popup()  
+        
+    def get_active_lang(self):
+        return self.__override_langtype or self.__langtype
             
     def __add_bookmark_cb(self, action):
         bookmarks = Filesystem.getInstance().get_bookmarks()
@@ -509,9 +593,8 @@ class Hotwire(gtk.VBox):
             try:
                 self.__do_parse(throw=True)
             except hotwire.command.PipelineParseException, e:
-                if self.__langtype is None:
-                    self.push_msg(_("Failed to parse pipeline: %s") % (e.args[0],))
-                    return
+                self.push_msg(_("Failed to parse pipeline: %s") % (e.args[0],))
+                return
                 
         text = self.__input.get_property("text")
                 
@@ -777,7 +860,7 @@ class Hotwire(gtk.VBox):
         addprefix = None
         # can happen when input is empty
         # Also for now disable completion when we're 
-        if not self.__parsed_pipeline or (self.__langtype is not None):
+        if not self.__parsed_pipeline or (self.get_active_lang() is not None):
             _logger.debug("no tree, disabling completion")
             self.__completions.invalidate()
             return
@@ -827,7 +910,7 @@ class Hotwire(gtk.VBox):
             return True
         text = self.__input.get_property("text")
         try:
-            (self.__langtype, self.__parsed_pipeline) = self.__pipeline_factory.parse(text, accept_unclosed=(not throw))
+            (self.__langtype, self.__parsed_pipeline) = self.__pipeline_factory.parse(text, accept_unclosed=(not throw), override_lang=self.__override_langtype)
         except hotwire.command.PipelineParseException, e:
             _logger.debug("parse failed, current syntax=%s", self.__langtype)
             self.__parsed_pipeline = None

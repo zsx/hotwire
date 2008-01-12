@@ -62,7 +62,7 @@ class PixbufCache(Singleton):
             self.__cache[(path, size)] = pixbuf
         return self.__cache[(path, size)]
     
-    def get_stock(self, name, stocksize):
+    def get_stock(self, name, stocksize, fallback_size=24):
         if name.find(os.sep) >= 0:
             name = os.path.basename(name)
         (root, ext) = os.path.splitext(name)

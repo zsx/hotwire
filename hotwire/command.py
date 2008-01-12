@@ -874,20 +874,23 @@ class PipelineLanguage(object):
     prefix = property(lambda self: self._prefix, doc="""The syntax prefix typed by the user""")
     fileext = property(lambda self: self._fileext, doc="""File extension used to denote this language.""")
     langname = property(lambda self: self._langname, doc="""The human-readable name of the language (e.g. "Python")""")
-    pipelinecmd = property(lambda self: self._pipelinecmd, doc="""The HotwirePipe expansion to use for execution of this language""")
     icon = property(lambda self: self._icon, doc="""Icon name for this language""")
+    builtin_eval = property(lambda self: self._builtin_eval, doc="""The Hotwire Builtin object used for execution""")
+    interpreter_exec = property(lambda: self._interpreter_exec, doc="""The executable interpreter name (if required)""")
+    exec_args = property(lambda self: self._exec_args, doc="""The interpreter arguments use for execution of a string""")    
     
-    def __init__(self, prefix, fileext, langname, pipelinecmd, icon):
+    def __init__(self, prefix, fileext, langname, icon, builtin_eval=None, interpreter_exec=None, exec_args=None):
         super(PipelineLanguage, self).__init__()
         self._prefix = prefix
         self._fileext = fileext
         self._langname = langname
-        self._pipelinecmd = pipelinecmd
         self._icon = icon
+        self._builtin_eval = builtin_eval
+        self._interpreter_exec = interpreter_exec
+        self._exec_args = exec_args        
     
     def get_completer(self, text):
         raise NotImplementedError()
-    
     
 class PipelineLanguageRegistry(Singleton):
     """Registry for supported pipeline languages."""
@@ -909,7 +912,7 @@ class PipelineLanguageRegistry(Singleton):
 class HotwirePipeLanguage(PipelineLanguage):
     """The built-in Hotwire object pipeline language."""
     def __init__(self):
-        super(HotwirePipeLanguage, self).__init__(None, "hot", "Hotwire", None, 'hotwire')
+        super(HotwirePipeLanguage, self).__init__(None, "hot", "HotwirePipe", 'hotwire.png')
        
     def get_completer(self, *args, **kwargs):
         # FIXME - merge the stuff in from shell.py        
@@ -918,22 +921,22 @@ PipelineLanguageRegistry.getInstance().register(HotwirePipeLanguage())
     
 class PythonLanguage(PipelineLanguage):
     def __init__(self):
-        super(PythonLanguage, self).__init__("py", "py", "Python", "py-eval", "python")
+        super(PythonLanguage, self).__init__("py", "py", "Python", "python.ico", builtin_eval='py-eval')
 PipelineLanguageRegistry.getInstance().register(PythonLanguage())              
     
 class RubyLanguage(PipelineLanguage):
     def __init__(self):
-        super(RubyLanguage, self).__init__("rb", "rb", "Ruby", "sys ruby -e", "ruby")
+        super(RubyLanguage, self).__init__("rb", "rb", "Ruby", "ruby.ico", interpreter_exec='ruby', exec_args=['-e'])
 PipelineLanguageRegistry.getInstance().register(RubyLanguage())        
         
 class UnixShellLanguage(PipelineLanguage):
     def __init__(self):
-        super(UnixShellLanguage, self).__init__("sh", "sh", "Unix Shell", "sys sh -c", None)
+        super(UnixShellLanguage, self).__init__("sh", "sh", "Unix Shell", 'unix.ico', interpreter_exec='sh', exec_args=['-c'])
 PipelineLanguageRegistry.getInstance().register(UnixShellLanguage())        
         
 class PerlLanguage(PipelineLanguage):
     def __init__(self):
-        super(PerlLanguage, self).__init__("pl", "pl", "Perl", "sys perl -e", None)
+        super(PerlLanguage, self).__init__("pl", "pl", "Perl", 'perl.ico', interpreter_exec='perl', exec_args=['-e'])
 PipelineLanguageRegistry.getInstance().register(PerlLanguage())                
 
 class PipelineFactory(object):
@@ -942,7 +945,18 @@ class PipelineFactory(object):
         self.__context = context
         self.__resolver = resolver
         
-    def parse(self, text, **kwargs):
+    def __make_lang_pipeline(self, lang, cmdtext):
+        if lang.builtin_eval:
+            pipeline = Pipeline.create(self.__context, self.__resolver, lang.builtin_eval, cmdtext)
+        else:
+            args = list(lang.exec_args)
+            args.append(cmdtext)
+            pipeline = Pipeline.create(self.__context, self.__resolver, lang.interpreter_exec, *args)
+        return (lang, pipeline)      
+        
+    def parse(self, text, override_lang=None, **kwargs):
+        if override_lang is not None:
+            return self.__make_lang_pipeline(override_lang, text)
         ispiped = text.startswith('|')
         if ispiped:
             text = "current | " + text[1:]
@@ -952,7 +966,7 @@ class PipelineFactory(object):
             # setting them manually.
             if lang.prefix is None:
                 continue
-            if not text.startswith(lang.prefix):
+            elif not text.startswith(lang.prefix):
                 continue
             _logger.debug("matched lang %r", lang)
             rest = text[len(lang.prefix):]
@@ -962,8 +976,6 @@ class PipelineFactory(object):
                 # Require a space - should probably handle this better
                 if not text.startswith(lang.prefix + " "):
                     continue
-                tokens = list(Pipeline.tokenize(lang.pipelinecmd, context=self.__context))
-                tokens.append(rest)
-                return (lang, Pipeline.create(self.__context, self.__resolver, *tokens))
+                return self.__make_lang_pipeline(lang, rest)
         # Try parsing as HotwirePipe
         return (None, Pipeline.parse(text, context=self.__context, resolver=self.__resolver, **kwargs))
