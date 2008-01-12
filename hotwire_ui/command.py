@@ -49,7 +49,7 @@ class ClassInspectorSidebar(gtk.VBox):
         self.__membersview = gtk.TreeView(self.__members_model)
         self.__membersview.connect('row-activated', self.__on_row_activated)
         scroll = gtk.ScrolledWindow()
-        scroll.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
+        scroll.set_policy(gtk.POLICY_NEVER, gtk.POLICY_AUTOMATIC)
         scroll.add(self.__membersview)
         vbox.add(scroll)
         self.pack_start(membersframe, expand=True)
