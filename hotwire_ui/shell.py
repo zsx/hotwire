@@ -113,8 +113,8 @@ class PipelineLanguageComboBox(gtk.ComboBox):
         
         self.set_focus_on_click(False)
         langs = PipelineLanguageRegistry.getInstance()
-        self.__hotwire_lang = langs.get_by_fileext('hot')
-        self.__python_lang = langs.get_by_fileext('py')
+        self.__hotwire_lang = langs['62270c40-a94a-44dd-aaa0-689f882acf34']
+        self.__python_lang = langs['da3343a0-8bce-46ed-a463-2d17ab09d9b4']
         self.__reload_languages()
         self.set_row_separator_func(self.__is_row_separator)
         cell = gtk.CellRendererPixbuf()

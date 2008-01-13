@@ -914,6 +914,7 @@ class Pipeline(gobject.GObject):
 class PipelineLanguage(object):
     """Abstract class representing a supported input language."""
     
+    uuid = property(lambda self: self._uuid, doc="""UUID associated with this language, used for unambiguous identification""")
     prefix = property(lambda self: self._prefix, doc="""The syntax prefix typed by the user""")
     fileext = property(lambda self: self._fileext, doc="""File extension used to denote this language.""")
     langname = property(lambda self: self._langname, doc="""The human-readable name of the language (e.g. "Python")""")
@@ -922,8 +923,10 @@ class PipelineLanguage(object):
     interpreter_exec = property(lambda self: self._interpreter_exec, doc="""The executable interpreter name (if required)""")
     exec_args = property(lambda self: self._exec_args, doc="""The interpreter arguments use for execution of a string""")    
     
-    def __init__(self, prefix, fileext, langname, icon, builtin_eval=None, interpreter_exec=None, exec_args=None):
+    def __init__(self, uuid, prefix, fileext, langname, icon, 
+                  builtin_eval=None, interpreter_exec=None, exec_args=None):
         super(PipelineLanguage, self).__init__()
+        self._uuid = uuid
         self._prefix = prefix
         self._fileext = fileext
         self._langname = langname
@@ -938,7 +941,10 @@ class PipelineLanguage(object):
 class PipelineLanguageRegistry(Singleton):
     """Registry for supported pipeline languages."""
     def __init__(self):
-        self.__langs = set()
+        self.__langs = {} # uuid->lang
+        
+    def __getitem__(self, uuid):
+        return self.__langs[uuid]
         
     def get_by_fileext(self, ext):
         for lang in self:
@@ -946,16 +952,20 @@ class PipelineLanguageRegistry(Singleton):
                 return lang
         
     def __iter__(self):
-        for x in self.__langs:
+        for x in self.__langs.itervalues():
             yield x
 
     def register(self, lang):
-        self.__langs.add(lang)    
+        if lang.uuid in self.__langs:
+            raise ValueError("Language uuid %s already registered", lang.uuid)
+        self.__langs[lang.uuid] = lang
     
 class HotwirePipeLanguage(PipelineLanguage):
     """The built-in Hotwire object pipeline language."""
     def __init__(self):
-        super(HotwirePipeLanguage, self).__init__(None, "hot", "HotwirePipe", 'hotwire.png')
+        super(HotwirePipeLanguage, self).__init__('62270c40-a94a-44dd-aaa0-689f882acf34',
+                                                  None, "hot", "HotwirePipe", 'hotwire.png',
+                                                  builtin_eval=True)
        
     def get_completer(self, *args, **kwargs):
         # FIXME - merge the stuff in from shell.py        
@@ -964,22 +974,26 @@ PipelineLanguageRegistry.getInstance().register(HotwirePipeLanguage())
     
 class PythonLanguage(PipelineLanguage):
     def __init__(self):
-        super(PythonLanguage, self).__init__("py", "py", "Python", "python.ico", builtin_eval='py-eval')
+        super(PythonLanguage, self).__init__('da3343a0-8bce-46ed-a463-2d17ab09d9b4',
+                                             "py", "py", "Python", "python.ico", builtin_eval='py-eval')
 PipelineLanguageRegistry.getInstance().register(PythonLanguage())              
     
 class RubyLanguage(PipelineLanguage):
     def __init__(self):
-        super(RubyLanguage, self).__init__("rb", "rb", "Ruby", "ruby.ico", interpreter_exec='ruby', exec_args=['-e'])
+        super(RubyLanguage, self).__init__('e5957145-4db4-4d92-817d-379ba45adb15',
+                                           "rb", "rb", "Ruby", "ruby.ico", interpreter_exec='ruby', exec_args=['-e'])
 PipelineLanguageRegistry.getInstance().register(RubyLanguage())        
         
 class UnixShellLanguage(PipelineLanguage):
     def __init__(self):
-        super(UnixShellLanguage, self).__init__("sh", "sh", "Unix Shell", 'unix.ico', interpreter_exec='sh', exec_args=['-c'])
+        super(UnixShellLanguage, self).__init__('da40fb16-4b85-4a56-a95f-022ba5281971',
+                                                "sh", "sh", "Unix Shell", 'unix.ico', interpreter_exec='sh', exec_args=['-c'])
 PipelineLanguageRegistry.getInstance().register(UnixShellLanguage())        
         
 class PerlLanguage(PipelineLanguage):
     def __init__(self):
-        super(PerlLanguage, self).__init__("pl", "pl", "Perl", 'perl.ico', interpreter_exec='perl', exec_args=['-e'])
+        super(PerlLanguage, self).__init__('467a164e-50c4-49c7-8caa-1e883f8d27da',
+                                           "pl", "pl", "Perl", 'perl.ico', interpreter_exec='perl', exec_args=['-e'])
 PipelineLanguageRegistry.getInstance().register(PerlLanguage())                
 
 class PipelineFactory(object):
