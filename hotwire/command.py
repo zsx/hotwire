@@ -947,21 +947,26 @@ class PipelineFactory(object):
         self.__context = context
         self.__resolver = resolver
         
-    def __make_lang_pipeline(self, lang, cmdtext):
-        if lang.builtin_eval:
-            pipeline = Pipeline.create(self.__context, self.__resolver, lang.builtin_eval, cmdtext)
+    def __make_lang_pipeline(self, lang, ispiped, cmdtext):
+        if ispiped:
+            args = ['current', hotwire.script.PIPE]
         else:
-            args = list(lang.exec_args)
+            args = []
+        if lang.builtin_eval:
+            args.extend([lang.builtin_eval, cmdtext])
+        else:
+            args.append(lang.interpreter_exec)
+            args.extend(lang.exec_args)
             args.append(cmdtext)
-            pipeline = Pipeline.create(self.__context, self.__resolver, lang.interpreter_exec, *args)
+        pipeline = Pipeline.create(self.__context, self.__resolver, *args)
         return (lang, pipeline)      
         
     def parse(self, text, override_lang=None, **kwargs):
         if override_lang is not None:
-            return self.__make_lang_pipeline(override_lang, text)
+            return self.__make_lang_pipeline(override_lang, False, text)
         ispiped = text.startswith('|')
         if ispiped:
-            text = "current | " + text[1:]
+            text = text[1:]        
         tokens = None
         for lang in PipelineLanguageRegistry.getInstance():
             # Skip languages which don't have a specified prefix - but we allow
@@ -973,11 +978,17 @@ class PipelineFactory(object):
             _logger.debug("matched lang %r", lang)
             rest = text[len(lang.prefix):]
             if rest.strip() == '':
-                return (lang, Pipeline.create(self.__context, self.__resolver, 'hotscript', lang.fileext))
+                scriptargs = ['hotscript', lang.fileext]
+                if ispiped:
+                    scriptargs.insert(0, hotwire.script.PIPE)
+                    scriptargs.insert(0, 'current')
+                return (lang, Pipeline.create(self.__context, self.__resolver, *scriptargs))
             else:
                 # Require a space - should probably handle this better
                 if not text.startswith(lang.prefix + " "):
                     continue
-                return self.__make_lang_pipeline(lang, rest[1:])
+                return self.__make_lang_pipeline(lang, ispiped, rest[1:])
         # Try parsing as HotwirePipe
+        if ispiped:
+            text = 'current | ' + text
         return (None, Pipeline.parse(text, context=self.__context, resolver=self.__resolver, **kwargs))
