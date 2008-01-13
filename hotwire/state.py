@@ -47,19 +47,35 @@ class History(Singleton):
         _logger.debug("opening connection to history db: %s", path)
         self.__conn = sqlite3.connect(path, isolation_level=None)
         cursor = self.__conn.cursor()
-        cursor.execute('''CREATE TABLE IF NOT EXISTS Commands (dbid INTEGER PRIMARY KEY AUTOINCREMENT, cmd TEXT, exectime DATETIME, dirpath TEXT)''')
-        cursor.execute('''CREATE INDEX IF NOT EXISTS CommandsIndex on Commands (cmd)''')
-        cursor.execute('''CREATE TABLE IF NOT EXISTS Autoterm (dbid INTEGER PRIMARY KEY AUTOINCREMENT, cmd TEXT UNIQUE, modtime DATETIME)''')
-        cursor.execute('''CREATE TABLE IF NOT EXISTS Directories (dbid INTEGER PRIMARY KEY AUTOINCREMENT, path TEXT UNIQUE, count INTEGER, modtime DATETIME)''')  
-        cursor.execute('''CREATE TABLE IF NOT EXISTS Tokens (dbid INTEGER PRIMARY KEY AUTOINCREMENT, token TEXT UNIQUE, count INTEGER, modtime DATETIME)''')
+        # Commands is the primary text input history table
+        cursor.execute('''CREATE TABLE IF NOT EXISTS Commands (bid INTEGER PRIMARY KEY AUTOINCREMENT, cmd TEXT, exectime DATETIME, dirpath TEXT)''')     
+        # Is there a way to do ALTER TABLE IF NOT DONE?
+        try:
+            # Transition from pre-0.700
+            cursor.execute('''ALTER TABLE Commands ADD lang_uuid TEXT''')
+            cursor.execute('''UPDATE Commands SET lang_uuid = ? WHERE lang_uuid IS NULL''', ('62270c40-a94a-44dd-aaa0-689f882acf34',))
+        except sqlite3.OperationalError, e:
+            pass
+        # This was a pre-0.700 index.
+        cursor.execute('''DROP INDEX IF EXISTS CommandsIndex''')
+        cursor.execute('''CREATE INDEX IF NOT EXISTS CommandsIndex2 on Commands (cmd, lang_uuid)''')
+        
+        # Autoterm and Tokens were dropped
+        
+        # Records frequently used directories
+        cursor.execute('''CREATE TABLE IF NOT EXISTS Directories (dbid INTEGER PRIMARY KEY AUTOINCREMENT, path TEXT UNIQUE, count INTEGER, modtime DATETIME)''')
+        
+        # Nothing in CmdInput yet...need to fix this.
         cursor.execute('''CREATE TABLE IF NOT EXISTS CmdInput (dbid INTEGER PRIMARY KEY AUTOINCREMENT, cmd TEXT, line TEXT, modtime DATETIME)''')
-        cursor.execute('''CREATE INDEX IF NOT EXISTS CmdInputIndex on CmdInput (cmd, line, modtime)''')        
+        cursor.execute('''CREATE INDEX IF NOT EXISTS CmdInputIndex on CmdInput (cmd, line, modtime)''')
+        
+        # Currently just used to note which persist tables have been converted        
         cursor.execute('''CREATE TABLE IF NOT EXISTS Meta (keyName TEXT UNIQUE, keyValue)''')
+        
+        # TODO drop this stuff around 0.800 timeframe
         self.__convert_from_persist('history', 'Commands', '(NULL, ?, 0, NULL)')
-        self.__convert_from_persist('autoterm', 'Autoterm', '(NULL, ?, 0)')
         freqconvert = lambda x: (x[0], x[1].freq, x[1].usetime)
         self.__convert_from_persist('cwd_history', 'Directories', '(NULL, ?, ?, ?)', freqconvert)
-        self.__convert_from_persist('token_history', 'Tokens', '(NULL, ?, ?, ?)', freqconvert) 
         
     def set_no_save(self):
         self.__no_save = True       
@@ -86,14 +102,14 @@ class History(Singleton):
         cursor.execute('''COMMIT''')
         _logger.debug("conversion successful")        
 
-    def append_command(self, cmd, cwd):
+    def append_command(self, lang_uuid, cmd, cwd):
         if self.__no_save:
             return
         cursor = self.__conn.cursor()
         cursor.execute('''BEGIN TRANSACTION''')
-        vals = (cmd, datetime.datetime.now(), cwd)
+        vals = (cmd, datetime.datetime.now(), cwd, lang_uuid)
         _logger.debug("doing insert of %s", vals)
-        cursor.execute('''INSERT INTO Commands VALUES (NULL, ?, ?, ?)''', vals)
+        cursor.execute('''INSERT INTO Commands VALUES (NULL, ?, ?, ?, ?)''', vals)
         cursor.execute('''COMMIT''')
         
     def __search_limit_query(self, tablename, column, orderval, searchterm, limit, countmin=0, filters=[], distinct=False):
@@ -116,9 +132,12 @@ class History(Singleton):
         _logger.debug("generated search query: %s", sql)
         return sql
         
-    def search_commands(self, searchterm, limit=20, **kwargs):
+    def search_commands(self,  lang_uuid, searchterm, limit=20, **kwargs):
         cursor = self.__conn.cursor()
-        (sql, args) = self.__search_limit_query('Commands', 'cmd', 'exectime', searchterm, limit, **kwargs)         
+        if lang_uuid:
+            kwargs['filters'] = [(' lang_uuid = ? ', lang_uuid)]
+        (sql, args) = self.__search_limit_query('Commands', 'cmd', 'exectime', searchterm, limit,
+                                                **kwargs)
         _logger.debug("execute using args %s: %s", args, sql)
         for v in cursor.execute(sql, args):
             yield v[1]  

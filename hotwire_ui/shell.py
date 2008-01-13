@@ -84,7 +84,7 @@ class HotwireClientContext(hotwire.command.HotwireContext):
 
     def get_history(self):
         # FIXME arbitrary limit
-        return self.history.search_commands(None, limit=250)
+        return self.history.search_commands(None, None, limit=250)
 
     def ssh(self, host):
         self.__hotwire.ssh(host)
@@ -337,7 +337,7 @@ class Hotwire(gtk.VBox):
         self.__resolver = ShellCommandResolver()
         self.__pipeline_factory = PipelineFactory(self.context, self.__resolver)
         self.__parsed_pipeline = None
-        self.__langtype = None
+        self.__langtype = PipelineLanguageRegistry.getInstance()['62270c40-a94a-44dd-aaa0-689f882acf34']
         self.__override_langtype = None
         self.__verb_completer = VerbCompleter()
         self.__token_completer = TokenCompleter()
@@ -387,12 +387,15 @@ class Hotwire(gtk.VBox):
     def __on_lang_combo_changed(self, *args):
         self.__override_langtype = self.__lang_combo.get_lang()
         _logger.debug("input language changed: %r", self.__override_langtype)
+        self.__queue_parse()
         
     def __on_switch_language_cb(self, action):
         self.__lang_combo.popup()  
         
     def get_active_lang(self):
-        return self.__override_langtype or self.__langtype
+        # default to HotwirePipe
+        return self.__override_langtype or self.__langtype \
+            or PipelineLanguageRegistry.getInstance()['62270c40-a94a-44dd-aaa0-689f882acf34']
             
     def __add_bookmark_cb(self, action):
         bookmarks = Filesystem.getInstance().get_bookmarks()
@@ -581,11 +584,12 @@ class Hotwire(gtk.VBox):
         if pipeline.is_nostatus():
             pipeline.execute_sync()
 
+        curlang = self.get_active_lang()
         if add_history:
-            text = origtext.strip()
-            self.context.history.append_command(text, self.context.get_cwd())
+            text = origtext.strip()            
+            self.context.history.append_command(curlang.uuid, text, self.context.get_cwd())
             #History.getInstance().record_pipeline(self.__cwd, pipeline)
-            self.__tabhistory.insert(0, text)
+            self.__tabhistory.insert(0, (curlang.uuid, text))
             if len(self.__tabhistory) >= self.MAX_TABHISTORY:
                 self.__tabhistory.pop(-1)
         if reset_input:
@@ -845,6 +849,7 @@ class Hotwire(gtk.VBox):
         if not self.__parse_stale:
             return
         if not self.__do_parse(resolve=False):
+            _logger.debug('failed to parse')
             return
         self.__do_complete()
         
@@ -858,8 +863,8 @@ class Hotwire(gtk.VBox):
         verbcmd = None
         addprefix = None
         # can happen when input is empty
-        # Also for now disable completion when we're 
-        if not self.__parsed_pipeline or (self.get_active_lang() is not None):
+        # Also for now disable completion when we're not using HotwirePipe
+        if not self.__parsed_pipeline or (self.get_active_lang().uuid is not '62270c40-a94a-44dd-aaa0-689f882acf34'):
             _logger.debug("no tree, disabling completion")
             self.__completions.invalidate()
             return
@@ -935,7 +940,7 @@ class Hotwire(gtk.VBox):
         if not self.__history_suppress:
             # Change '' to None, because '' has special value to mean
             # show all history, which we don't do by default
-            self.__completions.set_history_search(curvalue or None)
+            self.__completions.set_history_search(self.get_active_lang().uuid, curvalue or None)
         self.__queue_parse()
 
     def __on_scroll_offset(self, i, offset):

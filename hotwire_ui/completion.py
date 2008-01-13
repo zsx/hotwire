@@ -445,8 +445,8 @@ class CompletionStatusDisplay(hotwidgets.TransientPopup):
         _logger.debug("setting size request width to %d*0.75", ref_w)
         self.set_size_request((int(ref_w*0.75)), -1)
         
-    def set_history_search(self, histsearch):           
-        histitems = list(self.__context.history.search_commands(histsearch, distinct=True))
+    def set_history_search(self, lang_uuid, histsearch):
+        histitems = list(self.__context.history.search_commands(lang_uuid, histsearch))
         self.__global_history_display.set_content(histitems, uniquify=True)
         self.__global_history_display.set_matchtext(histsearch)
             
