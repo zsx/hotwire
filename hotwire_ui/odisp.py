@@ -275,7 +275,9 @@ class MultiObjectsDisplay(gtk.Notebook):
         return self.__pipeline
 
     def get_output_common_supertype(self):
-        return self.__default_odisp.get_output_common_supertype()
+        if self.__default_odisp:
+            return self.__default_odisp.get_output_common_supertype()
+        return None
 
     def get_objects(self):
         for obj in self.__default_odisp.get_objects():
