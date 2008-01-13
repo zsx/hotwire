@@ -20,7 +20,7 @@ import os, sys, re, logging, string, locale
 
 import gtk, gobject, pango
 
-from hotwire.command import PipelineFactory,Pipeline,Command,HotwireContext,PipelineLanguageRegistry
+from hotwire.command import PipelineFactory,Pipeline,Command,HotwireContext,PipelineLanguageRegistry,BaseCommandResolver
 from hotwire.completion import Completion, VerbCompleter, TokenCompleter
 import hotwire.command
 import hotwire.version
@@ -174,6 +174,23 @@ class PipelineLanguageComboBox(gtk.ComboBox):
             return None
         return lang
 
+class ShellCommandResolver(BaseCommandResolver):
+    """Expands Alias objects in addition to File."""
+    def __init__(self):
+        super(ShellCommandResolver, self).__init__()
+        
+    def _resolve_verb_completion(self, text, completion):
+        target = completion.target
+        if isinstance(target, Alias) and text == target.name:
+            return True
+        return super(ShellCommandResolver, self)._resolve_verb_completion(text, completion)
+        
+    def _expand_verb_completion(self, completion):
+        if isinstance(completion.target, Alias):
+            tokens = list(Pipeline.tokenize(completion.target.target))                   
+            return (BuiltinRegistry.getInstance()[tokens[0].text], tokens[1:])
+        return super(ShellCommandResolver, self)._expand_verb_completion(completion)
+
 class Hotwire(gtk.VBox):
     MAX_RECENTDIR_LEN = 10
     __gsignals__ = {
@@ -317,7 +334,8 @@ class Hotwire(gtk.VBox):
 
         self.__idle_parse_id = 0
         self.__parse_stale = False
-        self.__pipeline_factory = PipelineFactory(self.context, self.__resolve_command)
+        self.__resolver = ShellCommandResolver()
+        self.__pipeline_factory = PipelineFactory(self.context, self.__resolver)
         self.__parsed_pipeline = None
         self.__langtype = None
         self.__override_langtype = None
@@ -615,31 +633,6 @@ class Hotwire(gtk.VBox):
         
         self.execute_pipeline(self.__parsed_pipeline, origtext=text)
         
-    def __resolve_command(self, text):
-        resolutions = []
-        vc = self.__verb_completer
-        fs = Filesystem.getInstance()
-            
-        resolution_match = None
-        for completion in vc.completions(text, self.__cwd):
-            target = completion.target
-            if isinstance(target, Alias) and text == target.name:
-                resolution_match = completion
-                break
-            if isinstance(target, File) and \
-               not target.is_directory() and \
-               (unix_basename(text) == unix_basename(target.path) or fs.path_inexact_executable_match(completion.matchbase)):
-                resolution_match = completion
-                break
-        _logger.debug("resolution match is %s", resolution_match)                
-        if resolution_match:
-            if isinstance(resolution_match.target, Alias):
-                tokens = list(Pipeline.tokenize(resolution_match.target.target))                   
-                return (BuiltinRegistry.getInstance()[tokens[0].text], tokens[1:])               
-            elif isinstance(resolution_match.target, File):
-                return (BuiltinRegistry.getInstance()['sys'], [resolution_match.target.path])
-        return (None, None)        
-
     @log_except(_logger)
     def __on_histitem_selected(self, popup, histitem):
         _logger.debug("got history item selected: %s", histitem)

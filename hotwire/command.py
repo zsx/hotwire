@@ -26,7 +26,8 @@ from StringIO import StringIO
 import gobject
 
 import hotwire.fs
-from hotwire.fs import path_normalize, FilePath
+from hotwire.fs import path_normalize, unix_basename, FilePath
+from hotwire.sysdep.fs import Filesystem, File
 from hotwire.async import IterableQueue, MiniThreadPool
 from hotwire.builtin import BuiltinRegistry, Builtin
 import hotwire.util
@@ -389,6 +390,41 @@ class CountingStream(object):
     def get_count(self):
         return self.__offset
 
+class BaseCommandResolver(object):
+    """Expands command names.  Example: ifconfig => sys ifconfig"""
+    def __init__(self):
+        super(BaseCommandResolver, self).__init__()
+        # TODO move this logic elsewhere somehow better; maybe stick in hotwire_ui/pipeline.py.
+        from hotwire.completion import VerbCompleter
+        self.__verb_completer = VerbCompleter()
+        
+    def resolve(self, text, context):
+        resolutions = []
+        vc = self.__verb_completer
+        fs = Filesystem.getInstance()
+            
+        resolution_match = None
+        for completion in vc.completions(text, context.get_cwd()):
+            target = completion.target
+            if self._resolve_verb_completion(text, completion):
+                resolution_match = completion
+                break
+        _logger.debug("resolution match is %s", resolution_match)                
+        if resolution_match:            
+            return self._expand_verb_completion(resolution_match)
+        return (None, None)
+    
+    def _resolve_verb_completion(self, text, completion):
+        target = completion.target
+        return isinstance(target, File) and \
+           not target.is_directory() and \
+           (unix_basename(text) == unix_basename(target.path) or fs.path_inexact_executable_match(completion.matchbase))
+    
+    def _expand_verb_completion(self, completion):
+        target = completion.target
+        if isinstance(target, File):
+            return (BuiltinRegistry.getInstance()['sys'], [target.path])       
+
 class Pipeline(gobject.GObject):
     """A sequence of Commands."""
 
@@ -716,7 +752,7 @@ class Pipeline(gobject.GObject):
                     cmdargs = []
                 except KeyError, e:
                     if resolver:
-                        (b, cmdargs) = resolver(builtin_token.text)
+                        (b, cmdargs) = resolver.resolve(builtin_token.text, context)
                         _logger.debug("resolved: %r to %r %r", builtin_token.text, b, cmdargs)
                         if not b:
                             raise PipelineParseException(_('No matches for %s') % (gobject.markup_escape_text(builtin_token.text),))
