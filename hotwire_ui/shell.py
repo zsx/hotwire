@@ -187,7 +187,7 @@ class ShellCommandResolver(BaseCommandResolver):
         
     def _expand_verb_completion(self, completion):
         if isinstance(completion.target, Alias):
-            tokens = list(Pipeline.tokenize(completion.target.target))                   
+            tokens = list(Pipeline.tokenize(completion.target.target, internal=True))                   
             return (BuiltinRegistry.getInstance()[tokens[0].text], tokens[1:])
         return super(ShellCommandResolver, self)._expand_verb_completion(completion)
 
@@ -614,12 +614,11 @@ class Hotwire(gtk.VBox):
 
     def __execute(self):
         self.__completions.hide_all()
-        if self.__parse_stale:
-            try:
-                self.__do_parse(throw=True)
-            except hotwire.command.PipelineParseException, e:
-                self.push_msg(_("Failed to parse pipeline: %s") % (e.args[0],))
-                return
+        try:
+            self.__do_parse(throw=True, resolve=True)
+        except hotwire.command.PipelineParseException, e:
+            self.push_msg(_("Failed to parse pipeline: %s") % (e.args[0],))
+            return
                 
         text = self.__input.get_property("text")
                 
@@ -661,7 +660,7 @@ class Hotwire(gtk.VBox):
         _logger.debug("requesting completion")
         if self.__parse_stale:
             try:
-                self.__do_parse(throw=True)
+                self.__do_parse(throw=True, resolve=False)
             except hotwire.command.PipelineParseException, e:
                 self.push_msg('Failed to parse pipeline: %s' % (e.args[0],))
                 return
@@ -722,7 +721,7 @@ class Hotwire(gtk.VBox):
                 self.__do_completion()
             return True
         elif e.keyval == gtk.gdk.keyval_from_name('r') and e.state & gtk.gdk.CONTROL_MASK:
-            self.__do_parse()            
+            self.__do_parse(resolve=False)            
             if state is None:
                 if curtext:
                     self.__completions.popup_global_history()
@@ -845,7 +844,7 @@ class Hotwire(gtk.VBox):
         self.__idle_parse_id = 0
         if not self.__parse_stale:
             return
-        if not self.__do_parse():
+        if not self.__do_parse(resolve=False):
             return
         self.__do_complete()
         
@@ -905,14 +904,16 @@ class Hotwire(gtk.VBox):
             _logger.debug("no valid completions found")
             self.__completions.invalidate()
 
-    def __do_parse(self, throw=False):
+    def __do_parse(self, throw=False, resolve=True):
         if not self.__parse_stale:
             return True
         text = self.__input.get_property("text")
         try:
-            (self.__langtype, self.__parsed_pipeline) = self.__pipeline_factory.parse(text, accept_unclosed=(not throw), override_lang=self.__override_langtype)
+            (self.__langtype, self.__parsed_pipeline) = self.__pipeline_factory.parse(text, accept_unclosed=(not throw), 
+                                                                                      override_lang=self.__override_langtype,
+                                                                                      resolve=resolve)
         except hotwire.command.PipelineParseException, e:
-            _logger.debug("parse failed, current syntax=%s", self.__langtype)
+            _logger.debug("parse failed, current syntax=%s", self.__langtype, exc_info=True)
             self.__parsed_pipeline = None
             self.__langtype = None
             if throw:

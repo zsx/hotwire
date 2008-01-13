@@ -401,7 +401,6 @@ class BaseCommandResolver(object):
     def resolve(self, text, context):
         resolutions = []
         vc = self.__verb_completer
-        fs = Filesystem.getInstance()
             
         resolution_match = None
         for completion in vc.completions(text, context.get_cwd()):
@@ -415,6 +414,7 @@ class BaseCommandResolver(object):
         return (None, None)
     
     def _resolve_verb_completion(self, text, completion):
+        fs = Filesystem.getInstance()        
         target = completion.target
         return isinstance(target, File) and \
            not target.is_directory() and \
@@ -656,15 +656,20 @@ class Pipeline(gobject.GObject):
             utext = unicode(text, 'utf-8')
         countstream = CountingStream(StringIO(utext))
         parser = shlex.shlex(countstream, posix=True)
-        parser.wordchars += './[]{}~!@$%^&*()-_=+:;'
+        parser.wordchars += ',./[]{}~!@$%^&*()-_=+:;'
         return (countstream, parser)
 
     @staticmethod
-    def tokenize(text, context=None, assertfn=None, accept_unclosed=False):
+    def tokenize(text, context=None, assertfn=None, accept_unclosed=False, internal=False):
         result = []
         _logger.debug("parsing '%s'", text)
         
         (countstream, parser) = Pipeline.mkparser(text)
+        
+        def mktoken(text, *args, **kwargs):
+            if internal:
+                return ParsedToken(text, -1, **kwargs)
+            return ParsedToken(text, *args, **kwargs)
         
         is_initial = True
         first_token = None
@@ -681,7 +686,7 @@ class Pipeline(gobject.GObject):
                     raise PipelineParseException(e)
                 arg = parser.token[1:]
                 if arg:
-                    token = ParsedToken(arg, curpos+1, was_unquoted=True)
+                    token = mktoken(arg, curpos+1, was_unquoted=True)
                     _logger.debug("handling unclosed quote, returning %s", token)
                     yield token
                     return
@@ -705,7 +710,7 @@ class Pipeline(gobject.GObject):
             else:
                 if end-curpos > len(token):
                     end = curpos+len(token)
-                yield ParsedToken(token, curpos, end=end, quoted=quoted)
+                yield mktoken(token, curpos, end=end, quoted=quoted)
             curpos = end
         
     @staticmethod
@@ -983,7 +988,7 @@ class PipelineFactory(object):
         self.__context = context
         self.__resolver = resolver
         
-    def __make_lang_pipeline(self, lang, ispiped, cmdtext):
+    def __make_lang_pipeline(self, lang, ispiped, resolve, cmdtext):
         if ispiped:
             args = ['current', hotwire.script.PIPE]
         else:
@@ -994,12 +999,12 @@ class PipelineFactory(object):
             args.append(lang.interpreter_exec)
             args.extend(lang.exec_args)
             args.append(cmdtext)
-        pipeline = Pipeline.create(self.__context, self.__resolver, *args)
+        pipeline = Pipeline.create(self.__context, resolve and self.__resolver or None, *args)
         return (lang, pipeline)      
         
-    def parse(self, text, override_lang=None, **kwargs):
+    def parse(self, text, override_lang=None, resolve=True, **kwargs):
         if override_lang is not None:
-            return self.__make_lang_pipeline(override_lang, False, text)
+            return self.__make_lang_pipeline(override_lang, False, resolve, text)
         ispiped = text.startswith('|')
         if ispiped:
             text = text[1:]        
@@ -1018,13 +1023,13 @@ class PipelineFactory(object):
                 if ispiped:
                     scriptargs.insert(0, hotwire.script.PIPE)
                     scriptargs.insert(0, 'current')
-                return (lang, Pipeline.create(self.__context, self.__resolver, *scriptargs))
+                return (lang, Pipeline.create(self.__context, resolve and self.__resolver or None, *scriptargs))
             else:
                 # Require a space - should probably handle this better
                 if not text.startswith(lang.prefix + " "):
                     continue
-                return self.__make_lang_pipeline(lang, ispiped, rest[1:])
+                return self.__make_lang_pipeline(lang, ispiped, resolve, rest[1:])
         # Try parsing as HotwirePipe
         if ispiped:
             text = 'current | ' + text
-        return (None, Pipeline.parse(text, context=self.__context, resolver=self.__resolver, **kwargs))
+        return (None, Pipeline.parse(text, context=self.__context, resolver=(resolve and self.__resolver or None), **kwargs))
