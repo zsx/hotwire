@@ -141,6 +141,7 @@ class CommandExecutionHeader(gtk.VBox):
             self.__otype_expander = None
         else:
             self.__otype_expander = gtk.Expander('')
+            self.__otype_expander.unset_flags(gtk.CAN_FOCUS);
             self.__otype_expander.set_use_markup(True)
             self.__otype_expander.connect('notify::expanded', self.__on_otype_expander_toggled)
             self.__main_hbox.pack_start(self.__otype_expander, expand=False)
