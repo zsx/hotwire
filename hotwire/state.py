@@ -134,7 +134,7 @@ class History(Singleton):
         
     def search_commands(self,  lang_uuid, searchterm, limit=20, **kwargs):
         cursor = self.__conn.cursor()
-        if lang_uuid:
+        if lang_uuid is not None:
             kwargs['filters'] = [(' lang_uuid = ? ', lang_uuid)]
         (sql, args) = self.__search_limit_query('Commands', 'cmd', 'exectime', searchterm, limit,
                                                 **kwargs)

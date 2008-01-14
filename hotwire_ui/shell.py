@@ -164,9 +164,10 @@ class PipelineLanguageComboBox(gtk.ComboBox):
             lang = self.__hotwire_lang
         for row in self.get_model():
             val = row[0]
-            if val == lang:
+            if val is lang:
                 self.set_active_iter(row.iter)
-                break
+                return
+        raise KeyError("Unknown lang %r" % (lang,))
             
     def get_lang(self):
         lang = self.get_model().get_value(self.get_active_iter(), 0)
@@ -296,7 +297,7 @@ class Hotwire(gtk.VBox):
         self.__statusline = gtk.HBox()
         self.__statusbox.pack_start(hotwidgets.Align(self.__statusline), expand=False)
         self.__lang_combo = PipelineLanguageComboBox()
-        self.__lang_combo.set_lang(None)
+        self.__lang_combo.set_lang(PipelineLanguageRegistry.getInstance()['62270c40-a94a-44dd-aaa0-689f882acf34'])
         self.__lang_combo.connect('changed', self.__on_lang_combo_changed)
         self.__statusline.pack_start(self.__lang_combo, expand=False)        
         self.__doing_recentdir_sync = False
@@ -385,7 +386,10 @@ class Hotwire(gtk.VBox):
             self.__msgline.set_markup(msg)
             
     def __on_lang_combo_changed(self, *args):
-        self.__override_langtype = self.__lang_combo.get_lang()
+        newlang = self.__lang_combo.get_lang()
+        if newlang == self.__override_langtype:
+            return
+        self.__override_langtype = newlang 
         _logger.debug("input language changed: %r", self.__override_langtype)
         self.__queue_parse()
         
@@ -639,11 +643,14 @@ class Hotwire(gtk.VBox):
     @log_except(_logger)
     def __on_histitem_selected(self, popup, histitem):
         _logger.debug("got history item selected: %s", histitem)
-        if not histitem:
+        if histitem is None:
             _logger.debug("no history item, doing popdown")
             self.__completions.hide_all()
             return
-        self.__input.set_text(histitem)
+        (lang_uuid, histtext) = histitem
+        lang = PipelineLanguageRegistry.getInstance()[lang_uuid]
+        self.__lang_combo.set_lang(lang)
+        self.__input.set_text(histtext)
         self.__input.set_position(-1)
 
     @log_except(_logger)

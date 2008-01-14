@@ -21,11 +21,13 @@ import os, sys, re, logging
 import gtk, gobject, pango
 
 import hotwire_ui.widgets as hotwidgets
+from hotwire.command import PipelineLanguageRegistry
 from hotwire.completion import Completion, CompletionSystem, CompletionResults
 from hotwire.util import markup_for_match
 from hotwire_ui.pixbufcache import PixbufCache
 from hotwire.state import History
 from hotwire.builtin import Builtin
+from hotwire.logutil import log_except
 from hotwire.cmdalias import Alias
 from hotwire.sysdep.fs import File, Filesystem
 from hotwire.sysdep.proc import Process
@@ -261,13 +263,16 @@ class MatchingHistoryView(MatchView):
     def __init__(self, *args, **kwargs):
         super(MatchingHistoryView, self).__init__(*args, **kwargs)
         self.__matchtext = None
+        self.get_view().insert_column_with_data_func(0, '',
+                                                     gtk.CellRendererPixbuf(),
+                                                     self.__render_item_icon)        
  
     def set_matchtext(self, text):
         self.__matchtext = text
         self.get_model().foreach(gtk.TreeModel.row_changed)
  
     def _render_item(self, col, cell, model, iter):
-        histitem = model.get_value(iter, 0)
+        (lang, histitem) = model.get_value(iter, 0)
         if self.__matchtext:
             idx = histitem.find(self.__matchtext)
             if idx >= 0:
@@ -275,6 +280,14 @@ class MatchingHistoryView(MatchView):
                 cell.set_property('markup', markup)
                 return
         cell.set_property('text', histitem)
+        
+    @log_except(_logger)
+    def __render_item_icon(self, col, cell, model, iter):
+        (lang, histitem) = model.get_value(iter, 0)
+        langs = PipelineLanguageRegistry.getInstance()
+        pbcache = PixbufCache.getInstance()
+        pixbuf = pbcache.get(langs[lang].icon, size=16, trystock=True, stocksize=gtk.ICON_SIZE_MENU)        
+        cell.set_property('pixbuf', pixbuf)
 
 class TabCompletionView(MatchView):
     def __init__(self, *args, **kwargs):
@@ -332,7 +345,7 @@ class CompletionStatusDisplay(hotwidgets.TransientPopup):
     __gsignals__ = {
         "histitem-selected" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (gobject.TYPE_PYOBJECT,)),                    
         "completion-selected" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (gobject.TYPE_PYOBJECT,)),
-        "completions-loaded" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, []),        
+        "completions-loaded" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, []),
     }    
     def __init__(self, entry, window, context=None, tabhistory=[], **kwargs):
         super(CompletionStatusDisplay, self).__init__(entry, window, **kwargs)
@@ -446,7 +459,7 @@ class CompletionStatusDisplay(hotwidgets.TransientPopup):
         self.set_size_request((int(ref_w*0.75)), -1)
         
     def set_history_search(self, lang_uuid, histsearch):
-        histitems = list(self.__context.history.search_commands(lang_uuid, histsearch))
+        histitems = map(lambda result: (lang_uuid,result), self.__context.history.search_commands(lang_uuid, histsearch))
         self.__global_history_display.set_content(histitems, uniquify=True)
         self.__global_history_display.set_matchtext(histsearch)
             
