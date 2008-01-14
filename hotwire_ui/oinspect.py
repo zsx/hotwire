@@ -29,7 +29,7 @@ _logger = logging.getLogger("hotwire.ui.OInspect")
 
 def _render_member_icon(member, cell):
     pbcache = PixbufCache.getInstance()
-    if inspect.ismethod(member):
+    if inspect.ismethod(member) or inspect.ismethoddescriptor(member):
         pbname = 'dfeet-method.png'
     elif inspect.ismemberdescriptor(member):
         pbname = 'dfeet-property.png'
