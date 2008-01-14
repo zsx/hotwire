@@ -73,7 +73,7 @@ class History(Singleton):
         cursor.execute('''CREATE TABLE IF NOT EXISTS Meta (keyName TEXT UNIQUE, keyValue)''')
         
         # TODO drop this stuff around 0.800 timeframe
-        self.__convert_from_persist('history', 'Commands', '(NULL, ?, 0, NULL)')
+        self.__convert_from_persist('history', 'Commands', '(NULL, ?, 0, NULL, "62270c40-a94a-44dd-aaa0-689f882acf34")')
         freqconvert = lambda x: (x[0], x[1].freq, x[1].usetime)
         self.__convert_from_persist('cwd_history', 'Directories', '(NULL, ?, ?, ?)', freqconvert)
         
@@ -111,6 +111,7 @@ class History(Singleton):
         _logger.debug("doing insert of %s", vals)
         cursor.execute('''INSERT INTO Commands VALUES (NULL, ?, ?, ?, ?)''', vals)
         cursor.execute('''COMMIT''')
+        self.append_dir_usage(cwd)        
         
     def __search_limit_query(self, tablename, column, orderval, searchterm, limit, countmin=0, filters=[], distinct=False):
         queryclauses = []
@@ -140,21 +141,7 @@ class History(Singleton):
                                                 **kwargs)
         _logger.debug("execute using args %s: %s", args, sql)
         for v in cursor.execute(sql, args):
-            yield v[1]  
-        
-    def set_autoterm(self, cmdname, is_autoterm):
-        cursor = self.__conn.cursor()
-        cursor.execute('''BEGIN TRANSACTION''')
-        if is_autoterm:
-            cursor.execute('''INSERT OR REPLACE INTO Autoterm VALUES (NULL, ?, ?)''', [cmdname, datetime.datetime.now()])
-        else:
-            cursor.execute('''DELETE FROM Autoterm WHERE cmd = ?''', [cmdname])
-        cursor.execute('''COMMIT''')
-        
-    def get_autoterm_cmds(self):
-        cursor = self.__conn.cursor()        
-        for v in cursor.execute('''SELECT cmd from Autoterm'''):
-            yield v[0]
+            yield v[1]
         
     def __append_countitem(self, tablename, colname, value):
         cursor = self.__conn.cursor()
@@ -180,25 +167,11 @@ class History(Singleton):
         for v in cursor.execute(sql, args):
             yield v[1:]
         
-    def append_token_usage(self, text):
-        self.__append_countitem('Tokens', 'token', text)        
-
-    def search_token_usage(self, searchterm, limit=20):
-        cursor = self.__conn.cursor()
-        (sql, args) = self.__search_limit_query('Tokens', 'token', 'count', searchterm, limit, countmin=2)
-        for v in cursor.execute(sql, args):
-            yield v[1:]
-        
     def append_usage(self, colkey, *args, **kwargs):
         getattr(self, 'append_%s_usage' % (colkey,))(*args, **kwargs)
         
     def search_usage(self, colkey, *args, **kwargs):
-        return getattr(self, 'search_%s_usage' % (colkey,))(*args, **kwargs)        
-        
-    def record_pipeline(self, cwd, pipeline):
-        if self.__no_save:
-            return
-        self.append_dir_usage(cwd)
+        return getattr(self, 'search_%s_usage' % (colkey,))(*args, **kwargs)
 
     def search_command_input(self, cmd, searchterm, limit=20):
         cursor = self.__conn.cursor()

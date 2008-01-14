@@ -592,7 +592,6 @@ class Hotwire(gtk.VBox):
         if add_history:
             text = origtext.strip()            
             self.context.history.append_command(curlang.uuid, text, self.context.get_cwd())
-            #History.getInstance().record_pipeline(self.__cwd, pipeline)
             self.__tabhistory.insert(0, (curlang.uuid, text))
             if len(self.__tabhistory) >= self.MAX_TABHISTORY:
                 self.__tabhistory.pop(-1)

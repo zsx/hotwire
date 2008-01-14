@@ -25,8 +25,6 @@ from hotwire.externals.singletonmixin import Singleton
 
 _logger = logging.getLogger("hotwire.CmdAlias")
 
-## TODO: Kill this class in favor of better autoterm integration.
-
 class Alias(object):
     def __init__(self, name, target):
         self.name = name
