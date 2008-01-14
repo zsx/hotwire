@@ -32,6 +32,7 @@ from hotwire.fs import FilePath,iterd,iterd_sorted,path_normalize,path_expanduse
 from hotwire.sysdep.fs import Filesystem
 from hotwire.externals.singletonmixin import Singleton
 from hotwire.util import quote_arg, tracefn
+from hotwire.logutil import log_except
 from hotwire.state import UsageRecord, History
 from hotwire.sysdep.fs import Filesystem
 
@@ -199,7 +200,9 @@ class CompletionSystem(object):
     def __get_completions(self, completer, text, cwd):
         return CompletionResults(list(completer.completions(text, cwd)))
 
+    @log_except(_logger)
     def __do_async_complete(self, completer, text, cwd, cb):
+        _logger.debug("in async complete for %r", text)
         result = self.__get_completions(completer, text, cwd)
         _logger.debug("completions for %r: pfx: %r results: %r", text, result.common_prefix, result.results)        
         def do_cb(*args):

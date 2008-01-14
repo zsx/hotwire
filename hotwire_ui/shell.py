@@ -696,7 +696,7 @@ class Hotwire(gtk.VBox):
         if results is None:
             self.__completion_async_blocking = True
             _logger.debug("results pending, setting blocking=TRUE")
-            self.__completions.hide_all()            
+            self.__completions.hide_all()
             return
         if self.__completion_async_blocking:
             _logger.debug("setting blocking=FALSE")            
@@ -864,10 +864,12 @@ class Hotwire(gtk.VBox):
         addprefix = None
         # can happen when input is empty
         # Also for now disable completion when we're not using HotwirePipe
-        if not self.__parsed_pipeline or (self.get_active_lang().uuid is not '62270c40-a94a-44dd-aaa0-689f882acf34'):
-            _logger.debug("no tree, disabling completion")
-            self.__completions.invalidate()
+        if not self.__parsed_pipeline:
+            _logger.debug("no tree, no completion")
             return
+        if (self.get_active_lang().uuid != '62270c40-a94a-44dd-aaa0-689f882acf34'):
+            _logger.debug("unknown active lang, no completions (yet)")            
+            return        
         commands = list(self.__parsed_pipeline)
         for i,cmd in enumerate(commands):
             commands[i] = list(cmd.get_tokens())
