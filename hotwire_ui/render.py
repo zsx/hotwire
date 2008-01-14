@@ -248,10 +248,7 @@ class TreeObjectsRenderer(ObjectsRenderer):
 
     def _onclick_iter(self, iter):
         obj = self._model.get_value(iter, 0)
-        return self._onclick_obj(obj)
-
-    def _onclick_obj(self, obj):
-        return False
+        self.__launch_inspector(obj)
 
     def _get_menuitems(self, obj):
         return []
@@ -264,6 +261,9 @@ class TreeObjectsRenderer(ObjectsRenderer):
         return potential_path
     
     def __on_inspect_activate(self, menuitem, o):
+        self.__launch_inspector(o)
+        
+    def __launch_inspector(self, o):
         from hotwire_ui.oinspect import InspectWindow
         from hotwire_ui.shell import locate_current_window        
         w = InspectWindow(o, parent=locate_current_window(self._table))
