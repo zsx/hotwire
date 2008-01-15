@@ -189,6 +189,7 @@ def load():
     import hotwire.builtins.fsearch
     import hotwire.builtins.help
     import hotwire.builtins.history
+    import hotwire.builtins.json    
     import hotwire.builtins.kill
     import hotwire.builtins.ls
     import hotwire.builtins.mkdir
