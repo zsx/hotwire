@@ -51,7 +51,9 @@ expressed as an iterable which yielded a single object.""")
             raise ValueError(_("Too many arguments specified"))
         if len(args) < 1:
             raise ValueError(_("Too few arguments specified"))
-        locals = {'context': context}
+        locals = {'hot_context': context,
+                  'hot_selected': context.selected_output,
+                  'hot_current': context.current_output}
         last_value = None
         if '-f' in options:
             fpath = path_join(context.cwd, args[0])
@@ -60,12 +62,15 @@ expressed as an iterable which yielded a single object.""")
             f.close()
             exec compiled in locals
             try:
-                execute = locals['execute']
+                mainfunc = locals['main']
             except KeyError, e:
                 yield None
                 return
-            custom_out = execute(context)
-            for v in self.__itervalue(custom_out):
+            if not hasattr(mainfunc, '__call__'):
+                yield None
+                return
+            retv = mainfunc()
+            for v in self.__itervalue(retv):
                 yield v
         else:
         # We want to actually get the object that results from a user typing
@@ -78,11 +83,11 @@ expressed as an iterable which yielded a single object.""")
         # Yes, it's lame.
             def handle_output(myself, *args):
                 myself['result'] = args[-1]
-            locals['hotwire_handle_output'] = handle_output
-            locals['hotwire_handle_output_self'] = {'result': None}
-            (compiled, mutated) = rewrite_and_compile(args[0], output_func_name='hotwire_handle_output', output_func_self='hotwire_handle_output_self')
+            locals['_hotwire_handle_output'] = handle_output
+            locals['_hotwire_handle_output_self'] = {'result': None}
+            (compiled, mutated) = rewrite_and_compile(args[0], output_func_name='_hotwire_handle_output', output_func_self='_hotwire_handle_output_self')
             exec compiled in locals
-            for v in self.__itervalue(locals['hotwire_handle_output_self']['result']):
+            for v in self.__itervalue(locals['_hotwire_handle_output_self']['result']):
                 yield v
 
 BuiltinRegistry.getInstance().register(PyEvalBuiltin())
