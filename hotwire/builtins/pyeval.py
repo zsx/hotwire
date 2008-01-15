@@ -43,6 +43,9 @@ expressed as an iterable which yielded a single object.""")
         if isinstance(o, dict):
             for v in o.iteritems():
                 yield v
+        elif isinstance(o, tuple):
+            # Don't expand tuples, not usually desired.
+            yield o
         elif hasattr(o, '__iter__'):
             for v in o:
                 yield v
