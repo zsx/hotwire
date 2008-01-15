@@ -52,7 +52,7 @@ class JsonBuiltin(Builtin):
     def execute(self, context, args, options=[]):
         out = StringIO()
         for o in context.input:
-            simplejson.dump(o, out, cls=LossyObjectJSONDumper)
+            simplejson.dump(o, out, indent=2, cls=LossyObjectJSONDumper)
         # Should support binary streaming            
         for line in StringIO(out.getvalue()):
             if line.endswith('\n'):
