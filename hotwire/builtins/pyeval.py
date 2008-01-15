@@ -20,41 +20,69 @@
 # THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import os,sys,re,subprocess,sha,tempfile
+import symbol,parser,code,threading
 
 from hotwire.builtin import Builtin, BuiltinRegistry, InputStreamSchema, OutputStreamSchema
 
 from hotwire.fs import path_join
 from hotwire.sysdep.fs import Filesystem
+from hotwire.externals.rewrite import rewrite_and_compile
 
 class PyEvalBuiltin(Builtin):
     __doc__ = _("""Compile and execute Python expression.
 Iterable return values (define __iter__) are expanded.  Other values are
 expressed as an iterable which yielded a single object.""")
  
-    PYEVAL_CONTENT = '''
-import os,sys,re
-def execute(context, input):
-  return %s''' 
     def __init__(self):
         super(PyEvalBuiltin, self).__init__('py-eval',
                                             threaded=True,
-                                            output=OutputStreamSchema('any'))
+                                            output=OutputStreamSchema('any'),
+                                            options=[['-f', '--file']])
+
+    def __itervalue(self, o):
+        if hasattr(o, '__iter__'):
+            for v in o:
+                yield v
+        else:
+            yield o         
 
     def execute(self, context, args, options=[]):
         if len(args) > 1:
             raise ValueError(_("Too many arguments specified"))
         if len(args) < 1:
             raise ValueError(_("Too few arguments specified"))
-        buf = self.PYEVAL_CONTENT % (args[0],)
-        code = compile(buf, '<input>', 'exec')
-        locals = {}
-        exec code in locals
-        execute = locals['execute']
-        custom_out = execute(context, context.input)
-        if hasattr(custom_out, '__iter__'):
-            for v in custom_out:
+        locals = {'context': context}
+        last_value = None
+        if '-f' in options:
+            fpath = path_join(context.cwd, args[0])
+            f = open(fpath)
+            compiled = compile(f.read(), fpath, 'exec')
+            f.close()
+            exec compiled in locals
+            try:
+                execute = locals['execute']
+            except KeyError, e:
+                yield None
+                return
+            custom_out = execute(context)
+            for v in self.__itervalue(custom_out):
                 yield v
         else:
-            yield custom_out
+        # We want to actually get the object that results from a user typing
+        # input such as "20" or "import os; os".  The CPython interpreter
+        # has some deep hackery inside which transforms "single" input styles
+        # into "print <input>".  That's not suitable for us, because we don't
+        # want to spew objects onto stdout; we want to actually get the object
+        # itself.  Thus we use some code from Reinteract to rewrite the 
+        # Python AST to call custom functions.
+        # Yes, it's lame.
+            def handle_output(myself, *args):
+                myself['result'] = args[-1]
+            locals['hotwire_handle_output'] = handle_output
+            locals['hotwire_handle_output_self'] = {'result': None}
+            (compiled, mutated) = rewrite_and_compile(args[0], output_func_name='hotwire_handle_output', output_func_self='hotwire_handle_output_self')
+            exec compiled in locals
+            for v in self.__itervalue(locals['hotwire_handle_output_self']['result']):
+                yield v
 
 BuiltinRegistry.getInstance().register(PyEvalBuiltin())
