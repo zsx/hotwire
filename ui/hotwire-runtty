@@ -38,46 +38,27 @@ try:
 except NotImplementedError, e:
     ipc_avail = False
 
-_logger = logging.getLogger("hotwire.RunttyMain")
+_logger = logging.getLogger("hotwire.RunMain")
 
 def usage():
-    sys.stdout.write('Hotwire runtty %s %s\n' % (__version__, svn_version_str()))
-    sys.stdout.write("%s [--debug] [--debug-modules=mod1,mod2...] [--help]\n" % (sys.argv[0],))
+    sys.stdout.write('hotwire-run %s %s\n' % (__version__, svn_version_str()))
 
 def main():
-    try:
-        opts, args = getopt.getopt(sys.argv[1:], "hdsn", ["help", "debug", "debug-modules=",])
-    except getopt.GetoptError:
-        usage()
-        sys.exit(2)
-
+    args = sys.argv[1:]
+    
     if len(args) == 0:
       sys.stderr.write('no arguments specified, exiting\n')
       sys.exit(1)
 
-    debug = False
-    debug_modules = []
-    for o, v in opts:
-        if o in ('-d', '--debug'):
-            debug = True
-        elif o in ('--debug-modules'):
-            debug_modules = v.split(',')
-        elif o in ("-h", "--help"):
-            usage()
-            sys.exit()
-
     default_log_level = logging.ERROR
-    if debug:
-        default_log_level = logging.DEBUG
-
-    hotwire.logutil.init(default_log_level, debug_modules, 'hotwire.')
+    hotwire.logutil.init(default_log_level, [], 'hotwire.')
 
     _logger.debug('initializing threads')
     gobject.threads_init()
     
     from hotwire.sysdep.ipc import Ipc
     ipc = Ipc.getInstance()
-    ipc.run_tty_command(args)		
+    ipc.run_tty(os.getcwd(), args)		
 
 if __name__ == "__main__":
     main()

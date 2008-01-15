@@ -36,7 +36,7 @@ class BaseIpc(object):
     def raise_existing(self):
         raise NotImplementedError()
     
-    def run_tty_command(self, *args):
+    def run_command(self, cwd, *args):
         raise NotImplementedError()
 
 _module = None

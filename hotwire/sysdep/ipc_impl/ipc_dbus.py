@@ -48,13 +48,9 @@ class Ui(dbus.service.Object):
             newwin.present()
             
     @dbus.service.method(UI_IFACE,
-                         in_signature="uas")            
-    def RunTtyCommand(self, timestamp, args):
-        win = self.__winfactory.run_tty_command(args)
-        if timestamp > 0:
-            win.present_with_time(timestamp)
-        else:
-            win.present()        
+                         in_signature="usas")            
+    def RunTty(self, timestamp, cwd, args):
+        self.__winfactory.run_tty(timestamp, cwd, args)      
 
 class IpcDBus(object):
     def __init__(self):
@@ -95,10 +91,10 @@ class IpcDBus(object):
         except dbus.DBusException, e:
             _logger.error("Caught exception attempting to send RaiseNoTimestamp", exc_info=True)
             
-    def run_tty_command(self, *args):
+    def run_tty(self, cwd, *args):
         inst = dbus.SessionBus().get_object(BUS_NAME, UI_OPATH)
         inst_iface = dbus.Interface(inst, UI_IFACE)
-        inst.RunTtyCommand(self.__parse_startup_id() or 0, *args)        
+        inst.RunTty(self.__parse_startup_id() or 0, cwd, *args)        
 
 def getInstance():
     return IpcDBus()

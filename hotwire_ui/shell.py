@@ -1389,9 +1389,9 @@ along with Hotwire; if not, write to the Free Software Foundation, Inc.,
         self.__notebook.set_current_page(idx)
         self.set_focus(hw.get_entry())
         
-    def new_tab_term(self, cmd):
-        cwd = self.__get_curtab_cwd()
-        term = Terminal.getInstance().get_terminal_widget_cmd(cwd, cmd, '')
+    def new_tab_term(self, cmd, cwd=None):
+        target_cwd = cwd or self.__get_curtab_cwd()
+        term = Terminal.getInstance().get_terminal_widget_cmd(target_cwd, cmd, '')
         self.new_tab_widget(term, 'term')        
 
     def __sync_tabs_visible(self):
@@ -1517,12 +1517,17 @@ class HotWindowFactory(Singleton):
             self.__active_window = win
         return win
     
-    def run_tty_command(self, args):
-        win = self.__active_window
-        if not win:
-            raise ValueError('No recently active window!')
-        win.new_tab_term(args)
-        return win
+    @log_except(_logger)
+    def run_tty(self, timestamp, cwd, args):
+        """Called from remoting to execute command in a terminal."""
+        active = self.__active_window
+        if not active:
+            return
+        active.new_tab_term(args, cwd=cwd)
+        if timestamp > 0:
+            active.present_with_time(timestamp)
+        else:
+            active.present()          
 
     def __on_win_destroy(self, win):
         _logger.debug("got window destroy")
