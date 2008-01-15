@@ -227,7 +227,11 @@ class InspectWindow(gtk.Window):
         self.__oclass.set_markup(_('<b>Type</b>: %s') % (gobject.markup_escape_text(repr(type(obj))),))
         
         try:
-            srcpath = inspect.getsourcefile(type(obj))
+            if isinstance(obj, type):
+                osrc_target = obj 
+            else:
+                osrc_target = type(obj)
+            srcpath = inspect.getsourcefile(osrc_target)                
         except TypeError, e:
             _logger.debug("failed to get sourcefile", exc_info=True)
             srcpath = None
