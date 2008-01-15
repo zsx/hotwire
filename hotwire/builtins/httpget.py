@@ -49,5 +49,5 @@ class HttpGetBuiltin(Builtin):
         conn = httplib.HTTPConnection(host)
         conn.request('GET', path)
         response = conn.getresponse() 
-        return (response, response.read())
+        return response
 BuiltinRegistry.getInstance().register(HttpGetBuiltin())
