@@ -88,12 +88,19 @@ class HelpItemRenderer(UnicodeRenderer):
         hotwire_pixbuf = pbcache.get('hotwire.png', size=16, trystock=True, stocksize=gtk.ICON_SIZE_MENU)               
         self._buf.insert_pixbuf(self._buf.get_end_iter(), hotwire_pixbuf)
         self.append_inspectlink(builtin.name, builtin)        
-        self._buf.insert_markup(' - %s%s: <i>%s</i> %s: <i>%s</i>\n' \
+        self._buf.insert_markup(' - %s%s: ' \
                                 % (_('in'),
-                                   builtin.get_input_optional() and ' (opt)' or '',
-                                   gobject.markup_escape_text(str(builtin.get_input_type())),
-                                   _('out'),
-                                   gobject.markup_escape_text(str(builtin.get_output_type()))))
+                                   builtin.get_input_optional() and ' (opt):' or ':'))
+        def append_type(t):
+            if isinstance(t, type):
+                self.append_inspectlink(str(t), t)
+            else:
+                self._buf.insert_markup(str(t))
+        itype = builtin.get_input_type()
+        append_type(itype)
+        self._buf.insert_markup('  %s: ' % (_('out'),))
+        otype = builtin.get_output_type()
+        append_type(otype)
         
     def __append_builtin_aliases(self, builtin):
         if not builtin.aliases:
