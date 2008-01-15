@@ -101,6 +101,7 @@ class HelpItemRenderer(UnicodeRenderer):
         self._buf.insert_markup('  %s: ' % (_('out'),))
         otype = builtin.get_output_type()
         append_type(otype)
+        self._buf.insert_markup('\n')
         
     def __append_builtin_aliases(self, builtin):
         if not builtin.aliases:
