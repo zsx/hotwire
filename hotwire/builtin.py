@@ -189,7 +189,13 @@ def load():
     import hotwire.builtins.fsearch
     import hotwire.builtins.help
     import hotwire.builtins.history
-    import hotwire.builtins.json
+    try:
+        import simplejson
+        have_simplejson = True
+    except ImportError, e:
+        have_simplejson = False
+    if have_simplejson:
+        import hotwire.builtins.json
     import hotwire.builtins.httpget
     import hotwire.builtins.kill
     import hotwire.builtins.ls
