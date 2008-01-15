@@ -263,7 +263,7 @@ class UnicodeRenderer(ObjectsRenderer):
         self._buf.connect('mark-set', self.__on_mark_set)
         self.__term = None
         self.__bufcount = 0
-        self.__wrap_lines = False
+        self.__wrap_lines = True
         self.__have_selection = False
         self.__sync_wrap()
         self.__text.set_editable(False)
