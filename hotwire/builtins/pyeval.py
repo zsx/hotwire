@@ -40,7 +40,10 @@ expressed as an iterable which yielded a single object.""")
                                             options=[['-f', '--file']])
 
     def __itervalue(self, o):
-        if hasattr(o, '__iter__'):
+        if isinstance(o, dict):
+            for v in o.iteritems():
+                yield v
+        elif hasattr(o, '__iter__'):
             for v in o:
                 yield v
         else:
