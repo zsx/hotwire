@@ -300,7 +300,12 @@ class UnicodeRenderer(ObjectsRenderer):
                 iterend = iter.copy()
                 iterstart.backward_to_tag_toggle(tag)
                 iterend.forward_to_tag_toggle(tag)
-                webbrowser.open(self.__links[self._buf.get_slice(iterstart, iterend)])
+                bufslice = self._buf.get_slice(iterstart, iterend)
+                linkvalue = self.__links[bufslice]
+                if isinstance(linkvalue, basestring):
+                    webbrowser.open(linkvalue)
+                elif hasattr(linkvalue, '__call__'):
+                    linkvalue(bufslice)
                 break
 
     def append_link(self, text, target):
