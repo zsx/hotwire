@@ -881,8 +881,8 @@ class CommandExecutionControl(gtk.VBox):
                 label_exec.set_label('')
         # FIXME - this is a bit of a hackish place to put this
         curcmd = self.get_current_cmd(True, curpage=nth)
-        (current, odisp) = (curcmd.cmd_header, curcmd.odisp)
-        if current:
+        if curcmd:
+            current = curcmd.cmd_header
             pipeline = current.get_pipeline()
             _logger.debug("sync display, current=%s", pipeline)
             if pipeline in self.__complete_unseen_pipelines:
@@ -912,11 +912,13 @@ class CommandExecutionControl(gtk.VBox):
         set_label(self.__footer, self.__footer_label, self.__nextcmd_count, self.__footer_exec_label, self.__nextcmd_executing_count, self.__nextcmd_complete_count)
         self.__sync_cmd_sensitivity(curpage=nth)
         
-        if self.__odisp_changed_connection is not None:
-            (o, id) = self.__odisp_changed_connection
-            o.disconnect(id)
-        self.__odisp_changed_connection = (odisp, odisp.connect("changed", self.__sync_odisp))
-        self.__sync_odisp(odisp)
+        if curcmd:
+            if self.__odisp_changed_connection is not None:
+                (o, id) = self.__odisp_changed_connection
+                o.disconnect(id)
+            odisp = curcmd.odisp
+            self.__odisp_changed_connection = (odisp, odisp.connect("changed", self.__sync_odisp))
+            self.__sync_odisp(odisp)
         
     @log_except(_logger)
     def __sync_odisp(self, odisp):
