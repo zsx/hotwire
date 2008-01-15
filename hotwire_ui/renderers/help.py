@@ -18,7 +18,7 @@
 
 import StringIO
 
-import gobject
+import gtk,gobject
 
 from hotwire_ui.render import ClassRendererMapping
 from hotwire_ui.renderers.unicode import UnicodeRenderer
@@ -26,6 +26,8 @@ from hotwire.cmdalias import AliasRegistry
 from hotwire.command import PipelineLanguageRegistry
 from hotwire.builtin import BuiltinRegistry
 from hotwire.builtins.help import HelpItem
+from hotwire_ui.pixbufcache import PixbufCache
+from hotwire_ui.oinspect import InspectWindow 
 from hotwire.version import __version__
 
 class HelpItemRenderer(UnicodeRenderer):
@@ -33,7 +35,15 @@ class HelpItemRenderer(UnicodeRenderer):
         super(HelpItemRenderer, self).__init__(context, monospace=False, **kwargs)
         self._buf.set_property('text', '')
         
+    def append_inspectlink(self, text, o):
+        def handle_inspector(text2):
+            from hotwire_ui.shell import locate_current_window            
+            inspect = InspectWindow(o, parent=locate_current_window(self.get_widget()))
+            inspect.show_all()     
+        self.append_link(text, handle_inspector)
+        
     def __help_all(self):
+        pbcache = PixbufCache.getInstance()        
         self._buf.insert_markup('Hotwire <i>%s</i>\n\n' % (__version__,))
         self._buf.insert_markup(_('New to Hotwire?'))
         self._buf.insert_markup(' ')
@@ -46,9 +56,16 @@ class HelpItemRenderer(UnicodeRenderer):
         for language in languages:
             if not language.prefix:
                 continue
-            self._buf.insert_markup('  <b>%s</b> - prefix: <tt>%s</tt>\n' \
-                                % tuple(map(gobject.markup_escape_text, (language.langname, language.prefix))))
-        self._buf.insert_markup('\n')                    
+            self._buf.insert_markup(' ')
+            if language.icon:
+                lang_pixbuf = pbcache.get(language.icon, size=16, trystock=True, stocksize=gtk.ICON_SIZE_MENU)               
+                self._buf.insert_pixbuf(self._buf.get_end_iter(), lang_pixbuf)
+            else:
+                self._buf.insert_markup(' ')            
+            self.append_inspectlink(language.langname, language)
+            self._buf.insert_markup(' - prefix: <tt>%s</tt>\n' \
+                                % (gobject.markup_escape_text(language.prefix),))
+        self._buf.insert_markup('\n')
 
         self._buf.insert_markup('<larger>%s:</larger>\n' % (_('Builtin Commands'),))
         builtins = list(BuiltinRegistry.getInstance())
@@ -66,9 +83,13 @@ class HelpItemRenderer(UnicodeRenderer):
             self._buf.insert_markup('  <b>%s</b> - %s\n' % tuple(map(gobject.markup_escape_text, (alias.name, alias.target))))
 
     def __append_builtin_base_help(self, builtin):
-        self._buf.insert_markup('  <b>%s</b> - %s%s: <i>%s</i> %s: <i>%s</i>\n' \
-                                % (gobject.markup_escape_text(builtin.name),
-                                   _('in'),
+        self._buf.insert_markup(' ')
+        pbcache = PixbufCache.getInstance()
+        hotwire_pixbuf = pbcache.get('hotwire.png', size=16, trystock=True, stocksize=gtk.ICON_SIZE_MENU)               
+        self._buf.insert_pixbuf(self._buf.get_end_iter(), hotwire_pixbuf)
+        self.append_inspectlink(builtin.name, builtin)        
+        self._buf.insert_markup(' - %s%s: <i>%s</i> %s: <i>%s</i>\n' \
+                                % (_('in'),
                                    builtin.get_input_optional() and ' (opt)' or '',
                                    gobject.markup_escape_text(str(builtin.get_input_type())),
                                    _('out'),
