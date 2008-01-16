@@ -32,11 +32,20 @@ from hotwire.sysdep.fs import Filesystem
 _logger = logging.getLogger("hotwire.builtins.FSearch")
 
 class FileStringMatch(object):
-    def __init__(self, path, text, start, end):
-        self.path = path
-        self.text = text
-        self.match_start = start
-        self.match_end = end
+    """Result of a "grep" like operation on a file."""
+    
+    path = property(lambda self: self._path, doc="""Path to matched file.""")
+    line = property(lambda self: self._line, doc="""Matched line value.""")
+    line_num = property(lambda self: self._line_num, doc ="""Matched line number.""")
+    match_start = property(lambda self: self._match_start, doc="""Index of match beginning.""")
+    match_end = property(lambda self: self._match_end, doc="""Index of match end.""")    
+    
+    def __init__(self, path, line, line_num, match_start, match_end):
+        self._path = path
+        self._line = line
+        self._line_num = line_num
+        self._match_start = match_start
+        self._match_end = match_end
 
 class FSearchBuiltin(FileOpBuiltin):
     __doc__ = _("""Search directory tree for files matching a regular expression.""")
@@ -74,10 +83,10 @@ class FSearchBuiltin(FileOpBuiltin):
                 fp = None
                 try:
                     fp = open(fpath, 'r') 
-                    for line in fp:
+                    for i,line in enumerate(fp):
                         match = comp_regexp.search(line)
                         if match:
-                            yield FileStringMatch(fpath, line[:-1], match.start(), match.end())
+                            yield FileStringMatch(fpath, line[:-1], i, match.start(), match.end())
                     fp.close()
                 except OSError, e:
                     _logger.exception(_("Failed searching file"))

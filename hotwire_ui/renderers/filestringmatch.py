@@ -36,6 +36,7 @@ class FileStringMatchRenderer(FilePathRenderer):
 
     def _setup_view_columns(self):
         self._setup_icon_path_columns()
+        self._insert_propcol('line_num', title=_('Line'), idx=1)        
         colidx = self._table.insert_column_with_data_func(-1, 'Match',
                                                           hotwidgets.CellRendererText(),
                                                           self._render_match)
@@ -47,7 +48,7 @@ class FileStringMatchRenderer(FilePathRenderer):
 
     def _render_match(self, col, cell, model, iter):
         obj = self._match_for_iter(model, iter)
-        matchmarkup = markup_for_match(obj.text, obj.match_start, obj.match_end)
+        matchmarkup = markup_for_match(obj.line, obj.match_start, obj.match_end)
         cell.set_property('markup', matchmarkup)
 
     def _get_row(self, obj):

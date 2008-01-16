@@ -171,10 +171,10 @@ class TreeObjectsRenderer(ObjectsRenderer):
         col.set_resizable(True)
         return col
 
-    def _insert_propcol(self, name, title=None, **kwargs):
+    def _insert_propcol(self, name, title=None, idx=0, **kwargs):
         colidx = self._table.insert_column_with_data_func(-1, title or (name[0].upper() + name[1:]),
                                                           hotwidgets.CellRendererText(**kwargs),
-                                                          self._render_propcol, name)
+                                                          self._render_propcol, (name, idx))
         col = self._table.get_column(colidx-1)
         col.set_data('hotwire-propname', name)
         col.set_data('hotwire-proptype', 'any')
@@ -193,8 +193,9 @@ class TreeObjectsRenderer(ObjectsRenderer):
         self._table.set_search_equal_func(col.get_data('hotwire-proptype') is unicode and self._search_proptext or self._search_propcol,
                                           col.get_data('hotwire-propname'))
 
-    def _render_propcol(self, col, cell, model, iter, prop):
-        obj = model.get_value(iter, 0)
+    def _render_propcol(self, col, cell, model, iter, data):
+        (prop, idx) = data        
+        obj = model.get_value(iter, idx)
         propval = getattr(obj, prop)
         cell.set_property('text', unicode(repr(propval)))
 
