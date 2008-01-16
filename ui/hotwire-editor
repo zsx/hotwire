@@ -17,8 +17,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-import sys, os
-
+import sys, os, locale, gettext
 import getopt, logging, re, string, Queue
 
 import gtk, gobject, pango
@@ -76,6 +75,10 @@ def main():
         default_log_level = logging.DEBUG
 
     hotwire.logutil.init(default_log_level, debug_modules, 'hotwire.')
+    
+    locale.setlocale(locale.LC_ALL, '')
+    import gettext
+    gettext.install('hotwire')    
 
     _logger.debug('initializing threads')
     gobject.threads_init()
