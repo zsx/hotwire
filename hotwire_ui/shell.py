@@ -39,6 +39,7 @@ from hotwire.sysdep.fs import File, Filesystem
 from hotwire.state import History, Preferences
 from hotwire_ui.command import CommandExecutionDisplay,CommandExecutionControl
 from hotwire_ui.completion import CompletionStatusDisplay
+from hotwire_ui.aboutdialog import HotwireAboutDialog
 from hotwire_ui.prefs import PrefsWindow
 from hotwire_ui.dirswitch import DirSwitchWindow
 from hotwire.logutil import log_except
@@ -1208,29 +1209,7 @@ class HotWindow(gtk.Window):
             self.new_tab_hotwire(initcmd='help')
 
     def __help_about_cb(self, action):
-        dialog = gtk.AboutDialog()
-        dialog.set_property('website', 'http://hotwire-shell.org')
-        dialog.set_property('version', hotwire.version.__version__)
-        dialog.set_property('authors', ['Colin Walters <walters@verbum.org>'])
-        dialog.set_property('copyright', u'Copyright \u00A9 2007,2008 Colin Walters <walters@verbum.org>')
-        dialog.set_property('logo-icon-name', 'hotwire')
-        dialog.set_property('license', 
-                            '''Hotwire is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 2 of the License, or
-(at your option) any later version.\n
-Hotwire is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.\n
-You should have received a copy of the GNU General Public License
-along with Hotwire; if not, write to the Free Software Foundation, Inc.,
-51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA''')
-        dialog.set_property('name', "Hotwire")
-        comments = _("A hypershell environment\n\n")
-        if hotwire.version.svn_version_info:
-            comments += "changeset: %s\ndate: %s\n" % (hotwire.version.svn_version_info['Revision'], hotwire.version.svn_version_info['Last Changed Date'],)
-        dialog.set_property('comments', comments)
+        dialog = HotwireAboutDialog()
         dialog.run()
         dialog.destroy()
 

@@ -26,6 +26,7 @@ import dbus,dbus.glib,dbus.service
 from hotvte.vteterm import VteTerminalWidget
 
 from hotwire_ui.quickfind import QuickFindWindow
+from hotwire_ui.aboutdialog import HotwireAboutDialog
 
 _logger = logging.getLogger("hotvte.VteWindow")
 
@@ -242,29 +243,7 @@ class VteWindow(gtk.Window):
         self.__remove_page_widget(self.__notebook.get_nth_page(self.__notebook.get_current_page()))
 
     def __help_about_cb(self, action):
-        dialog = gtk.AboutDialog()
-        dialog.set_property('website', 'http://hotwire-shell.org')
-        dialog.set_property('version', '0.1')
-        dialog.set_property('authors', ['Colin Walters <walters@verbum.org>'])
-        dialog.set_property('copyright', u'Copyright \u00A9 2007 Colin Walters <walters@verbum.org>')
-        dialog.set_property('logo-icon-name', 'hotwire')
-        dialog.set_property('license', 
-                            '''HotVTE is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 2 of the License, or
-(at your option) any later version.\n
-HotVTE is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.\n
-You should have received a copy of the GNU General Public License
-along with HotVTE; if not, write to the Free Software Foundation, Inc.,
-51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA''')
-        dialog.set_property('name', "HotVTE")
-        if hasattr(dialog, 'set_program_name'):
-            dialog.set_program_name('HotVTE')
-        comments = "An extended interface for terminal applications\n\n"
-        dialog.set_property('comments', comments)
+        dialog = HotwireAboutDialog()
         dialog.run()
         dialog.destroy()
         
