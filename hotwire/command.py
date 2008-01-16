@@ -35,6 +35,7 @@ from hotwire.util import quote_arg, assert_strings_equal
 import hotwire.script
 import hotwire.externals.shlex as shlex
 from hotwire.externals.singletonmixin import Singleton
+from hotwire.externals.dispatch import dispatcher
 
 _logger = logging.getLogger("hotwire.Command")
 
@@ -959,6 +960,7 @@ class PipelineLanguageRegistry(Singleton):
         if lang.uuid in self.__langs:
             raise ValueError("Language uuid %s already registered", lang.uuid)
         self.__langs[lang.uuid] = lang
+        dispatcher.send(sender=self)
     
 class HotwirePipeLanguage(PipelineLanguage):
     """The built-in Hotwire object pipeline language."""
