@@ -332,7 +332,11 @@ class BaseBookmarks(Singleton):
         dispatcher.send(sender=self)
         
     def __read_bookmarks(self):
-        f = open(self.__bookmarks_path)
+        try:
+            f = open(self.__bookmarks_path)
+        except IOError, e: 
+            _logger.debug("failed to open bookmarks", exc_info=True)
+            return
         self.__bookmarks = map(lambda x: path_fromurl(x).strip(), f)
         f.close()
         
