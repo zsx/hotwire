@@ -20,7 +20,9 @@ import os, sys, logging, StringIO, traceback
 
 import cairo, gtk, gobject, pango
 
+from hotwire.sysdep.fs import Filesystem
 from hotwire.logutil import log_except
+from hotwire_ui.aboutdialog import HotwireAboutDialog
 
 _logger = logging.getLogger("hotwire.Editor")
 
@@ -56,6 +58,9 @@ class HotEditorWindow(gtk.Window):
     <menu action='EditMenu'>
       <menuitem action='Undo'/>
       <menuitem action='Redo'/>
+    </menu>
+    <menu action='ToolsMenu'>
+      <menuitem action='About'/>
     </menu>
   </menubar>
 </ui>
@@ -122,6 +127,36 @@ class HotEditorWindow(gtk.Window):
         if parent:
             self.set_transient_for(parent)
         self.set_size_request(640, 480)
+        
+    def set_code_mode(self, codemode):
+        if not self.gtksourceview_mode:
+            return
+        # Non-code is the default
+        if not codemode:
+            return
+        self.input_view.modify_font(pango.FontDescription("monospace"))
+        fs = Filesystem.getInstance()
+        mimetype = fs.get_file_sync(self.__filename).get_mime()
+        target_lang = None        
+        if gtksourceview2_avail:
+            import gtksourceview2
+            langman = gtksourceview2.language_manager_get_default() 
+            for language_id in langman.get_language_ids():
+                language = langman.get_language(language_id)
+                for langmime in language.get_mime_types():
+                    if mimetype == langmime:
+                        target_lang = language
+                        break
+                if target_lang:
+                    break
+            self.input.set_highlight_syntax(True)
+            self.input_view.set_auto_indent(True)
+        else:
+            import gtksourceview
+            target_lang = gtksourceview.SourceLanguagesManager().get_language_from_mime_type(mimetype)
+            self.input.set_highlight(True)
+        if target_lang:
+            self.input.set_language(target_lang)
 
     def __do_save(self):
         if self.__save_text_id > 0:
@@ -228,9 +263,16 @@ class HotEditorWindow(gtk.Window):
             ('EditMenu', None, '_Edit'),
             ('Undo', gtk.STOCK_UNDO, _('_Undo'), '<control>z', _('Undo previous action'), self.__undo_cb),
             ('Redo', gtk.STOCK_REDO, _('_Redo'), '<control><shift>Z', _('Redo action'), self.__redo_cb),
+            ('ToolsMenu', None, _('_Tools')),                    
+            ('About', gtk.STOCK_ABOUT, _('_About'), None, _('About Hotwire'), self.__help_about_cb),            
             ]
         ag.add_actions(actions)
         self._ui = gtk.UIManager()
         self._ui.insert_action_group(ag, 0)
         self._ui.add_ui_from_string(self.__ui_string)
         self.add_accel_group(self._ui.get_accel_group())
+
+    def __help_about_cb(self, action):
+        dialog = HotwireAboutDialog()
+        dialog.run()
+        dialog.destroy()

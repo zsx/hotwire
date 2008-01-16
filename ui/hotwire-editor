@@ -48,7 +48,7 @@ def usage():
 
 def main():
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "hdsn", ["help", "debug", "debug-modules=",])
+        opts, args = getopt.getopt(sys.argv[1:], "hd", ["help", "debug", "debug-modules=","icon-name=","code"])
     except getopt.GetoptError:
         usage()
         sys.exit(2)
@@ -61,6 +61,8 @@ def main():
 
     debug = False
     debug_modules = []
+    code_mode = False
+    icon_name = 'gtk-floppy'
     for o, v in opts:
         if o in ('-d', '--debug'):
             debug = True
@@ -69,6 +71,8 @@ def main():
         elif o in ("-h", "--help"):
             usage()
             sys.exit()
+        elif o in ('--code',):
+            code_mode = True
 
     default_log_level = logging.ERROR
     if debug:
@@ -78,17 +82,18 @@ def main():
     
     locale.setlocale(locale.LC_ALL, '')
     import gettext
-    gettext.install('hotwire')    
+    gettext.install('hotwire')
 
     _logger.debug('initializing threads')
     gobject.threads_init()
 
     w = HotEditorWindow(filename=target_filename)
-    w.set_icon_name('gtk-floppy')
-    w.set_title('%s - Hotwire Editor' % (target_filename,))
+    w.set_code_mode(code_mode)
+    w.set_icon_name(icon_name)
+    (dn, bn) = os.path.split(target_filename)
+    w.set_title('%s (%s)' % (bn,dn))
     w.show_all()
     w.connect('destroy', lambda *args: gtk.main_quit())
-    gtk.gdk.notify_startup_complete()
 
     _logger.debug('entering mainloop')
     gtk.gdk.threads_enter()
