@@ -24,23 +24,26 @@ import os,sys,subprocess
 import gtk
 
 from hotwire.logutil import log_except
+from hotwire.externals.dispatch import dispatcher
 
 class Editor(object):
     """Abstract superclass of external editors."""
     uuid = property(lambda self: self._uuid, doc="""Unique identifer for this editor.""")
     name = property(lambda self: self._name, doc="""Human-readable name for the editor.""")
     icon = property(lambda self: self._icon, doc="""Icon name for this editor; may be absolute or stock.""")
-    executable = property(lambda self: self._executable, doc="""Executable program, may be a path""")
+    executable = property(lambda self: self._executable, doc="""Executable program, may be a path.""")
+    args = property(lambda self: self._args, doc="""Default arguments for program.""")
     requires_terminal = property(lambda self: self._requires_terminal, doc="""Whether or not this program should be run in a terminal.""")
     goto_line_arg_prefix = property(lambda self: self._goto_line_arg, doc="""Prefix argument required to jump to a specific line number.""")
     goto_line_arg = property(lambda self: self._goto_line_arg, doc="""Full argument required to jump to a specific line number.""")    
     
-    def __init__(self, uuid, name, icon, executable):
+    def __init__(self, uuid, name, icon, executable, args=[]):
         super(Editor, self).__init__()
         self._uuid = uuid
         self._name = name
         self._icon = icon
         self._executable = executable
+        self._args = args        
         self._requires_terminal = False
         self._goto_line_arg_prefix = '+'
         self._goto_line_arg = None
@@ -86,11 +89,13 @@ class EditorRegistry(object):
         if editor.uuid in self.__editors:
             raise ValueError("Editor uuid %s already registered", editor.uuid)
         self.__editors[editor.uuid] = editor
+        dispatcher.send(sender=self)
 
 class HotwireEditor(object):
     def __init__(self):
-        super(GVimEditor, self).__init__('eb88b728-42d1-4dc0-a20b-c885497520a2', 'GVim', 'gvim', 'gvim')
-EditorRegistry.getInstance().register(GVimEditor())    
+        super(HotwireEditor, self).__init__('c5851b9c-2618-4078-8905-13bf76f0a94f', 'Hotwire', 'hotwire-editor', 
+                                            'hotwire', args=['--code'])
+EditorRegistry.getInstance().register(HotwireEditor())    
         
 class GVimEditor(object):
     def __init__(self):

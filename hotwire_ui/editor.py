@@ -70,6 +70,7 @@ class HotEditorWindow(gtk.Window):
 
         self.__filename = filename
         self.__modified = False
+        self.__last_len = 0
          
         self.__save_text_id = 0
 
@@ -107,6 +108,7 @@ class HotEditorWindow(gtk.Window):
             if gtksourceview_avail:
                 self.input.begin_not_undoable_action()
             self.input.set_property('text', self.__original_text)
+            self.__last_len = self.input.get_char_count()             
             if gtksourceview_avail:
                 self.input.end_not_undoable_action()            
         
@@ -117,6 +119,7 @@ class HotEditorWindow(gtk.Window):
         self.__statusbar_ctx = self.__statusbar.get_context_id("HotEditor")
         vbox.pack_start(self.__statusbar, expand=False)
         self.__sync_undoredo()
+        self.__sync_modified_sensitivity()
 
         # do this later to avoid autosaving initially
         if filename:
@@ -158,21 +161,33 @@ class HotEditorWindow(gtk.Window):
         if target_lang:
             self.input.set_language(target_lang)
 
-    def __do_save(self):
+    def goto_line(self, lineno):
+        iter = self.input.get_iter_at_line(lineno)
+        self.input.place_cursor(iter)
+
+    def __show_msg(self, text):
+        id = self.__statusbar.push(self.__statusbar_ctx, text)
+        gobject.timeout_add(3000, lambda: self.__statusbar.remove(self.__statusbar_ctx, id))        
+
+    def __do_save(self, status):
         if self.__save_text_id > 0:
             gobject.source_remove(self.__save_text_id)
-        self.__idle_save_text()
+        if not self.__modified:
+            self.__show_msg(_("Already saved"))
+            return            
+        self.__idle_save_text(status)
 
     @log_except(_logger)
-    def __idle_save_text(self):
+    def __idle_save_text(self, status):
         self.__save_text_id = 0
         _logger.debug("autosaving to %s", self.__filename)
         f = open(self.__filename, 'w')
         text = self.input.get_property("text")
         f.write(text)
         f.close()
-        autosaved_id = self.__statusbar.push(self.__statusbar_ctx, 'Autosaving...done')
-        gobject.timeout_add(3000, lambda: self.__statusbar.remove(self.__statusbar_ctx, autosaved_id))
+        self.__show_msg(status + _("...done"))
+        self.__modified = False
+        self.__sync_modified_sensitivity()
         _logger.debug("autosave complete")
         return False
 
@@ -209,8 +224,15 @@ class HotEditorWindow(gtk.Window):
         if not self.__filename:
             return
         self.__modified = True
-        if self.__save_text_id == 0:
-            self.__save_text_id = gobject.timeout_add(800, self.__idle_save_text)
+        self.__sync_modified_sensitivity()
+        charcount = text.get_char_count()
+        # Don't autosave on deletions
+        if charcount < self.__last_len:
+            return
+        self.__last_len = charcount
+        if self.__save_text_id != 0:
+            gobject.source_remove(self.__save_text_id)
+        self.__save_text_id = gobject.timeout_add(15000, self.__idle_save_text, _("Autosaving"))
 
     def __revert_cb(self, action):
         self.__handle_revert()
@@ -219,7 +241,7 @@ class HotEditorWindow(gtk.Window):
         self.input.set_property('text', self.__original_text)
         
     def __save_cb(self, action):
-        self.__do_save()
+        self.__do_save(_("Saving..."))
         
     def __save_as_cb(self, action):
         chooser = gtk.FileChooserDialog(_("Save As..."), self, gtk.FILE_CHOOSER_ACTION_SAVE,
@@ -235,6 +257,9 @@ class HotEditorWindow(gtk.Window):
 
     def __close_cb(self, action):
         self.__handle_close()
+        
+    def __sync_modified_sensitivity(self):
+        self.__actiongroup.get_action('Save').set_sensitive(self.__modified)
 
     def __handle_close(self):
         _logger.debug("got close")

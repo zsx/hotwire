@@ -53,6 +53,18 @@ def main():
         usage()
         sys.exit(2)
 
+    lineno = -1
+    lineno_argidx = None
+    for i,arg in enumerate(args):
+        if arg.startswith('+'):
+            try:
+                lineno = int(arg[1:])
+                lineno_argidx = i
+            except ValueError, e:
+                pass
+    if lineno_argidx is not None:
+        del args[lineno_argidx]
+
     if len(args) != 1:
       sys.stderr.write('no file specified, exiting\n')
       sys.exit(1)
@@ -90,6 +102,8 @@ def main():
     w = HotEditorWindow(filename=target_filename)
     w.set_code_mode(code_mode)
     w.set_icon_name(icon_name)
+    if lineno:
+        w.goto_line(lineno)
     (dn, bn) = os.path.split(target_filename)
     w.set_title('%s (%s)' % (bn,dn))
     w.show_all()
