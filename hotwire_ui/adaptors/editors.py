@@ -19,12 +19,15 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR 
 # THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import os,sys,subprocess
+import os,sys,subprocess,logging
 
 import gtk
 
 from hotwire.logutil import log_except
+from hotwire.externals.singletonmixin import Singleton
 from hotwire.externals.dispatch import dispatcher
+
+_logger = logging.getLogger('hotwire.ui.adaptors.Editors')
 
 class Editor(object):
     """Abstract superclass of external editors."""
@@ -73,10 +76,10 @@ class Editor(object):
             # TODO - use hotwire-runtty ?
             raise NotImplementedError("Can't run terminal editors currently")
 
-class EditorRegistry(object):
+class EditorRegistry(Singleton):
     """Registry for supported external editors."""
     def __init__(self):
-        self.__editors = {} # uuid->lang
+        self.__editors = {} # uuid->editor
         
     def __getitem__(self, uuid):
         return self.__editors[uuid]
@@ -91,13 +94,13 @@ class EditorRegistry(object):
         self.__editors[editor.uuid] = editor
         dispatcher.send(sender=self)
 
-class HotwireEditor(object):
+class HotwireEditor(Editor):
     def __init__(self):
         super(HotwireEditor, self).__init__('c5851b9c-2618-4078-8905-13bf76f0a94f', 'Hotwire', 'hotwire-editor', 
-                                            'hotwire', args=['--code'])
+                                            'hotwire.png', args=['--code'])
 EditorRegistry.getInstance().register(HotwireEditor())    
         
-class GVimEditor(object):
+class GVimEditor(Editor):
     def __init__(self):
-        super(GVimEditor, self).__init__('eb88b728-42d1-4dc0-a20b-c885497520a2', 'GVim', 'gvim', 'gvim')
+        super(GVimEditor, self).__init__('eb88b728-42d1-4dc0-a20b-c885497520a2', 'GVim', 'gvim', 'gvim.png')
 EditorRegistry.getInstance().register(GVimEditor())

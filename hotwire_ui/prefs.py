@@ -16,15 +16,70 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-import os, sys, re, logging, string
+import os, sys, re, logging, string,locale
 
 import gtk, gobject, pango
 
 from hotwire.state import Preferences
 from hotwire.logutil import log_except
 import hotwire_ui.widgets as hotwidgets
+from hotwire_ui.pixbufcache import PixbufCache
+from hotwire_ui.adaptors.editors import EditorRegistry,Editor
+from hotwire.externals.dispatch import dispatcher
 
 _logger = logging.getLogger("hotwire.ui.Preferences")
+            
+class PrefEditorCombo(gtk.ComboBox):
+    def __init__(self):
+        super(PrefEditorCombo, self).__init__(model=gtk.ListStore(gobject.TYPE_PYOBJECT))
+        
+        editors = EditorRegistry.getInstance()
+        self.__hotwire_editor = editors['c5851b9c-2618-4078-8905-13bf76f0a94f']
+        self.__reload_editors()
+        self.set_row_separator_func(self.__is_row_separator)
+        cell = gtk.CellRendererPixbuf()
+        self.pack_start(cell, expand=False)
+        self.set_cell_data_func(cell, self.__render_editor_icon)
+        cell = hotwidgets.CellRendererText(alignment=pango.ALIGN_RIGHT)
+        self.pack_start(cell)
+        self.set_cell_data_func(cell, self.__render_editor_name)
+        
+        dispatcher.connect(self.__reload_editors, sender=editors)
+        
+    def __is_row_separator(self, model, iter):
+        v = model.get_value(iter, 0)
+        return v is None
+        
+    @log_except(_logger)
+    def __reload_editors(self, *args, **kwargs):
+        editors = EditorRegistry.getInstance()
+        editors = list(editors)
+        model = self.get_model() 
+        model.clear()
+        builtin_editors = [self.__hotwire_editor]
+        for e in builtin_editors:
+            model.append((e,))
+        model.append((None,))
+        for e in sorted(editors, lambda a,b: locale.strcoll(a.name, b.name)):
+            if e in builtin_editors:
+                continue
+            model.append((e,))
+        
+    def __render_editor_icon(self, celllayout, cell, model, iter):
+        e = model.get_value(iter, 0)
+        if e is None: return        
+        if e.icon is None:
+            cell.set_property('pixbuf', None)
+        else:
+            pbcache = PixbufCache.getInstance()
+            # Right now use 16 since that's favicon size
+            pixbuf = pbcache.get(e.icon, size=16, trystock=True, stocksize=gtk.ICON_SIZE_MENU)
+            cell.set_property('pixbuf', pixbuf)      
+        
+    def __render_editor_name(self, celllayout, cell, model, iter):
+        e = model.get_value(iter, 0)
+        if e is None: return        
+        cell.set_property('text', e.name)
             
 class PrefsWindow(gtk.Dialog):
     def __init__(self):
@@ -53,12 +108,12 @@ class PrefsWindow(gtk.Dialog):
         
         vbox = gtk.VBox()
         vbox.set_border_width(12)
-        vbox.set_spacing(6)                   
+        vbox.set_spacing(6)
+        self.__general_tab.pack_start(vbox, expand=False)                           
         label = gtk.Label()
         label.set_markup('<b>%s</b>' % (_('Interface'),))
         label.set_alignment(0.0, 0.0)
         vbox.pack_start(hotwidgets.Align(label), expand=False)
-        self.__general_tab.pack_start(vbox, expand=False)
         menuaccess = gtk.CheckButton(_('Disable menu access keys'))
         menuaccess.set_property('active', not prefs.get_pref('ui.menuaccels', default=True))
         menuaccess.connect('toggled', self.__on_menuaccess_toggled)        
@@ -67,7 +122,18 @@ class PrefsWindow(gtk.Dialog):
         readline.set_property('active', prefs.get_pref('ui.emacs', default=False))
         readline.connect('toggled', self.__on_readline_toggled)        
         vbox.pack_start(hotwidgets.Align(readline, padding_left=12), expand=False)
-        self.__sync_emacs_sensitive()        
+        self.__sync_emacs_sensitive()
+        
+        label = gtk.Label()
+        label.set_markup('<b>%s</b>' % (_('System'),))
+        label.set_alignment(0.0, 0.0)
+        vbox.pack_start(hotwidgets.Align(label), expand=False)
+        hbox = gtk.HBox()
+        vbox.pack_start(hotwidgets.Align(hbox, padding_left=12), expand=False)
+        ed_label = gtk.Label(_('Editor: '))
+        hbox.pack_start(ed_label, expand=False)
+        self.__ed_combo = PrefEditorCombo()
+        hbox.pack_start(self.__ed_combo, expand=False)        
         
         self.__term_tab = gtk.VBox()
         self.__notebook.append_page(self.__term_tab)
