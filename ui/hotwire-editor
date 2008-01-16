@@ -102,7 +102,7 @@ def main():
     w = HotEditorWindow(filename=target_filename)
     w.set_code_mode(code_mode)
     w.set_icon_name(icon_name)
-    if lineno:
+    if lineno >= 0:
         w.goto_line(lineno)
     (dn, bn) = os.path.split(target_filename)
     w.set_title('%s (%s)' % (bn,dn))
