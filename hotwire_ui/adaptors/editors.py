@@ -23,8 +23,10 @@ import os,sys,subprocess,logging
 
 import gtk
 
+from hotwire.util import quote_arg
 from hotwire.logutil import log_except
 from hotwire.externals.singletonmixin import Singleton
+from hotwire.state import Preferences
 from hotwire.externals.dispatch import dispatcher
 
 _logger = logging.getLogger('hotwire.ui.adaptors.Editors')
@@ -60,18 +62,31 @@ class Editor(object):
     def __idle_run_cb(self, cb):
         cb()
         return False
-        
-    def run_with_callback(self, cwd, file, callback, lineno=-1):
+    
+    def build_default_arguments(self):
         args = [self.executable]
+        args.extend(self._args)
+        return args
+    
+    def build_arguments(self, file, lineno):
+        args = self.build_default_arguments()
         if lineno >= 0:
             if self.goto_line_arg_prefix:
                 args.append('%s%d', self.goto_line_arg_prefix, lineno)
             elif self.goto_line_arg:
                 args.extend([self.goto_line_arg, '%d' % (lineno,)])
         args.append(file)
+        return args
+    
+    def run(self, cwd, file, **kwargs):
+        self.run_with_callback(cwd, file, None, **kwargs)     
+        
+    def run_with_callback(self, cwd, file, callback, lineno=-1):
+        args = self.build_arguments(file, lineno)
         if not self.requires_terminal:
             proc = subprocess.Popen(args, env=self._get_startup_env(), cwd=cwd)
-            gobject.child_watch_add(proc.pid, self.__idle_run_cb, callback)
+            if callback:
+                gobject.child_watch_add(proc.pid, self.__idle_run_cb, callback)
         else:
             # TODO - use hotwire-runtty ?
             raise NotImplementedError("Can't run terminal editors currently")
@@ -80,6 +95,30 @@ class EditorRegistry(Singleton):
     """Registry for supported external editors."""
     def __init__(self):
         self.__editors = {} # uuid->editor
+        prefs = Preferences.getInstance()
+        self.__default_editor_uuid = 'c5851b9c-2618-4078-8905-13bf76f0a94f'
+        self.__sync_pref()
+        prefs.monitor_prefs('system.editor', self.__on_editor_changed)
+        
+    def __sync_pref(self):
+        prefs = Preferences.getInstance()        
+        self.__pref_editor_uuid = prefs.get_pref('system.editor', default=self.__default_editor_uuid)        
+        
+    def __on_editor_changed(self, *args, **kwargs):     
+        self.__sync_pref()
+        os.environ['EDITOR'] = ' '.join(map(quote_arg, self[self.__pref_editor_uuid].build_default_arguments()))
+        
+    def __sync_environ(self):
+        'hotwire-runeditor ' + ' '.join()        
+        
+    def get_preferred(self):
+        if self.__pref_editor_uuid:
+            return self[self.__pref_editor_uuid]
+        return None
+    
+    def set_preferred(self, editor):
+        prefs = Preferences.getInstance()
+        self.__pref_editor_uuid = prefs.set_pref('system.editor', editor.uuid)
         
     def __getitem__(self, uuid):
         return self.__editors[uuid]
@@ -92,15 +131,18 @@ class EditorRegistry(Singleton):
         if editor.uuid in self.__editors:
             raise ValueError("Editor uuid %s already registered", editor.uuid)
         self.__editors[editor.uuid] = editor
+        if editor.uuid == self.__pref_editor_uuid:
+            self.__on_editor_changed()
         dispatcher.send(sender=self)
 
 class HotwireEditor(Editor):
     def __init__(self):
-        super(HotwireEditor, self).__init__('c5851b9c-2618-4078-8905-13bf76f0a94f', 'Hotwire', 'hotwire-editor', 
-                                            'hotwire.png', args=['--code'])
+        super(HotwireEditor, self).__init__('c5851b9c-2618-4078-8905-13bf76f0a94f', 'Hotwire',
+                                            'hotwire.png', 'hotwire-editor', args=['--code'])
 EditorRegistry.getInstance().register(HotwireEditor())    
         
 class GVimEditor(Editor):
     def __init__(self):
-        super(GVimEditor, self).__init__('eb88b728-42d1-4dc0-a20b-c885497520a2', 'GVim', 'gvim', 'gvim.png')
+        super(GVimEditor, self).__init__('eb88b728-42d1-4dc0-a20b-c885497520a2', 'GVim', 'gvim.png', 'gvim',
+                                         args=['--remote-wait'])
 EditorRegistry.getInstance().register(GVimEditor())

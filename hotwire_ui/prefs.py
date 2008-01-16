@@ -33,7 +33,7 @@ class PrefEditorCombo(gtk.ComboBox):
     def __init__(self):
         super(PrefEditorCombo, self).__init__(model=gtk.ListStore(gobject.TYPE_PYOBJECT))
         
-        editors = EditorRegistry.getInstance()
+        editors = EditorRegistry.getInstance()    
         self.__hotwire_editor = editors['c5851b9c-2618-4078-8905-13bf76f0a94f']
         self.__reload_editors()
         self.set_row_separator_func(self.__is_row_separator)
@@ -45,6 +45,25 @@ class PrefEditorCombo(gtk.ComboBox):
         self.set_cell_data_func(cell, self.__render_editor_name)
         
         dispatcher.connect(self.__reload_editors, sender=editors)
+        
+        self.select_editor_uuid(editors.get_preferred().uuid)
+        self.connect('changed', self.__on_changed)
+        
+    def __on_changed(self, combo):
+        active = self.get_active_iter()
+        editor = self.get_model().get_value(active, 0)
+        editors = EditorRegistry.getInstance()
+        editors.set_preferred(editor)
+
+    def select_editor_uuid(self, uuid):
+        for row in self.get_model():
+            val = row[0]
+            if val is None: 
+                continue
+            if val.uuid is uuid:
+                self.set_active_iter(row.iter)
+                return        
+        raise KeyError("Can't find uuid %r" % (uuid,))
         
     def __is_row_separator(self, model, iter):
         v = model.get_value(iter, 0)
