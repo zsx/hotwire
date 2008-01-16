@@ -20,6 +20,8 @@ import os, sys, logging, StringIO, traceback
 
 import cairo, gtk, gobject, pango
 
+from hotwire.logutil import log_except
+
 _logger = logging.getLogger("hotwire.Editor")
 
 try:
@@ -44,7 +46,11 @@ class HotEditorWindow(gtk.Window):
 <ui>
   <menubar name='Menubar'>
     <menu action='FileMenu'>
+      <menuitem action='Save'/>
+      <menuitem action='SaveAs'/>
+      <separator/>
       <menuitem action='Revert'/>
+      <separator/>
       <menuitem action='Close'/>
     </menu>
     <menu action='EditMenu'>
@@ -117,6 +123,12 @@ class HotEditorWindow(gtk.Window):
             self.set_transient_for(parent)
         self.set_size_request(640, 480)
 
+    def __do_save(self):
+        if self.__save_text_id > 0:
+            gobject.source_remove(self.__save_text_id)
+        self.__idle_save_text()
+
+    @log_except(_logger)
     def __idle_save_text(self):
         self.__save_text_id = 0
         _logger.debug("autosaving to %s", self.__filename)
@@ -159,6 +171,8 @@ class HotEditorWindow(gtk.Window):
         return False
     
     def __handle_text_changed(self, text):
+        if not self.__filename:
+            return
         self.__modified = True
         if self.__save_text_id == 0:
             self.__save_text_id = gobject.timeout_add(800, self.__idle_save_text)
@@ -167,7 +181,22 @@ class HotEditorWindow(gtk.Window):
         self.__handle_revert()
 
     def __handle_revert(self):
-        self.input.set_property('text', self.__original_text)        
+        self.input.set_property('text', self.__original_text)
+        
+    def __save_cb(self, action):
+        self.__do_save()
+        
+    def __save_as_cb(self, action):
+        chooser = gtk.FileChooserDialog(_("Save As..."), self, gtk.FILE_CHOOSER_ACTION_SAVE,
+                                        (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL,
+                                         gtk.STOCK_SAVE,   gtk.RESPONSE_OK))
+        chooser.set_default_response(gtk.RESPONSE_OK)
+        response = chooser.run()
+        filename = None
+        if response == gtk.RESPONSE_OK:
+            filename = chooser.get_filename()
+        self.__filename = filename
+        chooser.destroy()
 
     def __close_cb(self, action):
         self.__handle_close()
@@ -191,12 +220,14 @@ class HotEditorWindow(gtk.Window):
     def __create_ui(self):
         self.__actiongroup = ag = gtk.ActionGroup('WindowActions')
         actions = [
-            ('FileMenu', None, '_File'),
-            ('Revert', None, '_Revert', None, 'Revert to saved text', self.__revert_cb),
-            ('Close', gtk.STOCK_CLOSE, '_Close', '<control>Return', 'Save and close', self.__close_cb),
+            ('FileMenu', None, _('_File')),
+            ('Save', gtk.STOCK_SAVE, _('_Save'), '<control>s', _('Save to current file'), self.__save_cb),
+            ('SaveAs', gtk.STOCK_SAVE, _('Save _As'), '<control><shift>s', _('Save to a new file'), self.__save_as_cb),             
+            ('Revert', None, '_Revert', None, _('Revert to saved text'), self.__revert_cb),
+            ('Close', gtk.STOCK_CLOSE, _('_Close'), '<control>Return', _('Save and close'), self.__close_cb),
             ('EditMenu', None, '_Edit'),
-            ('Undo', gtk.STOCK_UNDO, '_Undo', '<control>z', 'Undo previous action', self.__undo_cb),
-            ('Redo', gtk.STOCK_REDO, '_Redo', '<control><shift>Z', 'Redo action', self.__redo_cb),
+            ('Undo', gtk.STOCK_UNDO, _('_Undo'), '<control>z', _('Undo previous action'), self.__undo_cb),
+            ('Redo', gtk.STOCK_REDO, _('_Redo'), '<control><shift>Z', _('Redo action'), self.__redo_cb),
             ]
         ag.add_actions(actions)
         self._ui = gtk.UIManager()
