@@ -31,7 +31,7 @@ def _render_member_icon(member, cell):
     pbcache = PixbufCache.getInstance()
     if inspect.ismethod(member) or inspect.ismethoddescriptor(member):
         pbname = 'dfeet-method.png'
-    elif inspect.ismemberdescriptor(member):
+    elif inspect.isdatadescriptor(member) or (hasattr(inspect, 'ismemberdescriptor') and inspect.ismemberdescriptor(member)):
         pbname = 'dfeet-property.png'
     else:
         pbname = 'dfeet-object.png'
