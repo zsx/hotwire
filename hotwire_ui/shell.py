@@ -995,8 +995,6 @@ class HotWindow(gtk.Window):
     <placeholder name='WidgetMenuAdditions'>
     </placeholder>
     <menu action='ToolsMenu'>
-      <menuitem action='PythonWorkpad'/>
-      <separator/>
       <menuitem action='HelpCommand'/>      
       <menuitem action='About'/>
     </menu>
@@ -1110,7 +1108,6 @@ class HotWindow(gtk.Window):
             ('ViewMenu', None, _('_View')),
             ('Preferences', gtk.STOCK_PREFERENCES, _('Preferences'), None, _('Change preferences'), self.__preferences_cb),                                       
             ('ToolsMenu', None, _('_Tools')),
-            ('PythonWorkpad', 'gtk-execute', _('_Python Workpad'), '<control><shift>p', _('Launch Python evaluator'), self.__python_workpad_cb),
             ('HelpCommand', 'gtk-help', _('_Help'), None, _('Display help command'), self.__help_cb),                       
             ('About', gtk.STOCK_ABOUT, _('_About'), None, _('About Hotwire'), self.__help_about_cb),
             ]
@@ -1189,9 +1186,6 @@ class HotWindow(gtk.Window):
         if not self.__prefs_dialog:
             self.__prefs_dialog = PrefsWindow()
         self.__prefs_dialog.show_all()
-
-    def __python_workpad_cb(self, action):
-        self.__show_pyshell()
         
     def __help_cb(self, action):
         widget = self.__notebook.get_nth_page(self.__notebook.get_current_page())
