@@ -67,15 +67,19 @@ class Completer(object):
         return None
 
 def _mkfile_completion(text, fpath, fileobj=None):
+    if not isinstance(text, unicode):
+        text = unicode(text, 'utf-8')
+    if not isinstance(fpath, unicode):
+        fpath = unicode(fpath, 'utf-8')             
     fs = Filesystem.getInstance()
     fname = unix_basename(fpath)
     if text.endswith('/'):
         textbase = ''
     else:
-        textbase = unix_basename(text)
+        textbase = unix_basename(text)         
     fobj = fileobj or fs.get_file_sync(fpath)
     startidx = fpath.rindex(fname)
-    suffix = quote_arg(unicode(fpath[startidx+len(textbase):], 'utf-8'))
+    suffix = quote_arg(fpath[startidx+len(textbase):])
     if fobj.is_directory(follow_link=True):
         suffix += '/'
     return Completion(suffix, fobj, fname)     
