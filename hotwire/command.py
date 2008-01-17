@@ -927,7 +927,8 @@ class PipelineLanguage(object):
     script_content_line = property(lambda self: self._script_content_line, doc="""Default cursor line offset for script.""")    
     
     def __init__(self, uuid, prefix, fileext, langname, icon, 
-                  builtin_eval=None, interpreter_exec=None, exec_args=None):
+                  builtin_eval=None, interpreter_exec=None, exec_args=None,
+                  script_content=None, script_content_line=-1):
         super(PipelineLanguage, self).__init__()
         self._uuid = uuid
         self._prefix = prefix
@@ -937,8 +938,8 @@ class PipelineLanguage(object):
         self._builtin_eval = builtin_eval
         self._interpreter_exec = interpreter_exec
         self._exec_args = exec_args
-        self._script_content = None
-        self._script_content_line = None
+        self._script_content = script_content
+        self._script_content_line = script_content_line
     
     def get_completer(self, text):
         raise NotImplementedError()
@@ -979,7 +980,7 @@ class HotwirePipeLanguage(PipelineLanguage):
 PipelineLanguageRegistry.getInstance().register(HotwirePipeLanguage())    
     
 class PythonLanguage(PipelineLanguage):
-    _script_content = '''#!/usr/bin/env python
+    PYSCRIPT_CONTENT = '''#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 def execute(context, input):
@@ -988,10 +989,12 @@ def execute(context, input):
 if __name__ == '__main__':
   execute(None, None)
 '''
-    _script_content_line = 5
+    PYSCRIPT_CONTENT_LINE = 5
     def __init__(self):
         super(PythonLanguage, self).__init__('da3343a0-8bce-46ed-a463-2d17ab09d9b4',
-                                             "py", "py", "Python", "python.ico", builtin_eval='py-eval')
+                                             "py", "py", "Python", "python.ico", builtin_eval='py-eval',
+                                             script_content=PythonLanguage.PYSCRIPT_CONTENT, 
+                                             script_content_line=PythonLanguage.PYSCRIPT_CONTENT_LINE)
 PipelineLanguageRegistry.getInstance().register(PythonLanguage())              
     
 class RubyLanguage(PipelineLanguage):

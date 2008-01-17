@@ -59,27 +59,28 @@ class HotScriptBuiltin(Builtin):
             if not os.path.exists(uuid_path):
                 break
         
-        
-        (fd, fpath) = tempfile.mkstemp('.py', 'script', scriptdir)
-        shasum = sha.new()
-        if context.input_type is not None:
-            content = self.PYCMD_WITHINPUT_CONTENT % (context.input_type,)
+        f = open(uuid_path, 'w')
+        if lang.script_content:
+            orig_shasum = sha.new()
+            orig_shasum.update(lang.script_content)            
+            f.write(lang.script_content)
         else:
-            content = self.PYCMD_NOINPUT_CONTENT
-        f = os.fdopen(fd, 'w')
-        shasum.update(content)
-        f.write(content)
+            orig_shasum = None
         f.close()
-        sum_hex = shasum.hexdigest()
-        retval = subprocess.call([os.environ['EDITOR'], fpath], cwd=context.cwd, close_fds=True)
-        buf = open(fpath).read()
-        new_sum = sha.new()        
-        new_sum.update(buf)
-        new_sum_hex = new_sum.hexdigest() 
-        if new_sum_hex == sum_hex:
-            os.unlink(fpath)
-            raise ValueError(_("Script not modified, aborting"))
-        new_fpath = os.path.join(scriptdir, new_sum_hex+'.py')
-        os.rename(fpath, new_fpath)        
-
+        
+        editor = EditorRegistry.getInstance().get_preferred()
+        retcode = editor.run_sync(f, lineno=lang.script_content_line)
+        if retcode != 0:
+            os.unlink(uuid_path)
+            raise ValueError(_("Editor aborted"))
+        f = open(uuid_path)
+        new_shasum = sha.new()
+        new_shasum.update(f.read())
+        f.close()
+        
+        if new_shasum.hexdigest() == orig_shasum.hexdigest():
+            os.unlink(uuid_path)
+            raise ValueError(_("Input unchanged, aborting"))
+        
+        
 BuiltinRegistry.getInstance().register(PyMapBuiltin())
