@@ -59,7 +59,7 @@ class Editor(object):
         return env
     
     @log_except(_logger)
-    def __idle_run_cb(self, cb):
+    def __idle_run_cb(self, pid, condition, cb):
         cb()
         return False
     
@@ -79,17 +79,23 @@ class Editor(object):
         return args
     
     def run(self, cwd, file, **kwargs):
-        self.run_with_callback(cwd, file, None, **kwargs)     
+        self.run_with_callback(cwd, file, None, **kwargs)
+        
+    def run_many(self, cwd, *files):
+        args = self.build_default_arguments()
+        args.extend(files)
+        subprocess.Popen(args, env=self._get_startup_env(), cwd=cwd)
+        
+    def run_sync(self, cwd, file, **kwargs):
+        args = self.build_arguments(file, lineno)
+        retcode = subprocess.call(args, env=self._get_startup_env(), cwd=cwd)
+        return retcode
         
     def run_with_callback(self, cwd, file, callback, lineno=-1):
         args = self.build_arguments(file, lineno)
-        if not self.requires_terminal:
-            proc = subprocess.Popen(args, env=self._get_startup_env(), cwd=cwd)
-            if callback:
-                gobject.child_watch_add(proc.pid, self.__idle_run_cb, callback)
-        else:
-            # TODO - use hotwire-runtty ?
-            raise NotImplementedError("Can't run terminal editors currently")
+        proc = subprocess.Popen(args, env=self._get_startup_env(), cwd=cwd)
+        if callback:
+            gobject.child_watch_add(proc.pid, self.__idle_run_cb, callback)
 
 class EditorRegistry(Singleton):
     """Registry for supported external editors."""
@@ -146,3 +152,8 @@ class GVimEditor(Editor):
         super(GVimEditor, self).__init__('eb88b728-42d1-4dc0-a20b-c885497520a2', 'GVim', 'gvim.png', 'gvim',
                                          args=['--remote-wait'])
 EditorRegistry.getInstance().register(GVimEditor())
+
+class EmacsClientEditor(Editor):
+    def __init__(self):
+        super(EmacsClientEditor, self).__init__('8acfcef3-9d05-47e8-86a1-b005fa8897ec', 'Emacs (client)', 'emacs.png', 'emacsclient')
+EditorRegistry.getInstance().register(EmacsClientEditor())
