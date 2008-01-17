@@ -86,7 +86,9 @@ else:
     kwargs['data_files'] = [('share/applications', ['hotwire.desktop']), 
                             ('share/icons/hicolor/24x24/apps', ['images/hotwire.png', 'images/hotwire-openssh.png', 'images/hotwire-sudo.png']),
                          # FIXME   #('share/icons/hicolor/22x22/apps', ['images/hotwire-22.png']),
-                            ('share/hotwire/images', ['images/throbber.gif', 'images/throbber-done.gif'])]
+                            ('share/hotwire/images', ['images/throbber.gif', 'images/throbber-done.gif',
+                                                      'images/dfeet-method.png', 'images/dfeet-property.png', 'images/dfeet-object.png',
+                                                      'images/perl.ico', 'images/python.ico', 'images/ruby.ico', 'images/unix.ico'])]
     from DistUtilsExtra.command import *
     kwargs['cmdclass'] = { "build_extra" : build_extra.build_extra,
                            "build_i18n" :  build_i18n.build_i18n,
