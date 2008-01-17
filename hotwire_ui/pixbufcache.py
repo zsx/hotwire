@@ -30,7 +30,7 @@ def _get_datadirs():
     else:
         datadirs = ['/usr/share/']
     for d in datadirs:
-        yield os.path.join(d, 'hotwire')
+        yield os.path.join(d, 'hotwire', 'images')
     uninst = os.getenv('HOTWIRE_UNINSTALLED') 
     if uninst:
         yield os.path.join(uninst, 'images')
