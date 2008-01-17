@@ -922,7 +922,9 @@ class PipelineLanguage(object):
     icon = property(lambda self: self._icon, doc="""Icon name for this language""")
     builtin_eval = property(lambda self: self._builtin_eval, doc="""The Hotwire Builtin object used for execution""")
     interpreter_exec = property(lambda self: self._interpreter_exec, doc="""The executable interpreter name (if required)""")
-    exec_args = property(lambda self: self._exec_args, doc="""The interpreter arguments use for execution of a string""")    
+    exec_args = property(lambda self: self._exec_args, doc="""The interpreter arguments use for execution of a string""")
+    script_content = property(lambda self: self._script_content, doc="""Default file content used for new scripts.""")
+    script_content_line = property(lambda self: self._script_content_line, doc="""Default cursor line offset for script.""")    
     
     def __init__(self, uuid, prefix, fileext, langname, icon, 
                   builtin_eval=None, interpreter_exec=None, exec_args=None):
@@ -934,7 +936,9 @@ class PipelineLanguage(object):
         self._icon = icon
         self._builtin_eval = builtin_eval
         self._interpreter_exec = interpreter_exec
-        self._exec_args = exec_args        
+        self._exec_args = exec_args
+        self._script_content = None
+        self._script_content_line = None
     
     def get_completer(self, text):
         raise NotImplementedError()
@@ -975,6 +979,16 @@ class HotwirePipeLanguage(PipelineLanguage):
 PipelineLanguageRegistry.getInstance().register(HotwirePipeLanguage())    
     
 class PythonLanguage(PipelineLanguage):
+    _script_content = '''#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+def execute(context, input):
+    
+
+if __name__ == '__main__':
+  execute(None, None)
+'''
+    _script_content_line = 5
     def __init__(self):
         super(PythonLanguage, self).__init__('da3343a0-8bce-46ed-a463-2d17ab09d9b4',
                                              "py", "py", "Python", "python.ico", builtin_eval='py-eval')
@@ -1036,7 +1050,7 @@ class PipelineFactory(object):
             _logger.debug("matched lang %r", lang)
             rest = text[len(lang.prefix):]
             if rest.strip() == '':
-                scriptargs = ['hotscript', lang.fileext]
+                scriptargs = ['hotscript', '--new', lang.uuid]
                 if ispiped:
                     scriptargs.insert(0, hotwire.script.PIPE)
                     scriptargs.insert(0, 'current')
