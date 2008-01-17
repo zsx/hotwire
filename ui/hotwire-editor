@@ -69,7 +69,7 @@ def main():
       sys.stderr.write('no file specified, exiting\n')
       sys.exit(1)
 
-    target_filename = args[0]
+    target_filename = os.path.abspath(args[0])
 
     debug = False
     debug_modules = []
