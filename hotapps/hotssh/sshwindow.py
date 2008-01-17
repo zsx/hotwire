@@ -38,11 +38,13 @@ class ConnectDialog(gtk.Dialog):
         super(ConnectDialog, self).__init__(title=_("New SSH Connection"),
                                             parent=parent,
                                             flags=gtk.DIALOG_DESTROY_WITH_PARENT,
-                                            buttons=(gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL,
-                                                     _('Connect'), gtk.RESPONSE_ACCEPT))
+                                            buttons=(gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL))
         
         self.connect('response', lambda *args: self.hide())
         self.connect('delete-event', self.hide_on_delete)
+        button = self.add_button(_('Connect'), gtk.RESPONSE_ACCEPT)
+        button.set_property('image', gtk.image_new_from_stock('gtk-connect', gtk.ICON_SIZE_BUTTON))
+        self.set_default_response(gtk.RESPONSE_ACCEPT)
                 
         self.set_has_separator(False)
         self.set_border_width(5)
