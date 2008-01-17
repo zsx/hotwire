@@ -161,8 +161,7 @@ class PipelineLanguageComboBox(gtk.ComboBox):
         cell.set_property('text', lang.langname)
         
     def set_lang(self, lang):
-        if lang is None:
-            lang = self.__hotwire_lang
+        assert lang is not None
         for row in self.get_model():
             val = row[0]
             if val is lang:
@@ -172,8 +171,6 @@ class PipelineLanguageComboBox(gtk.ComboBox):
             
     def get_lang(self):
         lang = self.get_model().get_value(self.get_active_iter(), 0)
-        if lang is self.__hotwire_lang:
-            return None
         return lang
 
 class ShellCommandResolver(BaseCommandResolver):
@@ -340,7 +337,6 @@ class Hotwire(gtk.VBox):
         self.__pipeline_factory = PipelineFactory(self.context, self.__resolver)
         self.__parsed_pipeline = None
         self.__langtype = PipelineLanguageRegistry.getInstance()['62270c40-a94a-44dd-aaa0-689f882acf34']
-        self.__override_langtype = None
         self.__verb_completer = VerbCompleter()
         self.__token_completer = TokenCompleter()
         self.__completion_active = False
@@ -388,19 +384,17 @@ class Hotwire(gtk.VBox):
             
     def __on_lang_combo_changed(self, *args):
         newlang = self.__lang_combo.get_lang()
-        if newlang == self.__override_langtype:
+        if newlang == self.__langtype:
             return
-        self.__override_langtype = newlang 
-        _logger.debug("input language changed: %r", self.__override_langtype)
+        self.__langtype = newlang 
+        _logger.debug("input language changed: %r", self.__langtype)
         self.__queue_parse()
         
     def __on_switch_language_cb(self, action):
         self.__lang_combo.popup()  
         
     def get_active_lang(self):
-        # default to HotwirePipe
-        return self.__override_langtype or self.__langtype \
-            or PipelineLanguageRegistry.getInstance()['62270c40-a94a-44dd-aaa0-689f882acf34']
+        return self.__langtype
             
     def __add_bookmark_cb(self, action):
         bookmarks = Filesystem.getInstance().get_bookmarks()
@@ -923,13 +917,12 @@ class Hotwire(gtk.VBox):
             return True
         text = self.__input.get_property("text")
         try:
-            (self.__langtype, self.__parsed_pipeline) = self.__pipeline_factory.parse(text, accept_unclosed=(not throw), 
-                                                                                      override_lang=self.__override_langtype,
-                                                                                      resolve=resolve)
+            self.__parsed_pipeline = self.__pipeline_factory.parse(text, accept_unclosed=(not throw), 
+                                                                                          curlang=self.__langtype,
+                                                                                          resolve=resolve)
         except hotwire.command.PipelineParseException, e:
             _logger.debug("parse failed, current syntax=%s", self.__langtype, exc_info=True)
             self.__parsed_pipeline = None
-            self.__langtype = None
             if throw:
                 raise e
             return False

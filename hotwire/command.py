@@ -1016,11 +1016,12 @@ class PipelineFactory(object):
             args.extend(lang.exec_args)
             args.append(cmdtext)
         pipeline = Pipeline.create(self.__context, resolve and self.__resolver or None, *args)
-        return (lang, pipeline)      
+        return pipeline      
         
-    def parse(self, text, override_lang=None, resolve=True, **kwargs):
-        if override_lang is not None:
-            return self.__make_lang_pipeline(override_lang, False, resolve, text)
+    def parse(self, text, curlang=None, resolve=True, **kwargs):
+        # If input is not HotwirePipe, pass it through
+        if curlang.uuid != '62270c40-a94a-44dd-aaa0-689f882acf34':
+            return self.__make_lang_pipeline(curlang, False, resolve, text)
         ispiped = text.startswith('|')
         if ispiped:
             text = text[1:]        
@@ -1039,7 +1040,7 @@ class PipelineFactory(object):
                 if ispiped:
                     scriptargs.insert(0, hotwire.script.PIPE)
                     scriptargs.insert(0, 'current')
-                return (lang, Pipeline.create(self.__context, resolve and self.__resolver or None, *scriptargs))
+                return Pipeline.create(self.__context, resolve and self.__resolver or None, *scriptargs)
             else:
                 # Require a space - should probably handle this better
                 if not text.startswith(lang.prefix + " "):
@@ -1048,4 +1049,4 @@ class PipelineFactory(object):
         # Try parsing as HotwirePipe
         if ispiped:
             text = 'current | ' + text
-        return (None, Pipeline.parse(text, context=self.__context, resolver=(resolve and self.__resolver or None), **kwargs))
+        return Pipeline.parse(text, context=self.__context, resolver=(resolve and self.__resolver or None), **kwargs)
