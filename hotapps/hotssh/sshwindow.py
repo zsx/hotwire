@@ -42,8 +42,9 @@ class ConnectDialog(gtk.Dialog):
         
         self.connect('response', lambda *args: self.hide())
         self.connect('delete-event', self.hide_on_delete)
-        button = self.add_button(_('Connect'), gtk.RESPONSE_ACCEPT)
+        button = self.add_button(_('_Connect'), gtk.RESPONSE_ACCEPT)
         button.set_property('image', gtk.image_new_from_stock('gtk-connect', gtk.ICON_SIZE_BUTTON))
+        self.set_default(button)
         self.set_default_response(gtk.RESPONSE_ACCEPT)
                 
         self.set_has_separator(False)
