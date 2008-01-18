@@ -37,7 +37,7 @@ class FilterBuiltin(Builtin):
         super(FilterBuiltin, self).__init__('filter',
                                             input=InputStreamSchema('any'),
                                             output='identity',
-                                            options=[['-i', '--ignore-case'],],
+                                            options=[['-s', '--stringify'], ['-i', '--ignore-case'],],
                                             threaded=True)
 
     def execute(self, context, args, options=[]):
@@ -50,17 +50,19 @@ class FilterBuiltin(Builtin):
         else:
             prop = None
         regexp = args[0]
-        if prop and prop[-2:] == '()':
-            target_prop = prop[:-2]
-            is_func = True
-        else:
-            target_prop = prop
-            is_func = False
+        target_prop = prop
+        stringify = '-s' in options
         compiled_re = re.compile(regexp, (('-i' in options) and re.IGNORECASE or 0) | re.UNICODE)
         for arg in context.input:
-            target_propvalue = target_prop and getattr(arg, target_prop) or (isinstance(arg, str) and arg or str(arg))
-            if is_func:
-                target_propvalue = target_propvalue()
+            target_propvalue = target_prop and getattr(arg, target_prop) or arg
+            if not isinstance(target_propvalue, basestring):
+                if not stringify:
+                    raise ValueError(_("Value not a string: %r" % (target_propvalue,)))
+                else:
+                    target_propvalue = unicode(target_propvalue, 'utf-8')
+            elif not isinstance(target_propvalue, unicode):
+                target_propvalue = unicode(target_propvalue, 'utf-8')                
+                        
             match = compiled_re.search(target_propvalue)
             if match:
                 if isinstance(arg, str):
