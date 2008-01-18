@@ -45,9 +45,9 @@ class HelpItemRenderer(UnicodeRenderer):
     def __help_all(self):
         pbcache = PixbufCache.getInstance()        
         self._buf.insert_markup('Hotwire <i>%s</i>\n\n' % (__version__,))
-        self._buf.insert_markup(_('New to Hotwire?'))
+        self._buf.insert_markup(_('Documentation on the web: '))
         self._buf.insert_markup(' ')
-        self.append_link(_('View Tutorial'), 'http://hotwire-shell.org/trac/wiki/GettingStarted')
+        self.append_link(_('Tutorial'), 'http://hotwire-shell.org/trac/wiki/GettingStarted')
         self._buf.insert_markup('\n\n')
 
         self._buf.insert_markup('<larger>%s:</larger>\n' % (_('Languages'),))
