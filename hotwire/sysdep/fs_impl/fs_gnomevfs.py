@@ -48,7 +48,7 @@ Important members include the "vfsstat" and "uri"."""
         self.target_vfsstat_error = None
         self.uri = gnomevfs.get_uri_from_local_path(path) 
 
-    def is_directory(self, follow_link=False):
+    def test_directory(self, follow_link=False):
         if not self.vfsstat:
             return False
         if follow_link and self.vfsstat.type == gnomevfs.FILE_TYPE_SYMBOLIC_LINK:
@@ -106,12 +106,12 @@ Important members include the "vfsstat" and "uri"."""
             
     def _do_get_icon(self):
         if not self.vfsstat:
-            self.icon = 'gtk-dialog-error'
+            self._icon = 'gtk-dialog-error'
         try:
-            self.icon = self.fs.icon_lookup(self)
+            self._icon = self.fs.icon_lookup(self)
         except Exception, e:
             _logger.debug("Failed to get file icon for '%s'", self.uri, exc_info=True)
-            self.icon = 'gtk-dialog-error'
+            self._icon = 'gtk-dialog-error'
 
 class GnomeVfsMonitor(object):
     """Avoid some locking oddities in gnomevfs monitoring"""

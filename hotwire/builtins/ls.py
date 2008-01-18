@@ -19,7 +19,7 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR 
 # THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import os, os.path, stat, logging, locale
+import os, sys, os.path, stat, logging, locale
 
 from hotwire.builtin import Builtin, BuiltinRegistry, InputStreamSchema
 from hotwire.fs import FilePath,iterd_sorted
@@ -59,7 +59,7 @@ class LsBuiltin(Builtin):
         elif len(args) == 1:
             path = FilePath(args[0], context.cwd)
             fobj = fs.get_file_sync(path)
-            if fobj.is_directory():
+            if fobj.is_directory:
                 generator = self.__ls_dir(path, show_all)
             else:
                 yield fobj

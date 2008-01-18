@@ -109,7 +109,7 @@ class BaseFilesystem(object):
                 fobj = self.get_file_sync(epath)
             except FileStatError, e:
                 continue            
-            if fobj.is_executable():
+            if fobj.is_executable:
                 return epath
         return False
 
@@ -163,20 +163,29 @@ class File(object):
     """An extended crossplatform stat() container, essentially.  
     Extra data retrieved includes symbolic link target (if applicable) and icon."""
     
-    __slots__ = ['path', 'fs', 'stat', 'xaccess', 'icon', 'icon_error', '_permstring', 'target_stat', 'stat_error']
+    path = property(lambda self: self._path, doc="""Complete path to file, expressed in Hotwire notation (always forward slashes)""")
+    basename = property(lambda self: self._basename, doc="""Name of file (without directory component)""")
+    size = property(lambda self: self.get_size(), doc="""Size in bytes of file, or None if unknown""")
+    icon = property(lambda self: self._icon, doc="""Icon name (internal Hotwire/GTK+ representation)""")
+    is_directory = property(lambda self: self.test_directory(), doc="""Whether or not this object represents a directory""")
+    is_executable = property(lambda self: self._is_executable(), doc="""Whether or not this object represents an OS-executable file""")
+    is_link = property(lambda self: self._is_link(), doc="""Whether or not this object represents a symbolic link""")
+    
+    __slots__ = ['fs', 'stat', 'xaccess', 'icon_error', '_permstring', 'target_stat', 'stat_error']
     def __init__(self, path, fs=None):
         super(File, self).__init__()
-        self.path = path
+        self._path = path
+        self._basename = unix_basename(path)
         self.fs = fs
         self.stat = None
         self.xaccess = None
-        self.icon = None
+        self._icon = None
         self.icon_error = False
         self._permstring = None
         self.target_stat = None
         self.stat_error = None
 
-    def is_directory(self, follow_link=False):
+    def test_directory(self, follow_link=False):
         if not self.stat:
             return False
         if follow_link and stat.S_ISLNK(self.stat.st_mode):
@@ -185,7 +194,10 @@ class File(object):
             stbuf = self.stat
         return stbuf and stat.S_ISDIR(stbuf.st_mode)
     
-    def is_executable(self):
+    def _is_link(self):
+        return self.stat and stat.S_ISLNK(self.stat.st_mode)
+    
+    def _is_executable(self):
         return self.xaccess
 
     def get_size(self):
@@ -279,11 +291,11 @@ class File(object):
         
     def _do_get_icon(self):
         if not self.stat:
-            self.icon = 'gtk-dialog-error'
+            self._icon = 'gtk-dialog-error'
         elif self.is_directory():
-            self.icon = 'gtk-directory'
+            self._icon = 'gtk-directory'
         else:
-            self.icon = 'gtk-file'              
+            self._icon = 'gtk-file'
 
     @log_except(_logger)
     def __get_stat_signal(self):
@@ -296,7 +308,7 @@ class File(object):
         _logger.debug("idle changed dispatch from %r, responses=%r", self, responses)
         
     def set_icon(self, icon):
-        self.icon = icon
+        self._icon = icon
         
     def set_icon_error(self, err):
         self.icon_error = err

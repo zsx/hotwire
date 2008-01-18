@@ -418,7 +418,7 @@ class BaseCommandResolver(object):
         fs = Filesystem.getInstance()        
         target = completion.target
         return isinstance(target, File) and \
-           not target.is_directory() and \
+           not target.is_directory and \
            (unix_basename(text) == unix_basename(target.path) or fs.path_inexact_executable_match(completion.matchbase))
     
     def _expand_verb_completion(self, completion):

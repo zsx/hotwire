@@ -80,7 +80,7 @@ def _mkfile_completion(text, fpath, fileobj=None):
     fobj = fileobj or fs.get_file_sync(fpath)
     startidx = fpath.rindex(fname)
     suffix = quote_arg(fpath[startidx+len(textbase):])
-    if fobj.is_directory(follow_link=True):
+    if fobj.test_directory(follow_link=True):
         suffix += '/'
     return Completion(suffix, fobj, fname)     
 
@@ -143,7 +143,7 @@ class VerbCompleter(Completer):
             pc = PathCompleter()
             for completion in pc.completions(text, cwd):
                 fobj = completion.target
-                if fobj.is_directory() or fobj.is_executable():
+                if fobj.is_directory or fobj.is_executable:
                     yield completion
         else:
             fs = Filesystem.getInstance()           
@@ -155,7 +155,7 @@ class VerbCompleter(Completer):
                     if not fname.startswith(text_prefix):
                         continue
                     fobj = fs.get_file_sync(fpath)
-                    if fobj.is_executable():
+                    if fobj.is_executable:
                         yield _mkfile_completion(text, fpath, fobj)
 
 class TokenCompleter(Completer):

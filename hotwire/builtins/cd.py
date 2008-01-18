@@ -32,7 +32,7 @@ class CdCompleter(PathCompleter):
     def completions(self, text, cwd, **kwargs):
         for completion in super(CdCompleter, self).completions(text, cwd, **kwargs):
             fobj = completion.target
-            if fobj.is_directory(follow_link=True):
+            if fobj.test_directory(follow_link=True):
                 yield completion
 
 class CdBuiltin(Builtin):

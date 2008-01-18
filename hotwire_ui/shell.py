@@ -676,7 +676,7 @@ class Hotwire(gtk.VBox):
         text = completion.suffix
         # FIXME move this into CompletionSystem
         tobj = completion.target
-        if not (isinstance(tobj, File) and tobj.is_directory()):
+        if not (isinstance(tobj, File) and tobj.is_directory):
             text += " "
         self.__insert_completing_text(text)
             

@@ -214,7 +214,7 @@ class FilePathRenderer(TreeObjectsRenderer):
         return True
 
     def __do_open(self, obj):
-        if obj.is_directory(follow_link=True):
+        if obj.test_directory(follow_link=True):
             self.context.do_cd(obj.path)
         else:    
             self.__fs.launch_open_file(obj.path, self.context.get_cwd())        
@@ -224,7 +224,7 @@ class FilePathRenderer(TreeObjectsRenderer):
         items = self.__fs.get_file_menuitems(fobj, context=self.context)
         if items:
             items.append(gtk.SeparatorMenuItem())
-        if fobj.is_directory():
+        if fobj.is_directory:
             menuitem = gtk.ImageMenuItem(_('Open Folder in New Tab'))
             menuitem.set_property('image', gtk.image_new_from_stock('gtk-new', gtk.ICON_SIZE_MENU))
             menuitem.connect('activate', self.__on_new_tab_activated, fobj.path)
