@@ -124,7 +124,7 @@ class EditorRegistry(Singleton):
     
     def set_preferred(self, editor):
         prefs = Preferences.getInstance()
-        self.__pref_editor_uuid = prefs.set_pref('system.editor', editor.uuid)
+        prefs.set_pref('system.editor', editor.uuid)
         
     def __getitem__(self, uuid):
         return self.__editors[uuid]
@@ -143,7 +143,7 @@ class EditorRegistry(Singleton):
 
 class HotwireEditor(Editor):
     def __init__(self):
-        super(HotwireEditor, self).__init__('c5851b9c-2618-4078-8905-13bf76f0a94f', 'Hotwire',
+        super(HotwireEditor, self).__init__('c5851b9c-2618-4078-8905-13bf76f0a94f', 'Hotwire Edit',
                                             'hotwire.png', 'hotwire-editor', args=['--code'])
 EditorRegistry.getInstance().register(HotwireEditor())    
         

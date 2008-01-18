@@ -188,11 +188,8 @@ class GnomeVFSFilesystem(UnixFilesystem):
         uri = gnomevfs.get_uri_from_local_path(file_obj.path)
         if file_obj.test_directory(follow_link=True):
             return []
-        else:
-            apps = gnomevfs.mime_get_all_applications(file_obj.get_mime())
-            textapp = gnomevfs.mime_get_default_application("text/plain")
-            if textapp in apps:
-                textapp = None
+        
+        apps = gnomevfs.mime_get_all_applications(file_obj.get_mime())
         menuitems = []
         pbcache = PixbufCache.getInstance()
         def add_menuitem(app):
@@ -211,10 +208,6 @@ class GnomeVFSFilesystem(UnixFilesystem):
             menuitems.append(menuitem) 
         for app in apps:
             add_menuitem(app)
-        if apps and textapp:
-            menuitems.append(gtk.SeparatorMenuItem())
-        if textapp:
-            add_menuitem(textapp)
         return menuitems
 
 def getInstance():

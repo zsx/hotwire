@@ -37,16 +37,8 @@ class EditBuiltin(Builtin):
                                           idempotent=True)
  
     def execute(self, context, args):
-        fs = Filesystem.getInstance()
-        editor = os.environ['EDITOR']
-        # TODO - try to detect current shell and parse using it
-        editor_args = self._ws_re.split(editor)
-        subproc_args = {'cwd': context.cwd}
-        if context.gtk_event_time:
-            env = dict(os.environ)
-            env['DESKTOP_STARTUP_ID'] = 'hotwire%d_TIME%d' % (os.getpid(), context.gtk_event_time,)
-            subproc_args['env'] = env
-        editor_args.extend(args)
-        subprocess.Popen(editor_args, **subproc_args)
+        from hotwire_ui.adaptors.editors import EditorRegistry
+        prefeditor = EditorRegistry.getInstance().get_preferred()
+        prefeditor.run_many(context.cwd, *args)
         return []
 BuiltinRegistry.getInstance().register(EditBuiltin())

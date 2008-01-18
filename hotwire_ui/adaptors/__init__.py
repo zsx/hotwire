@@ -10,6 +10,9 @@ def load():
         if fs.executable_on_path('hotwire-sudo'):
             import hotwire_ui.adaptors.sudo
         import hotwire.sysdep.unix_completers
+    
+    import hotwire_ui.adaptors.edit    
+    
             
         
     

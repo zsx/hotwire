@@ -30,6 +30,7 @@ from hotwire.sysdep.fs import Filesystem, File
 from hotwire.sysdep.sysenv import SystemEnvironment, GnomeSystemEnvironment
 from hotwire.logutil import log_except
 from hotwire_ui.pixbufcache import PixbufCache
+from hotwire_ui.adaptors.editors import EditorRegistry
 from hotwire.util import format_file_size, quote_arg
 from hotwire.externals.dispatch import dispatcher
 
@@ -217,7 +218,10 @@ class FilePathRenderer(TreeObjectsRenderer):
         if obj.test_directory(follow_link=True):
             self.context.do_cd(obj.path)
         else:    
-            self.__fs.launch_open_file(obj.path, self.context.get_cwd())        
+            self.__fs.launch_open_file(obj.path, self.context.get_cwd())  
+            
+    def __on_edit_activated(self, menuitem, cwd, prefeditor, fpath):
+        prefeditor.run(cwd, fpath)
 
     def _get_menuitems(self, iter):
         fobj = self._file_for_iter(self._model, iter)
@@ -240,6 +244,17 @@ class FilePathRenderer(TreeObjectsRenderer):
                 menuitem.connect('activate', self.__on_file_manager_activated, ['nautilus', fobj.path])
                 items.append(menuitem)
             items.append(gtk.SeparatorMenuItem())
+        
+        prefeditor = EditorRegistry.getInstance().get_preferred()
+        if prefeditor is not None:
+            menuitem = gtk.ImageMenuItem(_('Edit with %s') % (prefeditor.name,))
+            menuitem.connect('activate', self.__on_edit_activated, self.context.get_cwd(), prefeditor, fobj.path)
+            pbcache = PixbufCache.getInstance()
+            pixbuf = pbcache.get(prefeditor.icon, size=16, trystock=True, stocksize=gtk.ICON_SIZE_MENU)
+            if pixbuf:
+                img = gtk.image_new_from_pixbuf(pixbuf)
+                menuitem.set_property('image', img)
+            items.append(menuitem)
         menuitem = gtk.ImageMenuItem(_('Copy Path to Input'))
         menuitem.set_property('image', gtk.image_new_from_stock('gtk-copy', gtk.ICON_SIZE_MENU))
         menuitem.connect("activate", self.__on_copypath_activated, fobj.path)
