@@ -694,11 +694,15 @@ class Hotwire(gtk.VBox):
             
     def __insert_completion(self):
         results = self.__completions.completion_request()
-        if results is None:
+        if results is True:
             self.__completion_async_blocking = True
             _logger.debug("results pending, setting blocking=TRUE")
             self.__completions.hide_all()
             return
+        if results is None:
+            _logger.debug("no active completer, request dropped")
+            return
+
         if self.__completion_async_blocking:
             _logger.debug("setting blocking=FALSE")            
             self.__completion_async_blocking = False
@@ -854,6 +858,10 @@ class Hotwire(gtk.VBox):
             return
         self.__do_complete()
         
+    def __completion_supported(self):
+        # We only support HotwirePipe at the moment
+        return self.get_active_lang().uuid == '62270c40-a94a-44dd-aaa0-689f882acf34'        
+        
     def __do_complete(self):
         ### TODO: move more of this stuff into hotwire_ui/completion.py
         self.__completion_token = None        
@@ -864,12 +872,13 @@ class Hotwire(gtk.VBox):
         verbcmd = None
         addprefix = None
         # can happen when input is empty
-        # Also for now disable completion when we're not using HotwirePipe
         if not self.__parsed_pipeline:
             _logger.debug("no tree, no completion")
+            self.__completions.invalidate()            
             return
-        if (self.get_active_lang().uuid != '62270c40-a94a-44dd-aaa0-689f882acf34'):
-            _logger.debug("unknown active lang, no completions (yet)")            
+        if not self.__completion_supported():
+            _logger.debug("unsupported completion lang")
+            self.__completions.invalidate()          
             return        
         commands = list(self.__parsed_pipeline)
         for i,cmd in enumerate(commands):

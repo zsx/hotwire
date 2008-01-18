@@ -414,7 +414,8 @@ class CompletionStatusDisplay(hotwidgets.TransientPopup):
         self.invalidate()
         self.__token = text
         self.__completer = completer
-        self.__complsys.async_complete(completer, text, context.get_cwd(), self.__completions_result)
+        if completer:
+            self.__complsys.async_complete(completer, text, context.get_cwd(), self.__completions_result)
         
     def completion_request(self):      
         if self.__current_completion is not None:
@@ -425,8 +426,10 @@ class CompletionStatusDisplay(hotwidgets.TransientPopup):
             self.__completion_display.reposition()
             self.__completion_display.queue_reposition()
             return self.__current_completion
-        self.hide_all()
-        self.__pending_completion_load = True
+        if self.__completer:
+            self.hide_all()
+            self.__pending_completion_load = True
+            return True
         return None
     
     def show(self):
