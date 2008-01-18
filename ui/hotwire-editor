@@ -65,11 +65,11 @@ def main():
     if lineno_argidx is not None:
         del args[lineno_argidx]
 
-    if len(args) != 1:
+    if len(args) < 1:
       sys.stderr.write('no file specified, exiting\n')
       sys.exit(1)
 
-    target_filename = os.path.abspath(args[0])
+    files = args
 
     debug = False
     debug_modules = []
@@ -99,13 +99,21 @@ def main():
     _logger.debug('initializing threads')
     gobject.threads_init()
 
-    w = HotEditorWindow(filename=target_filename)
-    w.set_code_mode(code_mode)
-    w.set_icon_name(icon_name)
-    if lineno >= 0:
-        w.goto_line(lineno)
-    w.show_all()
-    w.connect('destroy', lambda *args: gtk.main_quit())
+    wincount = 0
+    for fpath in files:
+        w = HotEditorWindow(filename=fpath)
+        wincount += 1
+        w.set_code_mode(code_mode)
+        w.set_icon_name(icon_name)
+        if lineno >= 0:
+            w.goto_line(lineno)
+            lineno = -1
+        w.show_all()
+        def handle_destroy(w, wincount):
+            wincount -= 1
+            if wincount == 0:
+                gtk.main_quit()
+        w.connect('destroy', handle_destroy, wincount)
 
     _logger.debug('entering mainloop')
     gtk.gdk.threads_enter()
