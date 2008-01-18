@@ -40,7 +40,7 @@ except ImportError, e:
     _logger.debug("gtksourceview not available")
 
 class HotEditorWindow(gtk.Window):
-    def __init__(self, filename=None, content=None, title=None, parent=None):
+    def __init__(self, filename=None, content=None, title=None, parent=None, autosave=False):
         gtk.Window.__init__(self, type=gtk.WINDOW_TOPLEVEL)
         vbox = gtk.VBox()
         self.add(vbox)
@@ -68,7 +68,8 @@ class HotEditorWindow(gtk.Window):
         self.__create_ui()
         vbox.pack_start(self._ui.get_widget('/Menubar'), expand=False)
 
-        self.__filename = filename
+        self.__filename = os.path.abspath(filename)
+        self.__autosave = autosave
         self.__modified = False
         self.__last_len = 0
          
@@ -121,12 +122,10 @@ class HotEditorWindow(gtk.Window):
         self.__sync_undoredo()
         self.__sync_modified_sensitivity()
 
-        # do this later to avoid autosaving initially
-        if filename:
-            self.input.connect("changed", self.__handle_text_changed)
+        self.input.connect("changed", self.__handle_text_changed)
 
-        self.connect("delete-event", lambda w, e: False)
-        self.set_title(title or (filename and self.__filename) or 'Untitled Editor')
+        self.connect("delete-event", self.__handle_delete_event)
+        self.__sync_title()      
         if parent:
             self.set_transient_for(parent)
         self.set_size_request(640, 480)
@@ -164,6 +163,13 @@ class HotEditorWindow(gtk.Window):
     def goto_line(self, lineno):
         iter = self.input.get_iter_at_line(lineno)
         self.input.place_cursor(iter)
+        
+    def __sync_title(self):
+        if self.__filename:
+            (dn, bn) = os.path.split(self.__filename)
+            self.set_title('%s (%s)' % (bn,dn))
+        else:
+            self.set_title('Untitled')          
 
     def __show_msg(self, text):
         id = self.__statusbar.push(self.__statusbar_ctx, text)
@@ -200,31 +206,17 @@ class HotEditorWindow(gtk.Window):
             return True
 
         if event.keyval == gtk.keysyms.Escape:
-            if self.__modified:
-                dialog = gtk.MessageDialog(parent=self, buttons=gtk.BUTTONS_NONE,
-                                           type=gtk.MESSAGE_QUESTION,
-                                           message_format="Revert changes and quit?")
-                dialog.add_buttons("Cancel", gtk.RESPONSE_CANCEL,
-                                   "Revert", gtk.RESPONSE_OK)
-                dialog.set_default_response(gtk.RESPONSE_OK)
-                response = dialog.run()
-                dialog.destroy()
-                
-                if response == gtk.RESPONSE_OK:
-                    self.__handle_revert()
-                    self.__handle_close()
-            else:
-                self.__handle_close()
-                
+            self.__handle_close()
             return True
 
         return False
     
     def __handle_text_changed(self, text):
-        if not self.__filename:
-            return
+        _logger.debug("handling text changed")
         self.__modified = True
         self.__sync_modified_sensitivity()
+        if not (self.__filename and self.__autosave):
+            return
         charcount = text.get_char_count()
         # Don't autosave on deletions
         if charcount < self.__last_len:
@@ -255,17 +247,39 @@ class HotEditorWindow(gtk.Window):
         self.__filename = filename
         chooser.destroy()
 
+    def __handle_delete_event(self, w, e):
+        self.__handle_close()
+
     def __close_cb(self, action):
         self.__handle_close()
         
     def __sync_modified_sensitivity(self):
         self.__actiongroup.get_action('Save').set_sensitive(self.__modified)
 
+    @log_except(_logger)
     def __handle_close(self):
         _logger.debug("got close")
-        if self.__filename:
+        if self.__filename and self.__autosave:
             self.__save_cb(None)
-        self.destroy()
+            self.destroy()        
+        else:
+            if self.__modified:
+                dialog = gtk.MessageDialog(parent=self, buttons=gtk.BUTTONS_NONE,
+                                           type=gtk.MESSAGE_QUESTION,
+                                           message_format=_("Save changes before closing?"))
+                dialog.add_button(_('Close without saving'), gtk.RESPONSE_REJECT)
+                dialog.add_button(gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL)
+                button = dialog.add_button(_('Save'), gtk.RESPONSE_APPLY)
+                button.set_property('image', gtk.image_new_from_stock('gtk-save', gtk.ICON_SIZE_BUTTON))                
+                dialog.set_default_response(gtk.RESPONSE_CANCEL)
+                resp = dialog.run() 
+                if resp == gtk.RESPONSE_REJECT:
+                    self.destroy()
+                elif resp == gtk.RESPONSE_CANCEL:
+                    pass                    
+                elif resp == gtk.RESPONSE_APPLY:
+                    self.__save_cb(None)
+                    self.destroy()
 
     def __undo_cb(self, action):
         self.input.undo()

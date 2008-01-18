@@ -104,8 +104,6 @@ def main():
     w.set_icon_name(icon_name)
     if lineno >= 0:
         w.goto_line(lineno)
-    (dn, bn) = os.path.split(target_filename)
-    w.set_title('%s (%s)' % (bn,dn))
     w.show_all()
     w.connect('destroy', lambda *args: gtk.main_quit())
 
