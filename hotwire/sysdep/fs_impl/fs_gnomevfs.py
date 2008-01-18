@@ -186,7 +186,7 @@ class GnomeVFSFilesystem(UnixFilesystem):
 
     def get_file_menuitems(self, file_obj, context=None):
         uri = gnomevfs.get_uri_from_local_path(file_obj.path)
-        if file_obj.is_directory(follow_link=True):
+        if file_obj.test_directory(follow_link=True):
             return []
         else:
             apps = gnomevfs.mime_get_all_applications(file_obj.get_mime())

@@ -132,7 +132,7 @@ class BaseFilesystem(object):
         shutil.move(path, newf)
 
     def get_trash_item(self, name):
-		return os.path.join(self._trashdir, name)
+        return os.path.join(self._trashdir, name)
 
     def undo_trashed(self, args):
         for arg in args:
@@ -217,7 +217,7 @@ class File(object):
         return self.stat and self.stat.st_mode
     
     def get_file_type_char(self):
-        if self.is_directory():
+        if self.is_directory:
             return 'd'
         return '-'    
 
@@ -276,10 +276,10 @@ class File(object):
         try:
             self.stat = hasattr(os, 'lstat') and os.lstat(self.path) or os.stat(self.path)
             if stat.S_ISLNK(self.stat.st_mode):
-				try:
-					self.target_stat = os.stat(self.path)
-				except OSError, e:
-					self.target_stat = None		
+                try:
+                    self.target_stat = os.stat(self.path)
+                except OSError, e:
+                    self.target_stat = None		
         except OSError, e:
             _logger.debug("Failed to stat '%s': %s", self.path, e)
             self.stat_error = str(e)
@@ -292,7 +292,7 @@ class File(object):
     def _do_get_icon(self):
         if not self.stat:
             self._icon = 'gtk-dialog-error'
-        elif self.is_directory():
+        elif self.is_directory:
             self._icon = 'gtk-directory'
         else:
             self._icon = 'gtk-file'
