@@ -51,20 +51,17 @@ class HelpItemRenderer(UnicodeRenderer):
         self._buf.insert_markup('\n\n')
 
         self._buf.insert_markup('<larger>%s:</larger>\n' % (_('Languages'),))
-        languages = list(PipelineLanguageRegistry.getInstance())
+        langreg = PipelineLanguageRegistry.getInstance()
+        hotwire_lang = langreg['62270c40-a94a-44dd-aaa0-689f882acf34']
+        python_lang = langreg['da3343a0-8bce-46ed-a463-2d17ab09d9b4']
+        self.__append_language(hotwire_lang)
+        self.__append_language(python_lang) 
+        languages = list(langreg)       
         languages.sort(lambda a,b: cmp(a.langname, b.langname))
         for language in languages:
-            if not language.prefix:
+            if language in [hotwire_lang, python_lang]:
                 continue
-            self._buf.insert_markup(' ')
-            if language.icon:
-                lang_pixbuf = pbcache.get(language.icon, size=16, trystock=True, stocksize=gtk.ICON_SIZE_MENU)               
-                self._buf.insert_pixbuf(self._buf.get_end_iter(), lang_pixbuf)
-            else:
-                self._buf.insert_markup(' ')            
-            self.append_inspectlink(language.langname, language)
-            self._buf.insert_markup(' - prefix: <tt>%s</tt>\n' \
-                                % (gobject.markup_escape_text(language.prefix),))
+            self.__append_language(language)
         self._buf.insert_markup('\n')
 
         self._buf.insert_markup('<larger>%s:</larger>\n' % (_('Builtin Commands'),))
@@ -81,6 +78,20 @@ class HelpItemRenderer(UnicodeRenderer):
         aliases.sort(lambda a,b: cmp(a.name,b.name))
         for alias in aliases:
             self._buf.insert_markup('  <b>%s</b> - %s\n' % tuple(map(gobject.markup_escape_text, (alias.name, alias.target))))
+            
+    def __append_language(self, language):
+        pbcache = PixbufCache.getInstance()         
+        self._buf.insert_markup(' ')
+        if language.icon:
+            lang_pixbuf = pbcache.get(language.icon, size=16, trystock=True, stocksize=gtk.ICON_SIZE_MENU)               
+            self._buf.insert_pixbuf(self._buf.get_end_iter(), lang_pixbuf)
+        else:
+            self._buf.insert_markup(' ')            
+        self.append_inspectlink(language.langname, language)
+        if language.prefix is not None:
+            self._buf.insert_markup(' - prefix: <tt>%s</tt>' \
+                                % (gobject.markup_escape_text(language.prefix),))    
+        self._buf.insert_markup('\n')
 
     def __append_builtin_base_help(self, builtin):
         self._buf.insert_markup(' ')
