@@ -19,7 +19,7 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR 
 # THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import os, os.path, stat
+import os,sys,re,os.path, stat,subprocess
 
 from hotwire.builtin import Builtin, BuiltinRegistry
 from hotwire.fs import FilePath
@@ -27,6 +27,9 @@ from hotwire.sysdep.fs import Filesystem
 
 class EditBuiltin(Builtin):
     __doc__ = _("""Launch the text editor.""")
+    
+    _ws_re = re.compile(r'\s+')
+    
     def __init__(self):
         super(EditBuiltin, self).__init__('edit',
                                           aliases=['ed'],
@@ -35,7 +38,15 @@ class EditBuiltin(Builtin):
  
     def execute(self, context, args):
         fs = Filesystem.getInstance()
-        for arg in args:
-            fs.launch_edit_file(FilePath(arg, context.cwd))
+        editor = os.environ['EDITOR']
+        # TODO - try to detect current shell and parse using it
+        editor_args = self._ws_re.split(editor)
+        subproc_args = {'cwd': context.cwd}
+        if context.gtk_event_time:
+            env = dict(os.environ)
+            env['DESKTOP_STARTUP_ID'] = 'hotwire%d_TIME%d' % (os.getpid(), context.gtk_event_time,)
+            subproc_args['env'] = env
+        editor_args.extend(args)
+        subprocess.Popen(editor_args, **subproc_args)
         return []
 BuiltinRegistry.getInstance().register(EditBuiltin())
