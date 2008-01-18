@@ -248,7 +248,7 @@ class HotEditorWindow(gtk.Window):
         chooser.destroy()
 
     def __handle_delete_event(self, w, e):
-        self.__handle_close()
+        return self.__handle_close()
 
     def __close_cb(self, action):
         self.__handle_close()
@@ -259,27 +259,29 @@ class HotEditorWindow(gtk.Window):
     @log_except(_logger)
     def __handle_close(self):
         _logger.debug("got close")
-        if self.__filename and self.__autosave:
+        if not self.__modified:
+            self.destroy()
+        elif self.__filename and self.__autosave:
             self.__save_cb(None)
-            self.destroy()        
+            self.destroy()   
         else:
-            if self.__modified:
-                dialog = gtk.MessageDialog(parent=self, buttons=gtk.BUTTONS_NONE,
-                                           type=gtk.MESSAGE_QUESTION,
-                                           message_format=_("Save changes before closing?"))
-                dialog.add_button(_('Close without saving'), gtk.RESPONSE_REJECT)
-                dialog.add_button(gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL)
-                button = dialog.add_button(_('Save'), gtk.RESPONSE_APPLY)
-                button.set_property('image', gtk.image_new_from_stock('gtk-save', gtk.ICON_SIZE_BUTTON))                
-                dialog.set_default_response(gtk.RESPONSE_CANCEL)
-                resp = dialog.run() 
-                if resp == gtk.RESPONSE_REJECT:
-                    self.destroy()
-                elif resp == gtk.RESPONSE_CANCEL:
-                    pass                    
-                elif resp == gtk.RESPONSE_APPLY:
-                    self.__save_cb(None)
-                    self.destroy()
+            dialog = gtk.MessageDialog(parent=self, buttons=gtk.BUTTONS_NONE,
+                                       type=gtk.MESSAGE_QUESTION,
+                                       message_format=_("Save changes before closing?"))
+            dialog.add_button(_('Close without saving'), gtk.RESPONSE_REJECT)
+            dialog.add_button(gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL)
+            dialog.add_button(gtk.STOCK_SAVE, gtk.RESPONSE_APPLY)            
+            dialog.set_default_response(gtk.RESPONSE_CANCEL)
+            resp = dialog.run()
+            dialog.destroy()
+            if resp == gtk.RESPONSE_REJECT:
+                self.destroy()
+            elif resp == gtk.RESPONSE_CANCEL:
+                pass
+            elif resp == gtk.RESPONSE_APPLY:
+                self.__save_cb(None)
+                self.destroy()
+        return True                     
 
     def __undo_cb(self, action):
         self.input.undo()
