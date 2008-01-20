@@ -206,6 +206,7 @@ def load():
     import hotwire.builtins.pyeval
     import hotwire.builtins.pyfilter
     import hotwire.builtins.pymap
+    import hotwire.builtins.replace    
     import hotwire.builtins.rm
     import hotwire.builtins.sechash
     import hotwire.builtins.selection    
