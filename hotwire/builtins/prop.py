@@ -30,21 +30,19 @@ class PropBuiltin(Builtin):
         super(PropBuiltin, self).__init__('prop',
                                           input=InputStreamSchema('any'),
                                           output='any',
-                                          idempotent=True)
+                                          idempotent=True,
+                                          options=[['-t', '--tuple']])
 
-    def execute(self, context, args):
+    def execute(self, context, args, options=[]):
         if len(args) != 1:
             raise ValueError(_("Must specify exactly one property name"))
         prop = args[0]            
-        if prop[-2:] == '()':
-            target_prop = prop[:-2]
-            is_func = True
-        else:
-            target_prop = prop
-            is_func = False
+        target_prop = prop
+        tuplify = '-t' in options
         for arg in context.input:
             target_propvalue = getattr(arg, target_prop)
-            if is_func:
-                target_propvalue = target_propvalue()
-            yield target_propvalue
+            if tuplify:
+                yield (arg, target_propvalue)
+            else:
+                yield target_propvalue
 BuiltinRegistry.getInstance().register(PropBuiltin())
