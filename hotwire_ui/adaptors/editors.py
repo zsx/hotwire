@@ -157,3 +157,9 @@ class EmacsClientEditor(Editor):
     def __init__(self):
         super(EmacsClientEditor, self).__init__('8acfcef3-9d05-47e8-86a1-b005fa8897ec', 'Emacs (client)', 'emacs.png', 'emacsclient')
 EditorRegistry.getInstance().register(EmacsClientEditor())
+
+class GEditEditor(Editor):
+    def __init__(self):
+        super(GEditEditor, self).__init__('781e8969-730e-42f7-bd1d-a50bed17e869', 'GEdit', 'accessories-text-editor', 
+                                          'hotwire-gedit-blocking')
+EditorRegistry.getInstance().register(GEditEditor())
