@@ -65,6 +65,7 @@ class CommandExecutionHeader(gtk.VBox):
         self.__overview_mode = overview_mode
         self.__primary_complete = False
         self.__complete_unseen = False
+        self.__last_view_time = None
         self.__visible = True
         self.__prev_pipeline_state = None
         self.__cancelled = False
@@ -162,6 +163,12 @@ class CommandExecutionHeader(gtk.VBox):
         self.__complete_unseen = unseen
         _logger.debug("marking %s as unseen=%s", self.__pipeline, unseen)
         self.__update_titlebox()
+        
+    def update_viewed_time(self):
+        self.__last_view_time = time.time()
+        
+    def get_viewed_time(self):
+        return self.__last_view_time        
 
     def get_visible(self):
         return self.__visible
@@ -592,10 +599,11 @@ class CommandExecutionControl(gtk.VBox):
             pipeline = cmd.get_pipeline()
             if pipeline in self.__complete_unseen_pipelines:
                 continue
-            compl_time = pipeline.get_completion_time() 
+            compl_time = pipeline.get_completion_time()
             if not compl_time:
                 continue
-            if curtime - compl_time > self.COMPLETE_CMD_EXPIRATION_SECS:
+            lastview_time = cmd.get_viewed_time()            
+            if curtime - lastview_time > self.COMPLETE_CMD_EXPIRATION_SECS:
                 self.remove_pipeline(pipeline, destroy=True)
                 
         for cmdview in self.__actively_destroyed_pipeline_box:
@@ -888,6 +896,7 @@ class CommandExecutionControl(gtk.VBox):
             if pipeline in self.__complete_unseen_pipelines:
                 self.__complete_unseen_pipelines.remove(pipeline)
                 self.__mark_pipeline_unseen(pipeline, False)
+            current.update_viewed_time()
         self.__prevcmd_count = 0
         self.__prevcmd_executing_count = 0
         self.__prevcmd_complete_count = 0
