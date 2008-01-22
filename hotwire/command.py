@@ -340,7 +340,11 @@ class Command(gobject.GObject):
             return ' '.join(map(unicode, args))
         args = [self.builtin.name]
         args.extend(self.options)
-        args.extend(map(quote_arg, self.args))
+        for cmdarg in self.args:
+            if isinstance(cmdarg, CommandArgument) and cmdarg.isquoted:
+                args.append(quote_arg(cmdarg))                
+            else:
+                args.append(cmdarg)
         if self.in_redir:
             args.extend(['<', self.in_redir])
         if self.out_redir:
