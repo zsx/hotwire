@@ -16,10 +16,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-import os, sys, logging, StringIO, traceback
+import os, sys, logging, StringIO, traceback, tempfile
 
 import cairo, gtk, gobject, pango
 
+from hotwire.fs import atomic_rename
 from hotwire.sysdep.fs import Filesystem
 from hotwire.logutil import log_except
 from hotwire_ui.aboutdialog import HotwireAboutDialog
@@ -187,10 +188,15 @@ class HotEditorWindow(gtk.Window):
     def __idle_save_text(self, status):
         self.__save_text_id = 0
         _logger.debug("autosaving to %s", self.__filename)
-        f = open(self.__filename, 'w')
+        dn,bn = os.path.split(self.__filename)
+        (tempfd, temppath) = tempfile.mkstemp('.tmp', self.__filename, dn)
+        f = os.fdopen(tempfd, 'w')
         text = self.input.get_property("text")
         f.write(text)
+        f.flush()
+        os.fsync(tempfd)
         f.close()
+        atomic_rename(temppath, self.__filename)
         self.__show_msg(status + _("...done"))
         self.__modified = False
         self.__sync_modified_sensitivity()
