@@ -24,6 +24,7 @@ from hotwire.fs import atomic_rename
 from hotwire.sysdep.fs import Filesystem
 from hotwire.logutil import log_except
 from hotwire_ui.aboutdialog import HotwireAboutDialog
+from hotwire_ui.inlinesearch import InlineSearchArea
 
 _logger = logging.getLogger("hotwire.Editor")
 
@@ -59,6 +60,8 @@ class HotEditorWindow(gtk.Window):
     <menu action='EditMenu'>
       <menuitem action='Undo'/>
       <menuitem action='Redo'/>
+      <separator/>
+      <menuitem action='Find'/>      
     </menu>
     <menu action='ToolsMenu'>
       <menuitem action='About'/>
@@ -117,6 +120,13 @@ class HotEditorWindow(gtk.Window):
         self.input.move_mark_by_name('insert', self.input.get_start_iter())
         self.input.move_mark_by_name('selection_bound', self.input.get_start_iter())
 
+        self.__searcharea = InlineSearchArea(self.input_view)
+        self.__searcharea.connect('close', self.__on_search_close)
+        self.__searcharea.show_all()
+        self.__searcharea.hide()
+        self.__searcharea.set_no_show_all(True)
+        vbox.pack_start(self.__searcharea, expand=False)
+
         self.__statusbar = gtk.Statusbar()
         self.__statusbar_ctx = self.__statusbar.get_context_id("HotEditor")
         vbox.pack_start(self.__statusbar, expand=False)
@@ -130,6 +140,9 @@ class HotEditorWindow(gtk.Window):
         if parent:
             self.set_transient_for(parent)
         self.set_size_request(640, 480)
+        
+    def __on_search_close(self, sa):
+        self.__searcharea.hide()
         
     def set_code_mode(self, codemode):
         if not self.gtksourceview_mode:
@@ -298,6 +311,10 @@ class HotEditorWindow(gtk.Window):
     def __sync_undoredo(self):
         self.__actiongroup.get_action('Redo').set_sensitive(gtksourceview_avail and self.input.can_redo())
         self.__actiongroup.get_action('Undo').set_sensitive(gtksourceview_avail and self.input.can_undo())
+        
+    def __search_cb(self, a):
+        self.__searcharea.show()
+        self.__searcharea.focus()
 
     def __create_ui(self):
         self.__actiongroup = ag = gtk.ActionGroup('WindowActions')
@@ -310,6 +327,7 @@ class HotEditorWindow(gtk.Window):
             ('EditMenu', None, '_Edit'),
             ('Undo', gtk.STOCK_UNDO, _('_Undo'), '<control>z', _('Undo previous action'), self.__undo_cb),
             ('Redo', gtk.STOCK_REDO, _('_Redo'), '<control><shift>Z', _('Redo action'), self.__redo_cb),
+            ('Find', gtk.STOCK_FIND, _('_Find'), '<control>f', _('Find text'), self.__search_cb),            
             ('ToolsMenu', None, _('_Tools')),                    
             ('About', gtk.STOCK_ABOUT, _('_About'), None, _('About Hotwire'), self.__help_about_cb),            
             ]
