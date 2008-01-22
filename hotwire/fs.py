@@ -140,6 +140,7 @@ def iterd_sorted(dpath, **kwargs):
         yield v
 
 def atomic_rename(oldp, newp):
+    # FIXME - not really atomic on Windows =/
     if is_windows():
         if os.access(newp, os.R_OK):
             os.unlink(newp)
