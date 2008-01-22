@@ -202,6 +202,10 @@ class HotEditorWindow(gtk.Window):
         self.__save_text_id = 0
         _logger.debug("autosaving to %s", self.__filename)
         dn,bn = os.path.split(self.__filename)
+        try:
+            perms = os.stat(self.__filename).st_mode
+        except:
+            perms = None
         (tempfd, temppath) = tempfile.mkstemp('.tmp', self.__filename, dn)
         f = os.fdopen(tempfd, 'w')
         text = self.input.get_property("text")
@@ -209,6 +213,8 @@ class HotEditorWindow(gtk.Window):
         f.flush()
         os.fsync(tempfd)
         f.close()
+        if perms is not None:
+            os.chmod(temppath, perms)
         atomic_rename(temppath, self.__filename)
         self.__show_msg(status + _("...done"))
         self.__modified = False
