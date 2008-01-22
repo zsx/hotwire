@@ -121,9 +121,8 @@ class TransientPopup(gtk.Window):
         self.__idle_reposition_id = 0        
         self.__configure_connected = False
 
-        if ref_window:
-            self.set_transient_for(ref_window)
-            self.set_destroy_with_parent(True)
+        self.set_transient_for(ref_window)
+        self.set_destroy_with_parent(True)
 
         self.__box = gtk.VBox()
         self.__border = Border(self.__box)
