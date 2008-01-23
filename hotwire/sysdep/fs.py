@@ -19,7 +19,7 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR 
 # THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import os,sys,shutil,stat,platform,logging,tempfile
+import os,sys,shutil,stat,platform,logging,tempfile,urllib
 from cStringIO import StringIO
 
 import gobject
@@ -164,6 +164,7 @@ class File(object):
     Extra data retrieved includes symbolic link target (if applicable) and icon."""
     
     path = property(lambda self: self._path, doc="""Complete path to file, expressed in Hotwire notation (always forward slashes)""")
+    uri = property(lambda self: self._uri, doc="""URI notation for file""")
     basename = property(lambda self: self._basename, doc="""Name of file (without directory component)""")
     size = property(lambda self: self.get_size(), doc="""Size in bytes of file, or None if unknown""")
     icon = property(lambda self: self._icon, doc="""Icon name (internal Hotwire/GTK+ representation)""")
@@ -175,6 +176,7 @@ class File(object):
     def __init__(self, path, fs=None):
         super(File, self).__init__()
         self._path = path
+        self._uri = 'file://' + urllib.pathname2url(path)
         self._basename = unix_basename(path)
         self.fs = fs
         self.stat = None

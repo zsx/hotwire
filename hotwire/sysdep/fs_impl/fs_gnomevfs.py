@@ -39,14 +39,13 @@ class GnomeVfsFile(UnixFile):
     """A File implementation based on the GnomeVFS virtual filesystem.
 Important members include the "vfsstat" and "uri"."""
     
-    __slots__ = ['vfsstat', 'target_vfsstat', 'uri']
+    __slots__ = ['vfsstat', 'target_vfsstat']
 
     def __init__(self, path, **kwargs):
         super(GnomeVfsFile, self).__init__(path, **kwargs)
         self.vfsstat = None
         self.target_vfsstat = None
-        self.target_vfsstat_error = None
-        self.uri = gnomevfs.get_uri_from_local_path(path) 
+        self.target_vfsstat_error = None 
 
     def test_directory(self, follow_link=False):
         if not self.vfsstat:
