@@ -21,7 +21,7 @@ import os, sys, logging, StringIO, traceback, tempfile
 import cairo, gtk, gobject, pango
 
 from hotwire.fs import atomic_rename
-from hotwire.sysdep.fs import Filesystem
+from hotwire.sysdep.fs import Filesystem, FileStatError
 from hotwire.logutil import log_except
 from hotwire_ui.aboutdialog import HotwireAboutDialog
 from hotwire_ui.inlinesearch import InlineSearchArea
@@ -152,7 +152,10 @@ class HotEditorWindow(gtk.Window):
             return
         self.input_view.modify_font(pango.FontDescription("monospace"))
         fs = Filesystem.getInstance()
-        mimetype = fs.get_file_sync(self.__filename).get_mime()
+        try:
+            mimetype = fs.get_file_sync(self.__filename).get_mime()
+        except FileStatError, e:
+            mimetype = None
         target_lang = None        
         if gtksourceview2_avail:
             import gtksourceview2
