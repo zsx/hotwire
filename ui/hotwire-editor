@@ -48,7 +48,7 @@ def usage():
 
 def main():
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "hd", ["help", "debug", "debug-modules=","icon-name=","code"])
+        opts, args = getopt.getopt(sys.argv[1:], "hd", ["help", "debug", "debug-modules=","icon-name="])
     except getopt.GetoptError:
         usage()
         sys.exit(2)
@@ -73,7 +73,6 @@ def main():
 
     debug = False
     debug_modules = []
-    code_mode = False
     icon_name = 'gtk-floppy'
     for o, v in opts:
         if o in ('-d', '--debug'):
@@ -83,8 +82,6 @@ def main():
         elif o in ("-h", "--help"):
             usage()
             sys.exit()
-        elif o in ('--code',):
-            code_mode = True
 
     default_log_level = logging.ERROR
     if debug:
@@ -103,7 +100,7 @@ def main():
     for fpath in files:
         w = HotEditorWindow(filename=fpath)
         wincount += 1
-        w.set_code_mode(code_mode)
+        w.set_code_mode(True)
         w.set_icon_name(icon_name)
         if lineno >= 0:
             w.goto_line(lineno)

@@ -144,7 +144,7 @@ class EditorRegistry(Singleton):
 class HotwireEditor(Editor):
     def __init__(self):
         super(HotwireEditor, self).__init__('c5851b9c-2618-4078-8905-13bf76f0a94f', 'Hotwire Edit',
-                                            'hotwire.png', 'hotwire-editor', args=['--code'])
+                                            'hotwire.png', 'hotwire-editor')
 EditorRegistry.getInstance().register(HotwireEditor())    
         
 class GVimEditor(Editor):
