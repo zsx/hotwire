@@ -50,7 +50,7 @@ class PixbufCache(Singleton):
 
     def get(self, path, size=24, animation=False, trystock=False, stocksize=None):
         if trystock:
-            pixbuf = self.get_stock(path, stocksize)
+            pixbuf = self.get_stock(path, size)
             if pixbuf:
                 return pixbuf
         if not os.path.isabs(path):
@@ -62,13 +62,13 @@ class PixbufCache(Singleton):
             self.__cache[(path, size)] = pixbuf
         return self.__cache[(path, size)]
     
-    def get_stock(self, name, stocksize, fallback_size=24):
+    def get_stock(self, name, size=24):
         if name.find(os.sep) >= 0:
             name = os.path.basename(name)
         (root, ext) = os.path.splitext(name)
         theme = gtk.icon_theme_get_default()
         try:
-            return theme.load_icon(name, stocksize, 0)
+            return theme.load_icon(name, size, 0)
         except gobject.GError, e:
             return None
         

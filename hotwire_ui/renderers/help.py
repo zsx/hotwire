@@ -96,7 +96,7 @@ class HelpItemRenderer(UnicodeRenderer):
     def __append_builtin_base_help(self, builtin):
         self._buf.insert_markup(' ')
         pbcache = PixbufCache.getInstance()
-        hotwire_pixbuf = pbcache.get('hotwire.png', size=16, trystock=True, stocksize=gtk.ICON_SIZE_MENU)               
+        hotwire_pixbuf = pbcache.get('hotwire', size=16, trystock=True, stocksize=gtk.ICON_SIZE_MENU)               
         self._buf.insert_pixbuf(self._buf.get_end_iter(), hotwire_pixbuf)
         self.append_inspectlink(builtin.name, builtin)        
         self._buf.insert_markup(' - %s%s ' \

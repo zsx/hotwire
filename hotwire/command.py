@@ -980,7 +980,7 @@ class HotwirePipeLanguage(PipelineLanguage):
     """The built-in Hotwire object pipeline language."""
     def __init__(self):
         super(HotwirePipeLanguage, self).__init__('62270c40-a94a-44dd-aaa0-689f882acf34',
-                                                  None, "hot", "HotwirePipe", 'hotwire.png',
+                                                  None, "hot", "HotwirePipe", 'hotwire',
                                                   builtin_eval=True)
        
     def get_completer(self, *args, **kwargs):
