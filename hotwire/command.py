@@ -654,6 +654,25 @@ class Pipeline(gobject.GObject):
         return False
 
     @staticmethod
+    def __parse_option_or_arg(opts, arg):
+        """If argument string is an option, parse it into components and canonicalize it.
+Otherwise, return arg."""
+        if opts is None:
+            return False
+        if arg.startswith('-') and len(arg) >= 2:
+            args = list(arg[1:])
+        elif arg.startswith('--'):
+            args = [arg[1:]]
+        else:
+            return False
+        results = []
+        for arg in args:
+            for aliases in opts:
+                if '-'+arg in aliases:
+                    results.append(aliases[0])
+        return results
+
+    @staticmethod
     def mkparser(text):
         if isinstance(text, unicode):
             utext = text
@@ -805,21 +824,7 @@ class Pipeline(gobject.GObject):
                     cmdargs.append(cmdarg)         
 
             builtin_opts = b.get_options()
-            def arg_to_opts(arg):
-                if builtin_opts is None:
-                    return False
-                if arg.startswith('-') and len(arg) >= 2:
-                    args = list(arg[1:])
-                elif arg.startswith('--'):
-                    args = [arg[1:]]
-                else:
-                    return False
-                results = []
-                for arg in args:
-                    for aliases in builtin_opts:
-                        if '-'+arg in aliases:
-                            results.append(aliases[0])
-                return results
+
             options = []
             expanded_cmdargs = []
             for token in cmdargs:
@@ -827,7 +832,7 @@ class Pipeline(gobject.GObject):
                 if token.quoted:
                     expanded_cmdargs.append(CommandArgument(token.text, quoted=True))
                 else:
-                    argopts = arg_to_opts(token.text)
+                    argopts = Pipeline.__parse_option_or_arg(builtin_opts, token.text)
                     if argopts:
                         options.extend(argopts)
                     else:
