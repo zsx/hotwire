@@ -323,7 +323,7 @@ class UnicodeRenderer(ObjectsRenderer):
         buf = buf.replace('\n', '\r\n')        
                 
         from hotwire_ui.shell import locate_current_window
-        title = 'FIXME title'
+        title = 'Terminal' # FIXME
         hotwin = locate_current_window(self.__text)
         from hotwire.sysdep.term import Terminal
         term = Terminal.getInstance().get_terminal_widget_ptyfd(None, fd, title, initbuf=buf)
