@@ -492,7 +492,22 @@ class PipelineRunTests(PipelineRunTestFramework):
         self.assertEquals(len(results), 2)
         self.assertEquals(results[0], '2aae6c35c94fcfb415dbe95f408b9ce91ee846ed')
         self.assertEquals(results[1], 'd8d4c749ea2cbdc7c8469367d1601509d4a213ef')
-              
+        
+    def testFilter1(self):
+        self._setupTree1()
+        p = Pipeline.parse("py-eval 20 | filter -s 2", self._context)
+        p.execute_sync()
+        results = list(p.get_output())
+        self.assertEquals(len(results), 1)
+        self.assertEquals(results[0], 20)
+        
+    def testFilter1(self):
+        self._setupTree1()
+        p = Pipeline.parse("py-eval '\"hello\"' | filter h", self._context)
+        p.execute_sync()
+        results = list(p.get_output())
+        self.assertEquals(len(results), 1)
+        self.assertEquals(results[0], 'hello')        
 
 def suite():
     loader = unittest.TestLoader()

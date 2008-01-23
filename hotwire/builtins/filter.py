@@ -54,12 +54,15 @@ class FilterBuiltin(Builtin):
         stringify = '-s' in options
         compiled_re = re.compile(regexp, (('-i' in options) and re.IGNORECASE or 0) | re.UNICODE)
         for arg in context.input:
-            target_propvalue = target_prop and getattr(arg, target_prop) or arg
+            if target_prop is not None:
+                target_propvalue = getattr(arg, target_prop)
+            else:
+                target_propvalue = arg
             if not isinstance(target_propvalue, basestring):
                 if not stringify:
                     raise ValueError(_("Value not a string: %r" % (target_propvalue,)))
                 else:
-                    target_propvalue = unicode(target_propvalue, 'utf-8')
+                    target_propvalue = repr(target_propvalue)
             elif not isinstance(target_propvalue, unicode):
                 target_propvalue = unicode(target_propvalue, 'utf-8')                
                         
