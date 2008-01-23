@@ -333,6 +333,7 @@ class Hotwire(gtk.VBox):
 
         self.__idle_parse_id = 0
         self.__parse_stale = False
+        self.__parse_resolved = None
         self.__resolver = ShellCommandResolver()
         self.__pipeline_factory = PipelineFactory(self.context, self.__resolver)
         self.__parsed_pipeline = None
@@ -922,7 +923,7 @@ class Hotwire(gtk.VBox):
             self.__completions.invalidate()
 
     def __do_parse(self, throw=False, resolve=True):
-        if not self.__parse_stale:
+        if (not self.__parse_stale) and (self.__parse_resolved == resolve):
             return True
         text = self.__input.get_property("text")
         try:
@@ -937,6 +938,7 @@ class Hotwire(gtk.VBox):
             return False
         _logger.debug("parse tree: %s", self.__parsed_pipeline)
         self.__parse_stale = False
+        self.__parse_resolved = resolve
         self.__unqueue_parse()
         return True
 
