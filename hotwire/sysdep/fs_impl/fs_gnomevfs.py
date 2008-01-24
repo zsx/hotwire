@@ -158,8 +158,15 @@ class GnomeVFSFilesystem(UnixFilesystem):
     
     def icon_lookup(self, fobj):
         if self.__thumbnails is not None:
-            (result, flags) = gnome.ui.icon_lookup(self.__itheme, self.__thumbnails, fobj.uri, file_info=fobj.vfsstat, mime_type=fobj.vfsstat.mime_type)
-            return result
+            # If we're a symlink, use the icon for the target.
+	        if (fobj.target_vfsstat != None):
+	            stat = fobj.target_vfsstat
+	            uri = stat.symlink_name
+	        else:
+	            stat = fobj.vfsstat
+	            uri = fobj.uri
+	        (result, flags) = gnome.ui.icon_lookup(self.__itheme, self.__thumbnails, fobj.uri, file_info=stat, mime_type=stat.mime_type)
+	        return result  
         return None    
     
     def launch_open_file(self, path, cwd=None):
