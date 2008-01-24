@@ -344,6 +344,7 @@ class UnicodeRenderer(ObjectsRenderer):
         if ((condition & gobject.IO_HUP) or (condition & gobject.IO_ERR)):
             try:
                 os.close(src)
+                self.__term_fd = None
             except:
                 pass
             return False
