@@ -880,6 +880,7 @@ Otherwise, return arg."""
             if cmd.builtin.get_output_type() != 'identity':
                 if context and cmd.builtin.get_output_typefunc():
                     pipeline_output_type = cmd.builtin.get_output_typefunc()(context)
+                    _logger.debug("retrieved type %r from typefunc", pipeline_output_type)
                 else:
                     pipeline_output_type = cmd.builtin.get_output_type()
 
