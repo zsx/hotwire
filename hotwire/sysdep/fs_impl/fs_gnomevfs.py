@@ -108,6 +108,8 @@ Important members include the "vfsstat" and "uri"."""
             self._icon = 'gtk-dialog-error'
         try:
             self._icon = self.fs.icon_lookup(self)
+            if self._icon is None:
+                super(GnomeVfsFile, self)._do_get_icon()
         except Exception, e:
             _logger.debug("Failed to get file icon for '%s'", self.uri, exc_info=True)
             self._icon = 'gtk-dialog-error'
@@ -142,8 +144,12 @@ class GnomeVfsMonitor(object):
 class GnomeVFSFilesystem(UnixFilesystem):
     def __init__(self):
         super(GnomeVFSFilesystem, self).__init__()
-        self.fileklass = GnomeVfsFile        
-        self.__thumbnails = gnome.ui.ThumbnailFactory(gnome.ui.THUMBNAIL_SIZE_NORMAL)
+        self.fileklass = GnomeVfsFile
+        # Old versions of gnome.ui don't have this, punt on it then
+        if hasattr(gnome.ui, 'ThumbnailFactory'):
+            self.__thumbnails = gnome.ui.ThumbnailFactory(gnome.ui.THUMBNAIL_SIZE_NORMAL)
+        else:
+            self.__thumbnails = None
         self.__itheme = gtk.icon_theme_get_default() 
         _logger.debug("gnomevfs initialized")
 
@@ -151,8 +157,10 @@ class GnomeVFSFilesystem(UnixFilesystem):
         return GnomeVfsMonitor(path, gnomevfs.MONITOR_EVENT_CHANGED, cb)
     
     def icon_lookup(self, fobj):
-        (result, flags) = gnome.ui.icon_lookup(self.__itheme, self.__thumbnails, fobj.uri, file_info=fobj.vfsstat, mime_type=fobj.vfsstat.mime_type)
-        return result        
+        if self.__thumbnails is not None:
+            (result, flags) = gnome.ui.icon_lookup(self.__itheme, self.__thumbnails, fobj.uri, file_info=fobj.vfsstat, mime_type=fobj.vfsstat.mime_type)
+            return result
+        return None    
     
     def launch_open_file(self, path, cwd=None):
         _logger.debug("calling gnome-open '%s'", path)
