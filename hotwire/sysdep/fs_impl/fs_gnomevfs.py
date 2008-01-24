@@ -165,7 +165,7 @@ class GnomeVFSFilesystem(UnixFilesystem):
 	        else:
 	            stat = fobj.vfsstat
 	            uri = fobj.uri
-	        (result, flags) = gnome.ui.icon_lookup(self.__itheme, self.__thumbnails, fobj.uri, file_info=stat, mime_type=stat.mime_type)
+	        (result, flags) = gnome.ui.icon_lookup(self.__itheme, self.__thumbnails, uri, file_info=stat, mime_type=stat.mime_type)
 	        return result  
         return None    
     
