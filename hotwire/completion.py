@@ -33,7 +33,7 @@ from hotwire.sysdep.fs import Filesystem
 from hotwire.externals.singletonmixin import Singleton
 from hotwire.util import quote_arg, tracefn
 from hotwire.logutil import log_except
-from hotwire.state import UsageRecord, History
+from hotwire.state import History
 from hotwire.sysdep.fs import Filesystem
 
 _logger = logging.getLogger("hotwire.Completion")

@@ -29,8 +29,6 @@ import gobject
 
 from hotwire.externals.singletonmixin import Singleton
 from hotwire.sysdep.fs import Filesystem
-from hotwire.persist import Persister
-from hotwire.usagerecord import UsageRecord
 #import processing
 
 _logger = logging.getLogger("hotwire.State")
@@ -72,35 +70,8 @@ class History(Singleton):
         # Currently just used to note which persist tables have been converted        
         cursor.execute('''CREATE TABLE IF NOT EXISTS Meta (keyName TEXT UNIQUE, keyValue)''')
         
-        # TODO drop this stuff around 0.800 timeframe
-        self.__convert_from_persist('history', 'Commands', '(NULL, ?, 0, NULL, "62270c40-a94a-44dd-aaa0-689f882acf34")')
-        freqconvert = lambda x: (x[0], x[1].freq, x[1].usetime)
-        self.__convert_from_persist('cwd_history', 'Directories', '(NULL, ?, ?, ?)', freqconvert)
-        
     def set_no_save(self):
-        self.__no_save = True       
-        
-    def __convert_from_persist(self, persistkey, tablename, valuefmt, mapfunc=lambda x: (x,)):
-        cursor = self.__conn.cursor()
-        conversion_key = 'persist%sConverted' % (persistkey,)
-        cursor.execute('''BEGIN TRANSACTION''')
-        result = cursor.execute('''SELECT keyValue FROM Meta WHERE keyName=?''', [conversion_key]).fetchone()
-        if not result:
-            cursor.execute('''INSERT INTO Meta VALUES (?, ?)''', [conversion_key, datetime.datetime.now()])
-        else:
-            _logger.debug("conversion already complete for key %s", conversion_key)        
-            cursor.execute('''COMMIT''')
-            return 
-        oldhistory = Persister.getInstance().load(persistkey, default=None).get()
-        if oldhistory:
-            _logger.debug("performing conversion on persisted state %s: %s", conversion_key, oldhistory)
-            query = '''INSERT INTO %s VALUES %s''' % (tablename, valuefmt,)
-            for item in oldhistory:
-                cursor.execute(query, mapfunc(item))
-        else:
-            _logger.debug("no previous data to convert")
-        cursor.execute('''COMMIT''')
-        _logger.debug("conversion successful")        
+        self.__no_save = True
 
     def append_command(self, lang_uuid, cmd, cwd):
         if self.__no_save:
