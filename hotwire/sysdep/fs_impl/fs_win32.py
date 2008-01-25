@@ -36,10 +36,10 @@ class Win32Filesystem(BaseFilesystem):
         return os.path.expanduser(u'~/Application Data/hotwire')
 
     def get_path_generator(self):
-        for d in os.environ['PATH'].split(';'):
-            # On Windows, the PATH variable is encoded, we need to turn it into Unicode.
-            dpath = unicode(d, sys.getfilesystemencoding())
-            yield path_normalize(dpath)
+        pathenv = os.environ['PATH']
+        # TODO - what encoding is PATHENV in? 
+        for d in pathenv.split(u';'):
+            yield d
 
     def path_inexact_executable_match(self, path):
         return win_exec_re.search(path)

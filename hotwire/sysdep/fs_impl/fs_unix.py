@@ -37,8 +37,8 @@ class UnixFilesystem(BaseFilesystem):
         return u'/etc/hotwire'
 
     def get_path_generator(self):
-        for d in os.environ['PATH'].split(':'):
-            yield unicode(d, 'utf-8') 
+        for d in os.environ['PATH'].split(u':'):
+            yield d
     
     def supports_owner(self):
         return True
