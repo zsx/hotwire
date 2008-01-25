@@ -175,8 +175,10 @@ class File(object):
     __slots__ = ['fs', 'stat', 'xaccess', 'icon_error', '_permstring', 'target_stat', 'stat_error']
     def __init__(self, path, fs=None):
         super(File, self).__init__()
+        if not isinstance(path, unicode):
+            path = unicode(path, 'utf-8')
         self._path = path
-        self._uri = 'file://' + urllib.pathname2url(path)
+        self._uri = 'file://' + urllib.pathname2url(path.encode('utf-8'))
         self._basename = unix_basename(path)
         self.fs = fs
         self.stat = None
