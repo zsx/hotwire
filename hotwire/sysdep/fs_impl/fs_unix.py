@@ -38,7 +38,7 @@ class UnixFilesystem(BaseFilesystem):
 
     def get_path_generator(self):
         for d in os.environ['PATH'].split(':'):
-            yield d 
+            yield unicode(d, 'utf-8') 
     
     def supports_owner(self):
         return True

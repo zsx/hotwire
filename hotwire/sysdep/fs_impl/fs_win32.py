@@ -37,7 +37,9 @@ class Win32Filesystem(BaseFilesystem):
 
     def get_path_generator(self):
         for d in os.environ['PATH'].split(';'):
-            yield path_normalize(d)
+            # On Windows, the PATH variable is encoded, we need to turn it into Unicode.
+            dpath = unicode(d, sys.getfilesystemencoding())
+            yield path_normalize(dpath)
 
     def path_inexact_executable_match(self, path):
         return win_exec_re.search(path)
