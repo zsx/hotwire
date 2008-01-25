@@ -891,6 +891,9 @@ Otherwise, return arg."""
 
             if not cmd.builtin.get_idempotent():
                 idempotent = False
+                
+        if len(components) == 0:
+            raise PipelineParseException(_("Empty pipeline"))
 
         if undoable is None:
             undoable = False
