@@ -132,7 +132,6 @@ def main():
     import hotwire.builtin
     import hotwire.completion
     from hotwire_ui.shell import HotWindowFactory
-    from hotwire.persist import Persister
 	
     hotwire.builtin.load()
     
@@ -167,9 +166,6 @@ def main():
 
     _logger.debug('initializing threads')
     gobject.threads_init()
-
-    if new_process:
-        Persister.getInstance().disable()
         
     if unsaved:
         import hotwire.state
@@ -205,8 +201,6 @@ widget "*hotwire-tab-close" style "hotwire-tab-close"
     gtk.gdk.threads_enter()
     gtk.main()
     gtk.gdk.threads_leave()
-
-    Persister.getInstance().flush()
 
 if __name__ == "__main__":
     main()
