@@ -507,7 +507,24 @@ class PipelineRunTests(PipelineRunTestFramework):
         p.execute_sync()
         results = list(p.get_output())
         self.assertEquals(len(results), 1)
-        self.assertEquals(results[0], 'hello')        
+        self.assertEquals(results[0], 'hello')
+        
+    def testUtf1(self):
+        self._setupTree1()
+        opath = os.path.join(self._tmpd, 'the ɒ and the Ω')
+        f=open(opath, 'w')
+        f.write('hi')
+        f.close()        
+        opath = os.path.join(self._tmpd, 'ending with Ω back to the ɒ')        
+        f=open(opath, 'w')
+        f.write('hi')
+        f.close()
+        p = Pipeline.parse('ls *Ω*', self._context)
+        p.execute_sync()
+        results = list(p.get_output())
+        self.assertEquals(len(results), 2)
+        self.assertEquals(results[0].basename, 'ending with Ω back to the ɒ')
+        self.assertEquals(results[1].basename, 'the ɒ and the Ω')
 
 def suite():
     loader = unittest.TestLoader()
