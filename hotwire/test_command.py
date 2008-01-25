@@ -525,6 +525,31 @@ class PipelineRunTests(PipelineRunTestFramework):
         self.assertEquals(len(results), 2)
         self.assertEquals(results[0].basename, 'ending with Ω back to the ɒ')
         self.assertEquals(results[1].basename, 'the ɒ and the Ω')
+        
+    def testStringify1(self):
+        self._setupTree1()
+        p = Pipeline.parse("py-eval '\"hello\"' | stringify", self._context)
+        p.execute_sync()
+        results = list(p.get_output())
+        self.assertEquals(len(results), 1)
+        self.assertEquals(results[0], 'hello')
+        
+    def testStringify2(self):
+        self._setupTree1()
+        p = Pipeline.parse("py-eval 20 | stringify", self._context)
+        p.execute_sync()
+        results = list(p.get_output())
+        self.assertEquals(len(results), 1)
+        self.assertEquals(results[0], '20')
+        
+    def testStringify3(self):
+        self._setupTree1()
+        p = Pipeline.parse("py-eval 'import os,sys; [os,sys]' | stringify", self._context)
+        p.execute_sync()
+        results = list(p.get_output())
+        self.assertEquals(len(results), 2)
+        self.assertTrue(results[0].startswith("<module 'os'"))
+        self.assertTrue(results[1].startswith("<module 'sys'")) 
 
 def suite():
     loader = unittest.TestLoader()
