@@ -33,7 +33,7 @@ class Win32Filesystem(BaseFilesystem):
         self.fileklass = Win32File
             
     def _get_conf_dir_path(self):
-        return os.path.expanduser('~/Application Data/hotwire')
+        return os.path.expanduser(u'~/Application Data/hotwire')
 
     def get_path_generator(self):
         for d in os.environ['PATH'].split(';'):
