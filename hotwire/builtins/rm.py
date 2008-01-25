@@ -37,6 +37,8 @@ class RmBuiltin(FileOpBuiltin):
                                         threaded=True)
 
     def execute(self, context, args):
+        if len(args) == 0:
+            raise ValueError(_("Must specify at least one file"))
         sources = map(lambda arg: FilePath(arg, context.cwd), args) 
         sources_total = len(sources)
         undo_targets = []
