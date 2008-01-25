@@ -51,11 +51,13 @@ class HotwireContext(gobject.GObject):
         self.chdir(initcwd or os.path.expanduser('~'))
         _logger.debug("Context created, dir=%s" % (self.get_cwd(),))
 
-    def chdir(self, dir):
-        dir = os.path.expanduser(dir)
-        newcwd = os.path.isabs(dir) and dir or posixpath.join(self.__cwd, dir)
+    def chdir(self, dpath):
+        if not isinstance(dpath, unicode):
+            dpath = unicode(dpath, 'utf-8')
+        dpath = os.path.expanduser(dpath)
+        newcwd = os.path.isabs(dpath) and dpath or posixpath.join(self.__cwd, dpath)
         newcwd = path_normalize(newcwd)
-        _logger.debug("chdir: %s    post-normalize: %s", dir, newcwd)
+        _logger.debug("chdir: %s    post-normalize: %s", dpath, newcwd)
         os.stat(newcwd) # lose on nonexistent
         self.__cwd = newcwd
         self.emit("cwd", newcwd)
