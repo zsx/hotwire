@@ -27,7 +27,6 @@ if os.path.basename(basedir) == 'ui':
     sys.path.insert(0, up_basedir)
 import hotwire
 import hotwire.logutil
-import hotwire.persist
 from hotwire.fs import path_normalize
 import hotwire.sysdep
 import hotwire.sysdep.fs
