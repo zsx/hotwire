@@ -113,10 +113,12 @@ def file_is_valid_utf8(path):
     f.close()
     return True
 
-class FilePath(str):
+class FilePath(unicode):
     """Represents a path to a file; can be treated as a string.
        This class should have been built into Python."""
     def __new__(cls, value, dir=None):
+        if not isinstance(value, unicode):
+            value = unicode(value, 'utf-8')
         if not os.path.isabs(value) and dir:
             value = path_fastnormalize(posixpath.join(dir, value))
         inst = super(FilePath, cls).__new__(cls, value)
