@@ -65,7 +65,8 @@ class LsBuiltin(Builtin):
                 yield fobj
                 return      
         else:
-            generator = xmap(lambda arg: fs.get_file_sync(FilePath(arg, context.cwd)), args)
+            generator = sorted(xmap(lambda arg: fs.get_file_sync(FilePath(arg, context.cwd)), args), 
+                               lambda a,b: locale.strcoll(a.path, b.path))
         for x in generator:
             yield x
 BuiltinRegistry.getInstance().register(LsBuiltin())
