@@ -40,7 +40,7 @@ class PrefEditorCombo(gtk.ComboBox):
         cell = gtk.CellRendererPixbuf()
         self.pack_start(cell, expand=False)
         self.set_cell_data_func(cell, self.__render_editor_icon)
-        cell = hotwidgets.CellRendererText(alignment=pango.ALIGN_RIGHT)
+        cell = hotwidgets.CellRendererText()
         self.pack_start(cell)
         self.set_cell_data_func(cell, self.__render_editor_name)
         
