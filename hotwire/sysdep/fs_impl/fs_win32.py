@@ -40,6 +40,10 @@ class Win32Filesystem(BaseFilesystem):
         # TODO - what encoding is PATHENV in? 
         for d in pathenv.split(u';'):
             yield d
+        
+    def get_basename_is_ignored(self, bn):
+        # FIXME - extend this to use Windows systems
+        return False        
 
     def path_inexact_executable_match(self, path):
         return win_exec_re.search(path)

@@ -43,7 +43,7 @@ class BaseFilesystem(object):
         self.makedirs_p(self._trashdir)
 
     def get_basename_is_ignored(self, bn):
-        return bn.startswith('.')
+        return False
     
     def get_monitor(self, path, cb):
         raise NotImplementedError()

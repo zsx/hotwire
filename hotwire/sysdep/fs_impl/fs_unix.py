@@ -35,6 +35,9 @@ class UnixFilesystem(BaseFilesystem):
 
     def _get_system_conf_dir_path(self):
         return u'/etc/hotwire'
+    
+    def get_basename_is_ignored(self, bn):
+        return bn.startswith('.')    
 
     def get_path_generator(self):
         for d in os.environ['PATH'].split(u':'):
