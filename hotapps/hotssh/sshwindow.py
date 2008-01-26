@@ -358,9 +358,9 @@ class SshWindow(VteWindow):
     def __merge_ssh_ui(self):
         self.__using_accels = True
         self.__actions = actions = [
-            ('NewConnection', gtk.STOCK_NEW, 'Connect to host', '<control><shift>C',
+            ('NewConnection', gtk.STOCK_NEW, 'Connect to host', '<control><shift>O',
              'Open a new SSH connection', self.__new_connection_cb),                                      
-            ('CopyConnection', gtk.STOCK_NEW, 'New tab for connection', '<control><shift>t',
+            ('CopyConnection', gtk.STOCK_NEW, 'New tab for connection', '<control><shift>T',
              'Open a new tab for the same remote computer', self.__copy_connection_cb),              
             ('OpenSFTP', gtk.STOCK_NEW, 'Open SFTP', '<control><shift>S',
              'Open a SFTP connection', self.__open_sftp_cb),            
