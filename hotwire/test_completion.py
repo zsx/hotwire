@@ -182,4 +182,13 @@ class CompletionTests(unittest.TestCase):
         self.assertEquals(result.common_prefix, None)
         self.assertEquals(result.results[0].target.path, bpath)
         self.assertEquals(result.results[0].suffix, 'r+/')
-                  
+        
+    def testSpaces1(self):
+        self._setupTree1()
+        dpath = path_join(self._tmpd, 'dir with spaces')   
+        result = self.cc.sync_complete(self.pc, 'di', self._tmpd)
+        self.assertEquals(len(result.results), 1)
+        self.assertEquals(result.common_prefix, None)
+        self.assertEquals(result.results[0].target.path, dpath)
+        self.assertEquals(result.results[0].suffix, r'r\ with\ spaces/')        
+
