@@ -34,9 +34,10 @@ class RmBuiltin(FileOpBuiltin):
         super(RmBuiltin, self).__init__('rm', aliases=['delete'],
                                         undoable=True,
                                         hasstatus=True,
-                                        threaded=True)
+                                        threaded=True,
+                                        options=[['-u', '--unlink']])
 
-    def execute(self, context, args):
+    def execute(self, context, args, options=[]):
         if len(args) == 0:
             raise ValueError(_("Must specify at least one file"))
         sources = map(lambda arg: FilePath(arg, context.cwd), args) 
@@ -44,13 +45,19 @@ class RmBuiltin(FileOpBuiltin):
         undo_targets = []
         self._status_notify(context, sources_total, 0)
         fs = Filesystem.getInstance()
-        try:
-            for i,arg in enumerate(sources):
-                fs.move_to_trash(arg)
-                undo_targets.append(arg)
-                self._status_notify(context,sources_total,i+1)
-                self._note_modified_paths(context, sources)
-        finally:
-            context.push_undo(lambda: fs.undo_trashed(undo_targets))
+        if '-u' in options:
+            for arg in sources:
+                os.unlink(arg)
+                self._status_notify(context,sources_total,i+1)                
+            return []
+        else:
+            try:
+                for i,arg in enumerate(sources):
+                    fs.move_to_trash(arg)
+                    undo_targets.append(arg)
+                    self._status_notify(context,sources_total,i+1)
+                    self._note_modified_paths(context, sources)
+            finally:
+                context.push_undo(lambda: fs.undo_trashed(undo_targets))
         return []
 BuiltinRegistry.getInstance().register(RmBuiltin())
