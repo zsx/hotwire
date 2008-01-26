@@ -41,12 +41,21 @@ class LsBuiltin(Builtin):
     def __ls_dir(self, dir, show_all):
         fs = Filesystem.getInstance()
         for x in iterd_sorted(dir):
-            if show_all:
-                yield fs.get_file_sync(x)
-            else:
-                bn = os.path.basename(x)
-                if not (fs.get_basename_is_ignored(bn)):
+            try:
+                if show_all:
                     yield fs.get_file_sync(x)
+
+                else:
+                    bn = os.path.basename(x)
+                    if not (fs.get_basename_is_ignored(bn)):
+                        yield fs.get_file_sync(x)
+            except:
+                # An exception here should ordinarily only happen on Windows;
+                # if we know the path exists because it was returned by
+                # listdir(), on Unix the stat() call cannot fail.  
+                # See http://code.google.com/p/hotwire-shell/issues/detail?id=126
+                _logger.debug("Failed to stat %r", x, exc_info=True)
+                pass
 
     def execute(self, context, args, options=[]):
         show_all = '-a' in options
