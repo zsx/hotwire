@@ -180,7 +180,7 @@ class CommandAuxStream(object):
 class CommandException(Exception):
     pass
 
-class CommandArgument(str):
+class CommandArgument(unicode):
     """An argument for a command, with the additional metadata of quotation status."""
     def __new__(cls, value, quoted=False):
         inst = super(CommandArgument, cls).__new__(cls, value)
