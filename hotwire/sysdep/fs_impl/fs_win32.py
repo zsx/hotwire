@@ -47,6 +47,13 @@ class Win32Filesystem(BaseFilesystem):
 
     def path_inexact_executable_match(self, path):
         return win_exec_re.search(path)
+
+    def launch_open_file(self, path, cwd=None):
+        try:
+            import win32api
+            win32api.ShellExecute(0, "open", path, None, None, 1)
+        except:
+            raise NotImplementedError()
     
 class Win32File(File):
     def __init__(self, *args, **kwargs):
