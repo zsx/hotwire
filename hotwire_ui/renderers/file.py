@@ -28,6 +28,7 @@ from hotwire.fs import FilePath, unix_basename, path_unabs
 from hotwire_ui.render import TreeObjectsRenderer, ClassRendererMapping, menuitem
 from hotwire.sysdep.fs import Filesystem, File
 from hotwire.sysdep.sysenv import SystemEnvironment, GnomeSystemEnvironment
+from hotwire.sysdep import is_unix, is_windows
 from hotwire.logutil import log_except
 from hotwire_ui.pixbufcache import PixbufCache
 from hotwire_ui.adaptors.editors import EditorRegistry
@@ -41,7 +42,8 @@ class FilePathRenderer(TreeObjectsRenderer):
         if not 'column_types' in kwargs.iterkeys():
             kwargs['column_types'] = [gobject.TYPE_PYOBJECT]
         self.__fs = Filesystem.getInstance()
-        self.__basedir = None            
+        self.__basedir = None
+        self.__windows_basedir = None
         super(FilePathRenderer, self).__init__(*args,
                                                **kwargs)
         self._table.enable_model_drag_source(gtk.gdk.BUTTON1_MASK,
@@ -133,8 +135,13 @@ class FilePathRenderer(TreeObjectsRenderer):
         obj = self._file_for_iter(model, iter)
         path = obj.path
         if self.__basedir:
+            if self.__windows_basedir is not None:
+                bdir = self.__windows_basedir
+            else:
+                bdir = self.__basedir
+                
             # Strip leading / unless we're in root
-            if len(self.__basedir) > 1:
+            if len(bdir) > 1:
                 offset = 1
             else:
                 offset = 0 
@@ -199,6 +206,9 @@ class FilePathRenderer(TreeObjectsRenderer):
             if self.__basedir is None:
                 _logger.debug("using basedir %s", bn)
                 self.__basedir = bn
+                # Windows has a more complicated notion of base directory.
+                if is_windows():
+                    self.__windows_basedir = os.path.splitdrive(self.__basedir)[-1]               
                 for row in self._model:
                     self._model.row_changed(row.path, row.iter)
             elif bn.startswith(self.__basedir):
