@@ -189,7 +189,7 @@ class File(object):
         self.target_stat = None
         self.stat_error = None
 
-    def test_directory(self, follow_link=False):
+    def test_directory(self, follow_link=True):
         if not self.stat:
             return False
         if follow_link and stat.S_ISLNK(self.stat.st_mode):

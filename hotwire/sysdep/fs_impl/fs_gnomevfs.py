@@ -47,7 +47,7 @@ Important members include the "vfsstat" and "uri"."""
         self.target_vfsstat = None
         self.target_vfsstat_error = None 
 
-    def test_directory(self, follow_link=False):
+    def test_directory(self, follow_link=True):
         if not self.vfsstat:
             return False
         if follow_link and self.vfsstat.type == gnomevfs.FILE_TYPE_SYMBOLIC_LINK:
