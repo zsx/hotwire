@@ -95,7 +95,7 @@ def quote_arg(arg):
     If arg would pass through unquoted, return unmodified arg."""
     if not isinstance(arg, unicode):
         arg = unicode(arg, 'utf-8')
-    safechars = '.,/~_-+'
+    safechars = '.,/~_-+:'
     safeonly = True
     safe_space_only = True
     for c in arg:
