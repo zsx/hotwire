@@ -302,6 +302,9 @@ class SshWindow(VteWindow):
     def __sync_nm_state(self):
         self.__nm_proxy.GetActiveConnections(reply_handler=self.__on_nm_connections, error_handler=self.__on_dbus_error)
         
+    def __on_dbus_error(self, *args):
+        _logger.debug("caught DBus error: %r", args, exc_info=True)
+        
     def __on_nm_connections(self, connections):
         _logger.debug("nm connections: %s", connections)    
         
