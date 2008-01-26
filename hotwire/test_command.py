@@ -511,7 +511,7 @@ class PipelineRunTests(PipelineRunTestFramework):
         
     def testUtf1(self):
         self._setupTree1()
-        opath = os.path.join(self._tmpd, 'the ɒ and the Ω')
+        opath = os.path.join(self._tmpd, 'the ɒ and Ω ends')
         f=open(opath, 'w')
         f.write('hi')
         f.close()        
@@ -524,7 +524,7 @@ class PipelineRunTests(PipelineRunTestFramework):
         results = list(p.get_output())
         self.assertEquals(len(results), 2)
         self.assertEquals(results[0].basename, 'ending with Ω back to the ɒ')
-        self.assertEquals(results[1].basename, 'the ɒ and the Ω')
+        self.assertEquals(results[1].basename, 'the ɒ and Ω ends')
         
     def testStringify1(self):
         self._setupTree1()
@@ -549,7 +549,15 @@ class PipelineRunTests(PipelineRunTestFramework):
         results = list(p.get_output())
         self.assertEquals(len(results), 2)
         self.assertTrue(results[0].startswith("<module 'os'"))
-        self.assertTrue(results[1].startswith("<module 'sys'")) 
+        self.assertTrue(results[1].startswith("<module 'sys'"))
+        
+    def testApply1(self):
+        self._setupTree1()
+        p = Pipeline.parse("py-eval '[\"testf\"]' | apply ls -a", self._context)
+        p.execute_sync()
+        results = list(p.get_output())
+        self.assertEquals(len(results), 1)
+        self.assertEquals(results[0].basename, u'testf')
 
 def suite():
     loader = unittest.TestLoader()

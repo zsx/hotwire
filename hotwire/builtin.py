@@ -180,6 +180,7 @@ class BuiltinRegistry(Singleton):
         self.__builtins.add(builtin)
 
 def load():
+    import hotwire.builtins.apply    
     import hotwire.builtins.cat
     import hotwire.builtins.cd
     import hotwire.builtins.cp

@@ -719,6 +719,7 @@ Otherwise, return arg."""
                 else:
                     _logger.debug("handling unclosed quote, but token was empty")
                     return
+            _logger.debug("tokenize: %r", token)
             # empty input
             if token is None:
                 break 
@@ -796,6 +797,8 @@ Otherwise, return arg."""
                 _logger.error("unknown in parse stream: %r", builtin_token)
                 assert False
                 
+            _logger.debug("target builtin is %r", b)
+                
             # We maintain the set of all tokens we processed in the command so that the completion system can use them.
             alltokens = [builtin_token]
             cmdargs = map(forcetoken, cmdargs)            
@@ -829,16 +832,21 @@ Otherwise, return arg."""
 
             options = []
             expanded_cmdargs = []
+            options_ended = False
+            _logger.debug("valid options %r, argument/option pool: %r", builtin_opts, cmdargs)
             for token in cmdargs:
-                # Treat quoted options as regular arguments
-                if token.quoted:
-                    expanded_cmdargs.append(CommandArgument(token.text, quoted=True))
-                else:
+                arg = CommandArgument(token.text, quoted=token.quoted)
+                if token.text == u'--':
+                    options_ended = True
+                elif options_ended:
+                    expanded_cmdargs.append(arg)
+                else:      
                     argopts = Pipeline.__parse_option_or_arg(builtin_opts, token.text)
                     if argopts:
                         options.extend(argopts)
                     else:
-                        expanded_cmdargs.append(token.text)
+                        expanded_cmdargs.append(arg)                        
+                        
             cmdtokens = [builtin_token]
             cmdtokens.extend(cmdargs)
             cmd = Command(b, expanded_cmdargs, options, context, tokens=alltokens, in_redir=in_redir, out_redir=out_redir)
