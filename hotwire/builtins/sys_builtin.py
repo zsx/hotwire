@@ -19,7 +19,7 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR 
 # THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import os, sys, subprocess, string, threading, logging
+import os, sys, subprocess, string, threading, logging, codecs
 try:
     import pty, termios, fcntl
     pty_available = True
@@ -45,7 +45,7 @@ class SystemCompleters(dict, Singleton):
         
 # This object is necessary because we don't want the file object
 # to close the pty FD when it's unreffed.
-class BareFdStream(object):
+class BareFdStreamWriter(object):
     def __init__(self, fd):
         self.fd = fd
         
@@ -198,8 +198,8 @@ class SysBuiltin(Builtin):
             subproc_args['universal_newlines'] = True
         elif is_unix():
             subproc_args['close_fds'] = True
-            
-            # Support startup notification
+            # Support freedesktop.org startup notification
+            # http://standards.freedesktop.org/startup-notification-spec/startup-notification-latest.txt
             if context.gtk_event_time:
                 env = dict(os.environ)
                 env['DESKTOP_STARTUP_ID'] = 'hotwire%d_TIME%d' % (os.getpid(), context.gtk_event_time,)
@@ -208,7 +208,11 @@ class SysBuiltin(Builtin):
             def preexec():
                 os.setsid()                        
                 if using_pty_out and hasattr(termios, 'TIOCSCTTY'):
+                    # Set our controlling TTY
                     fcntl.ioctl(1, termios.TIOCSCTTY, '')
+                # We ignore SIGHUP by default, because some broken programs expect that the lifetime
+                # of subcommands is tied to an open window, instead of until when the toplevel
+                # process exits.
                 signal.signal(signal.SIGHUP, signal.SIG_IGN)
             subproc_args['preexec_fn'] = preexec
         else:
@@ -226,7 +230,7 @@ class SysBuiltin(Builtin):
         context.status_notify('pid %d' % (context.attribs['pid'],))
         if context.input:
             if using_pty_in:
-                stdin_stream = BareFdStream(master_fd)
+                stdin_stream = BareFdStreamWriter(master_fd)
             else:
                 stdin_stream = subproc.stdin
             # FIXME hack - need to rework input streaming                

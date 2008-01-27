@@ -133,7 +133,12 @@ class UnicodeRenderer(ObjectsRenderer):
         self.__text.unset_flags(gtk.CAN_FOCUS)
         self.__empty = True
         self.__bytecount = 0
-        self.__term_fd = None
+        
+        # This is an optimization; we pass in a file descriptor from sys_builtin.py,
+        # and then poll it here for maximum efficiency. 
+        self.__subproc_fd = None
+        self.__subproc_stream = None
+        
         self._buf.insert_markup("<i>(No output)</i>")
         self.__search = InlineSearchArea(self.__text)
         self.__inputarea = InputArea(self, self.__text)
@@ -258,31 +263,19 @@ class UnicodeRenderer(ObjectsRenderer):
             return ['x-filedescriptor/special', 'text/chunked']
         else:
             return ['text/chunked']
+        
+    def __append_locale_chunk(self, obj):
+        # TODO convert
+        self.__append_chunk(obj)
 
     def __append_chunk(self, obj):
         buf = self._buf
         if self.__empty:
             buf.delete(buf.get_start_iter(), buf.get_end_iter())
             self.__empty = False
-        ## Initial support for terminal codes.  Only 08 is handled now.
-        start = 0
         olen = len(obj)
         self.__bytecount += olen
-        ## This algorithm groups consecutive 8 bytes together to do the delete in one pass. 
-        while True:
-            idx = obj.find('\x08', start)
-            if idx < 0:
-                break
-            tbuf = obj[start:idx]
-            buf.insert(buf.get_end_iter(), tbuf)
-            previdx = idx
-            while idx < olen and obj[idx] == '\x08':
-                idx += 1
-            end = buf.get_end_iter().copy()
-            end.backward_chars(idx-previdx)
-            buf.delete(end, buf.get_end_iter())
-            start = idx
-        buf.insert(buf.get_end_iter(), start and obj[start:] or obj)
+        buf.insert(buf.get_end_iter(), obj)
         self.emit('status-changed')
 
     def append_obj(self, obj, fmt=None):
@@ -291,7 +284,7 @@ class UnicodeRenderer(ObjectsRenderer):
             self.__append_chunk(obj)
             return
         elif fmt == 'x-filedescriptor/special':
-            self.__term_fd = obj
+            self.__subproc_fd = obj
             self.__monitor_fd(obj)
             return        
         if self.__empty:
@@ -336,15 +329,11 @@ class UnicodeRenderer(ObjectsRenderer):
             buf = os.read(src, 8192)
             self.__bufcount += 1
             # TODO: improve this further
-            if (not self.__term) and self.__bufcount < 3 and buf.find('\x1b[') >= 0:
-                self.__spawn_terminal(src, buf)
-                return False
-            else:
-                self.__append_chunk(buf)
+            self.__append_locale_chunk(buf)
         if ((condition & gobject.IO_HUP) or (condition & gobject.IO_ERR)):
             try:
                 os.close(src)
-                self.__term_fd = None
+                self.__subproc_fd = None
             except:
                 pass
             return False
@@ -354,10 +343,10 @@ class UnicodeRenderer(ObjectsRenderer):
         gobject.io_add_watch(fd, gobject.IO_IN | gobject.IO_ERR | gobject.IO_HUP, self.__on_fd, priority=gobject.PRIORITY_LOW)
         
     def get_default_password_mode(self):
-        if self.__term_fd is None:
+        if self.__subproc_fd is None:
             return False
         import termios
-        attrs = termios.tcgetattr(self.__term_fd)
+        attrs = termios.tcgetattr(self.__subproc_fd)
         echoflag = attrs[3] & (termios.ECHO)
         _logger.debug("echo flag is %s", echoflag) 
         return echoflag == 0      
