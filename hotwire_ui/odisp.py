@@ -166,7 +166,7 @@ class ObjectsDisplay(gtk.VBox):
         if fmt is None:
             otype = type(obj)
         # This is kind of a hack.
-        elif fmt in ('text/chunked' 'x-filedescriptor/special'):
+        elif fmt in ('bytearray/chunked' 'x-filedescriptor/special'):
             otype = str            
         # If we don't have a display at this point, it means we have a dynamically-typed
         # object stream.  In that case, force the issue and add the default display.

@@ -16,7 +16,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-import os,sys,logging
+import os,sys,logging,locale,codecs,gettext
 
 # Older webbrowser.py didn't check gconf
 if sys.version_info[0] == 2 and sys.version_info[1] < 6:
@@ -124,7 +124,6 @@ class UnicodeRenderer(ObjectsRenderer):
         self.__text.connect('event-after', self.__on_event_after)
         self._buf.connect('mark-set', self.__on_mark_set)
         self.__term = None
-        self.__bufcount = 0
         self.__wrap_lines = True
         self.__have_selection = False
         self.__sync_wrap()
@@ -132,7 +131,17 @@ class UnicodeRenderer(ObjectsRenderer):
         self.__text.set_cursor_visible(False)
         self.__text.unset_flags(gtk.CAN_FOCUS)
         self.__empty = True
-        self.__bytecount = 0
+        if sys.version_info[0] == 2 and sys.version_info[1] < 5:
+            # No incremental decoding in Python 2.4 =/
+            self.__locale_decoder = None
+        else:
+            (lcode, locale_encoding) = locale.getdefaultlocale()
+            if locale_encoding.lower() == 'utf-8':
+                # This is the ideal, running on a UTF-8 system.
+                self.__locale_decoder = None
+            else:
+                _logger.debug("creating decoder for locale encoding %r", locale_encoding)
+                self.__locale_decoder = codecs.getincrementaldecoder(locale_encoding)()
         
         # This is an optimization; we pass in a file descriptor from sys_builtin.py,
         # and then poll it here for maximum efficiency. 
@@ -226,7 +235,8 @@ class UnicodeRenderer(ObjectsRenderer):
         return self.__search
 
     def get_status_str(self):
-        return "%d bytes" % (self.__bytecount,)
+        charcount = self._buf.get_char_count()
+        return gettext.ngettext('%d character' % (charcount,), '%d characters' % (charcount,), charcount)
 
     def __get_objects_from_iters(self, start, end):
         if start == end:
@@ -260,28 +270,29 @@ class UnicodeRenderer(ObjectsRenderer):
 
     def get_opt_formats(self):
         if is_unix():
-            return ['x-filedescriptor/special', 'text/chunked']
+            return ['x-filedescriptor/special', 'bytearray/chunked']
         else:
-            return ['text/chunked']
+            return ['bytearray/chunked']
         
-    def __append_locale_chunk(self, obj):
-        # TODO convert
-        self.__append_chunk(obj)
+    def __append_locale_chunk(self, obj, flush=False):
+        if self.__locale_decoder is None:
+            self.__append_chunk(obj)
+        else:
+            decoded = self.__locale_decoder.decode(obj, flush)
+            self.__append_chunk(decoded)
 
     def __append_chunk(self, obj):
         buf = self._buf
         if self.__empty:
             buf.delete(buf.get_start_iter(), buf.get_end_iter())
             self.__empty = False
-        olen = len(obj)
-        self.__bytecount += olen
         buf.insert(buf.get_end_iter(), obj)
         self.emit('status-changed')
 
     def append_obj(self, obj, fmt=None):
         # If you change format types, be sure to update odisp.py:append_object
-        if fmt == 'text/chunked':
-            self.__append_chunk(obj)
+        if fmt == 'bytearray/chunked':
+            self.__append_locale_chunk(obj)
             return
         elif fmt == 'x-filedescriptor/special':
             self.__subproc_fd = obj
@@ -301,7 +312,6 @@ class UnicodeRenderer(ObjectsRenderer):
                self._buf.insert_with_tags_by_name(self._buf.get_end_iter(), obj[start:real_end], tagname)
                prev_tagend = real_end
             self._buf.insert(self._buf.get_end_iter(), obj[prev_tagend:])
-            self.__bytecount += olen
         else:
             self.__append_chunk(obj)
         self._buf.insert(self._buf.get_end_iter(), '\n')
@@ -325,12 +335,11 @@ class UnicodeRenderer(ObjectsRenderer):
 
     @log_except(_logger)
     def __on_fd(self, src, condition):
+        have_eof_or_err = (condition & gobject.IO_HUP) or (condition & gobject.IO_ERR)
         if (condition & gobject.IO_IN):
             buf = os.read(src, 8192)
-            self.__bufcount += 1
-            # TODO: improve this further
-            self.__append_locale_chunk(buf)
-        if ((condition & gobject.IO_HUP) or (condition & gobject.IO_ERR)):
+            self.__append_locale_chunk(buf, flush=have_eof_or_err)
+        if have_eof_or_err:
             try:
                 os.close(src)
                 self.__subproc_fd = None

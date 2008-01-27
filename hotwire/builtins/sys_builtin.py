@@ -66,7 +66,7 @@ class SysBuiltin(Builtin):
     def __init__(self, name='sys'):
         super(SysBuiltin, self).__init__(name,
                                          input=InputStreamSchema(str, optional=True),
-                                         output=OutputStreamSchema(str, opt_formats=['x-filedescriptor/special', 'text/chunked']),
+                                         output=OutputStreamSchema(str, opt_formats=['x-filedescriptor/special', 'bytearray/chunked']),
                                          hasstatus=True,
                                          threaded=True)
 
@@ -151,7 +151,7 @@ class SysBuiltin(Builtin):
         # pty_available, though I suppose some Unixes might not have ptys.
         # Second, out_opt_format tells us whether we want to stream the 
         # output as lines (out_opt_format is None), or as unbuffered byte chunks
-        # (determined by text/chunked).
+        # (determined by bytearray/chunked).
         
         using_pty_out = pty_available and (out_opt_format is not None)
         # FIXME need in_opt_format
@@ -248,7 +248,7 @@ class SysBuiltin(Builtin):
         if out_opt_format is None:
             for line in SysBuiltin.__unbuffered_readlines(stdout_read):
                 yield line[:-1]
-        elif out_opt_format == 'text/chunked':     
+        elif out_opt_format == 'bytearray/chunked':     
             try:
                 for buf in SysBuiltin.__unbuffered_read_pipe(stream=stdout_read, fd=stdout_fd):
                     yield buf
