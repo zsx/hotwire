@@ -261,6 +261,7 @@ class Command(gobject.GObject):
             _logger.debug("executing async: %s", self)              
             self.__executing_sync = False             
             self.__thread = threading.Thread(target=self.__run)
+            self.__thread.setDaemon(True)            
             self.__thread.start()
 
     def set_output_queue(self, queue, map_fn):
