@@ -164,7 +164,7 @@ class ScriptsWindow(gtk.Dialog):
         
     def __do_search(self):
         text = self.__entry.get_property('text')
-        results = 
+        results = []
         model = gtk.ListStore(gobject.TYPE_PYOBJECT,)
         have_results = False
         for result in results:
