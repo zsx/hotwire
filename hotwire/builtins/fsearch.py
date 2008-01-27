@@ -23,7 +23,7 @@ import os, sys, logging, re
 
 import hotwire
 import hotwire.fs
-from hotwire.fs import FilePath, file_is_valid_utf8
+from hotwire.fs import FilePath, file_is_valid_utf8, open_text_file
 
 from hotwire.command import HotwireContext
 from hotwire.builtin import Builtin, BuiltinRegistry
@@ -76,7 +76,7 @@ class FSearchBuiltin(FileOpBuiltin):
                 continue
             fp = None
             try:
-                fp = open(fobj.path, 'r') 
+                fp = open_text_file(fobj.path) 
                 for i,line in enumerate(fp):
                     match = comp_regexp.search(line)
                     if match:

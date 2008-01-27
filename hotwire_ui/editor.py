@@ -20,7 +20,7 @@ import os, sys, logging, StringIO, traceback, tempfile
 
 import cairo, gtk, gobject, pango
 
-from hotwire.fs import atomic_rename
+from hotwire.fs import atomic_rename, open_text_file
 from hotwire.sysdep.fs import Filesystem, FileStatError
 from hotwire.logutil import log_except
 from hotwire_ui.aboutdialog import HotwireAboutDialog
@@ -104,7 +104,7 @@ class HotEditorWindow(gtk.Window):
 
         if filename and os.path.isfile(self.__filename):
             _logger.debug("reading %s", self.__filename)
-            f = open(self.__filename, 'r')
+            f = open_text_file(self.__filename, 'r')
             self.__original_text = f.read()
         else:
             self.__original_text = content
@@ -210,9 +210,11 @@ class HotEditorWindow(gtk.Window):
         except:
             perms = None
         (tempfd, temppath) = tempfile.mkstemp('.tmp', self.__filename, dn)
-        f = os.fdopen(tempfd, 'w')
+        os.close(tempfd)
+        f = open_text_file(temppath, 'w')
         text = self.input.get_property("text")
-        f.write(text)
+        utext = unicode(text)
+        f.write(utext)
         f.flush()
         os.fsync(tempfd)
         f.close()

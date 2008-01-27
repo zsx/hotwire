@@ -26,7 +26,7 @@ from StringIO import StringIO
 import gobject
 
 import hotwire.fs
-from hotwire.fs import path_normalize, unix_basename, FilePath
+from hotwire.fs import path_normalize, unix_basename, FilePath, open_text_file
 from hotwire.sysdep.fs import Filesystem, File
 from hotwire.async import IterableQueue, MiniThreadPool
 from hotwire.builtin import BuiltinRegistry, Builtin
@@ -306,10 +306,10 @@ class Command(gobject.GObject):
                 kwargs['out_opt_format'] = self.output.opt_type
             if self.in_redir:
                 _logger.debug("input redirected, opening %s", self.in_redir)
-                self.context.input = CommandFileQueue(open(self.in_redir, 'r'))
+                self.context.input = CommandFileQueue(open_text_file(self.in_redir, 'r'))
             if self.out_redir:
                 _logger.debug("output redirected, opening %s", self.out_redir)
-                outfile = open(self.out_redir, self.out_append and 'a+' or 'w')
+                outfile = open_text_file(self.out_redir, self.out_append and 'a+' or 'w')
             else:
                 outfile = None
             try:

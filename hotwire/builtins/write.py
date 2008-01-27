@@ -23,7 +23,7 @@ import os,sys,pickle
 
 import hotwire
 from hotwire.builtin import Builtin, BuiltinRegistry, InputStreamSchema
-from hotwire.fs import FilePath
+from hotwire.fs import FilePath, open_text_file
 from hotwire.sysdep.fs import Filesystem
 
 class WriteBuiltin(Builtin):
@@ -41,11 +41,11 @@ class WriteBuiltin(Builtin):
             open_mode = 'wb'
         if not context.input:
             return
-        streams = map(lambda x: open(FilePath(x, context.cwd), open_mode), args)
+        streams = map(lambda x: open_text_file(FilePath(x, context.cwd), open_mode), args)
         if not do_pickle:
             for arg in context.input:
                 for stream in streams:
-                    stream.write('%s\n' % (str(arg),))
+                    stream.write('%s\n' % (unicode(arg),))
         else:
             # Kind of annoying pickle makes you do this.
             arglist = list(context.input)

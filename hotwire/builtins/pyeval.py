@@ -63,6 +63,8 @@ expressed as an iterable which yielded a single object.""")
         last_value = None
         if '-f' in options:
             fpath = path_join(context.cwd, args[0])
+            # Do we assume locale encoding or UTF-8 here?
+            # We probably need to scan for a -*- coding -*-
             f = open(fpath)
             compiled = compile(f.read(), fpath, 'exec')
             f.close()

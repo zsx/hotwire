@@ -21,7 +21,7 @@
 
 import os,sys,pickle
 
-from hotwire.fs import FilePath
+from hotwire.fs import FilePath, open_text_file
 
 from hotwire.builtin import Builtin, BuiltinRegistry
 
@@ -42,6 +42,6 @@ class CatBuiltin(Builtin):
                 for v in pickle.load(open(fpath, 'rb')): 
                     yield v
             else:
-                for line in open(fpath, 'rU'):
+                for line in open_text_file(fpath):
                     yield line[0:-1]
 BuiltinRegistry.getInstance().register(CatBuiltin())

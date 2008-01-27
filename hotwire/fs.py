@@ -20,7 +20,7 @@
 # THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import os, sys, fnmatch, stat, shutil, platform
-import posixpath, locale, urllib
+import posixpath, locale, urllib, codecs
 
 import hotwire
 from hotwire.async import MiniThreadPool
@@ -100,6 +100,14 @@ def copy_file_or_dir(src, dest, dest_is_dir):
         os.symlink(dest_target, symtarget)
     else:
         shutil.copy(src, dest_target)
+
+def open_text_file(path, mode='r', buffering=None):
+    """Return a file object that reads or writes to a locale-encoded text file."""
+    (lcode, locale_encoding) = locale.getdefaultlocale()
+    kwargs={}
+    if buffering is not None:
+        kwargs['buffering'] = buffering
+    return codecs.open(path, mode, locale_encoding, 'strict', **kwargs)
 
 def file_is_valid_utf8(path):
     f = open(path, 'rb')
