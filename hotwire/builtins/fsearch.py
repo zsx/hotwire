@@ -25,9 +25,10 @@ import hotwire
 import hotwire.fs
 from hotwire.fs import FilePath, file_is_valid_utf8
 
+from hotwire.command import HotwireContext
 from hotwire.builtin import Builtin, BuiltinRegistry
 from hotwire.builtins.fileop import FileOpBuiltin
-from hotwire.sysdep.fs import Filesystem
+from hotwire.sysdep.fs import Filesystem, FileStatError
 
 _logger = logging.getLogger("hotwire.builtins.FSearch")
 
@@ -65,29 +66,22 @@ class FSearchBuiltin(FileOpBuiltin):
         else:
             path = context.cwd
         regexp = args[0]
-        fs = Filesystem.getInstance()
         comp_regexp = re.compile(regexp)
-        for (dirpath, subdirs, files) in os.walk(path):
-            filtered_dirs = []
-            for i,dir in enumerate(subdirs):
-                if fs.get_basename_is_ignored(dir):
-                    filtered_dirs.append(i)
-            for c,i in enumerate(filtered_dirs):
-                del subdirs[i-c]
-            for f in files:
-                if fs.get_basename_is_ignored(f):
-                    continue
-                fpath = FilePath(f, dirpath)
-                if not file_is_valid_utf8(fpath):
-                    continue
-                fp = None
-                try:
-                    fp = open(fpath, 'r') 
-                    for i,line in enumerate(fp):
-                        match = comp_regexp.search(line)
-                        if match:
-                            yield FileStringMatch(fpath, line[:-1], i, match.start(), match.end())
-                    fp.close()
-                except OSError, e:
-                    _logger.exception(_("Failed searching file"))
+        walk_builtin = BuiltinRegistry.getInstance()['walk']
+        newctx = HotwireContext(context.cwd)
+        for fobj in walk_builtin.execute(newctx, [path]):
+            # FIXME - this should really be "if file_is_binary", because
+            # currently it's broken in non-UTF8 locales.      
+            if not file_is_valid_utf8(fobj.path):
+                continue
+            fp = None
+            try:
+                fp = open(fobj.path, 'r') 
+                for i,line in enumerate(fp):
+                    match = comp_regexp.search(line)
+                    if match:
+                        yield FileStringMatch(fobj.path, line[:-1], i, match.start(), match.end())
+                fp.close()
+            except OSError, e:
+                _logger.exception(_("Failed searching file"))
 BuiltinRegistry.getInstance().register(FSearchBuiltin())

@@ -43,6 +43,9 @@ class HotwireContext(gobject.GObject):
     __gsignals__ = {
         "cwd" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (gobject.TYPE_STRING,)),
     }
+    
+    cwd = property(lambda self: self.get_cwd(), doc="""Current working directory for this context.""")
+    
     """The interface to manipulating a Hotwire execution shell.  Item
     such as the current working diretory may be changed via this class,
     and subclasses define further extended commands."""

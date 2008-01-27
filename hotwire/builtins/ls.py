@@ -22,7 +22,7 @@
 import os, sys, os.path, stat, logging, locale
 
 from hotwire.builtin import Builtin, BuiltinRegistry, InputStreamSchema
-from hotwire.fs import FilePath,iterd_sorted
+from hotwire.fs import FilePath
 from hotwire.sysdep.fs import Filesystem,File
 from hotwire.util import xmap
 
@@ -38,25 +38,6 @@ class LsBuiltin(Builtin):
                                         threaded=True,
                                         options=[['-l', '--long'],['-a', '--all']])
 
-    def __ls_dir(self, dir, show_all):
-        fs = Filesystem.getInstance()
-        for x in iterd_sorted(dir):
-            try:
-                if show_all:
-                    yield fs.get_file_sync(x)
-
-                else:
-                    bn = os.path.basename(x)
-                    if not (fs.get_basename_is_ignored(bn)):
-                        yield fs.get_file_sync(x)
-            except:
-                # An exception here should ordinarily only happen on Windows;
-                # if we know the path exists because it was returned by
-                # listdir(), on Unix the stat() call cannot fail.  
-                # See http://code.google.com/p/hotwire-shell/issues/detail?id=126
-                _logger.debug("Failed to stat %r", x, exc_info=True)
-                pass
-
     def execute(self, context, args, options=[]):
         show_all = '-a' in options
         long_fmt = '-l' in options
@@ -64,18 +45,20 @@ class LsBuiltin(Builtin):
         fs = Filesystem.getInstance()            
             
         if len(args) == 0:
-            generator = self.__ls_dir(context.cwd, show_all)
+            for x in fs.ls_dir(context.cwd, show_all):
+                yield x
         elif len(args) == 1:
             path = FilePath(args[0], context.cwd)
             fobj = fs.get_file_sync(path)
             if fobj.is_directory:
-                generator = self.__ls_dir(path, show_all)
+                for x in fs.ls_dir(path, show_all):
+                    yield x
             else:
                 yield fobj
                 return      
         else:
-            generator = sorted(xmap(lambda arg: fs.get_file_sync(FilePath(arg, context.cwd)), args), 
-                               lambda a,b: locale.strcoll(a.path, b.path))
-        for x in generator:
-            yield x
+            # Generate list of sorted File objects from arguments 
+            for x in sorted(xmap(lambda arg: fs.get_file_sync(FilePath(arg, context.cwd)), args), 
+                            lambda a,b: locale.strcoll(a.path, b.path)):
+                yield x
 BuiltinRegistry.getInstance().register(LsBuiltin())

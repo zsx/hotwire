@@ -27,7 +27,7 @@ from hotwire.fs import FilePath, file_is_valid_utf8, path_join
 
 from hotwire.builtin import Builtin, BuiltinRegistry
 from hotwire.builtins.fileop import FileOpBuiltin
-from hotwire.sysdep.fs import Filesystem, File
+from hotwire.sysdep.fs import Filesystem, File, FileStatError
 
 _logger = logging.getLogger("hotwire.builtins.Walk")
 
@@ -48,22 +48,27 @@ class WalkBuiltin(FileOpBuiltin):
         else:
             path = context.cwd
         if '-a' not in options:
-            ignorecheck = fs.get_basename_is_ignored
+            ignorecheck = True
         else:
-            ignorecheck = lambda x: False 
+            ignorecheck = False 
         for (dirpath, subdirs, fnames) in os.walk(path):
             filtered_dirs = []
-            for i,dir in enumerate(subdirs):
-                if ignorecheck(dir):
-                    filtered_dirs.append(i)
-            for c,i in enumerate(filtered_dirs):
-                del subdirs[i-c]
+            if ignorecheck:
+                for i,dpath in enumerate(subdirs):
+                    try:
+                        dstat = fs.get_file_sync(dpath)
+                        if dstat.hidden:
+                            filtered_dirs.append(i)
+                    except FileStatError, e:
+                        continue
+                for c,i in enumerate(filtered_dirs):
+                    del subdirs[i-c]
             for fname in fnames:
-                if ignorecheck(fname):
-                    continue
-                fpath = path_join(dirpath, fname) 
+                fpath = path_join(dirpath, fname)                
                 fobj = fs.get_file(fpath)
                 fobj.get_stat_sync()
+                if ignorecheck and fobj.hidden:
+                    continue
                 yield fobj
 
 BuiltinRegistry.getInstance().register(WalkBuiltin())

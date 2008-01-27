@@ -19,11 +19,14 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR 
 # THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import os,sys,subprocess
+import os,sys,subprocess,logging
 
 from hotwire.fs import path_normalize
-from hotwire.sysdep.fs import File, BaseFilesystem
+from hotwire.sysdep.fs import File, BaseFilesystem,iterd_sorted
 from hotwire.sysdep.win32 import win_exec_re
+import win32api, win32con
+
+_logger = logging.getLogger("hotwire.sysdep.Win32Filesystem")
 
 # TODO - implement native "Recycle Bin" trash functionality.
 # involves lots of hackery with shellapi
@@ -31,7 +34,23 @@ class Win32Filesystem(BaseFilesystem):
     def __init__(self):
         super(Win32Filesystem, self).__init__()
         self.fileklass = Win32File
-            
+
+    def ls_dir(self, dir, show_all):
+        for x in iterd_sorted(dir):
+            try:
+                if show_all:
+                    yield self.get_file_sync(x)
+                else:
+                    if not (win32api.GetFileAttributes(x)
+                            & win32con.FILE_ATTRIBUTE_HIDDEN):
+                        yield self.get_file_sync(x)
+            except:
+                # An exception here can happen on Windows if the file was in
+                # use.
+                # See http://code.google.com/p/hotwire-shell/issues/detail?id=126
+                _logger.debug("Failed to stat %r", x, exc_info=True)
+                pass
+
     def _get_conf_dir_path(self):
         return os.path.expanduser(u'~/Application Data/hotwire')
 
@@ -50,7 +69,6 @@ class Win32Filesystem(BaseFilesystem):
 
     def launch_open_file(self, path, cwd=None):
         try:
-            import win32api
             win32api.ShellExecute(0, "open", path, None, None, 1)
         except:
             raise NotImplementedError()
@@ -62,6 +80,9 @@ class Win32File(File):
     def _do_get_xaccess(self):
         super(Win32File, self)._do_get_xaccess()
         self.xaccess = self.xaccess and win_exec_re.search(self.path)
+
+    def _do_get_hidden(self):
+        self._hidden = win32api.GetFileAttributes(self.path) & win32con.FILE_ATTRIBUTE_HIDDEN
 
 def getInstance():
     return Win32Filesystem()

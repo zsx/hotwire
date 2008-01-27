@@ -35,9 +35,6 @@ class UnixFilesystem(BaseFilesystem):
 
     def _get_system_conf_dir_path(self):
         return u'/etc/hotwire'
-    
-    def get_basename_is_ignored(self, bn):
-        return bn.startswith('.')    
 
     def get_path_generator(self):
         for d in os.environ['PATH'].split(u':'):
@@ -66,6 +63,9 @@ class UnixFile(File):
         elif stat.S_ISDIR(stmode): return 'd'
         elif stat.S_ISLNK(stmode): return 'l'
         else: return '?'
+        
+    def _do_get_hidden(self):
+        self._hidden = self.basename.startswith('.')        
     
     def get_owner(self):
         uid = self.get_uid()

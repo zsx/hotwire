@@ -25,7 +25,7 @@ from cStringIO import StringIO
 import gobject
 
 import hotwire
-from hotwire.fs import unix_basename, FilePath, path_expanduser, path_fromurl, path_tourl, atomic_rename
+from hotwire.fs import unix_basename, FilePath, path_expanduser, path_fromurl, path_tourl, atomic_rename, iterd_sorted
 from hotwire.async import MiniThreadPool
 from hotwire.logutil import log_except
 from hotwire.sysdep import is_windows, is_unix
@@ -41,6 +41,12 @@ class BaseFilesystem(object):
         self._override_conf_dir = None
         self._trashdir = os.path.expanduser('~/.Trash')
         self.makedirs_p(self._trashdir)
+
+    def ls_dir(self, dir, show_all):
+        for x in iterd_sorted(dir):
+            fobj = self.get_file_sync(x)
+            if show_all or (not fobj.hidden):  
+                yield fobj
 
     def get_basename_is_ignored(self, bn):
         return False
@@ -167,11 +173,12 @@ class File(object):
     uri = property(lambda self: self._uri, doc="""URI notation for file""")
     basename = property(lambda self: self._basename, doc="""Name of file (without directory component)""")
     size = property(lambda self: self.get_size(), doc="""Size in bytes of file, or None if unknown""")
+    hidden = property(lambda self: self._hidden, doc="""Whether or not this file is normally visible in directory listings""")
     icon = property(lambda self: self._icon, doc="""Icon name (internal Hotwire/GTK+ representation)""")
     is_directory = property(lambda self: self.test_directory(), doc="""Whether or not this object represents a directory""")
     is_executable = property(lambda self: self._is_executable(), doc="""Whether or not this object represents an OS-executable file""")
     is_link = property(lambda self: self._is_link(), doc="""Whether or not this object represents a symbolic link""")
-    
+
     __slots__ = ['fs', 'stat', 'xaccess', 'icon_error', '_permstring', 'target_stat', 'stat_error']
     def __init__(self, path, fs=None):
         super(File, self).__init__()
@@ -183,6 +190,7 @@ class File(object):
         self.fs = fs
         self.stat = None
         self.xaccess = None
+        self._hidden = None
         self._icon = None
         self.icon_error = False
         self._permstring = None
@@ -274,6 +282,7 @@ class File(object):
     def get_stat_sync(self):
         self._do_get_stat(rethrow=True)
         self._do_get_xaccess()
+        self._do_get_hidden()
         self._do_get_icon()
 
     def _do_get_stat(self, rethrow=False):
@@ -291,7 +300,10 @@ class File(object):
                 raise FileStatError(e)
             
     def _do_get_xaccess(self):
-        self.xaccess = os.access(self.path, os.X_OK) 
+        self.xaccess = os.access(self.path, os.X_OK)
+        
+    def _do_get_hidden(self):
+        pass 
         
     def _do_get_icon(self):
         if not self.stat:
