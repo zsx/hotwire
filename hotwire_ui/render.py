@@ -104,7 +104,8 @@ class TreeObjectsRenderer(ObjectsRenderer):
         else:
             ctypes = [gobject.TYPE_PYOBJECT]
         self.context = context
-        self._model = self._create_model(ctypes)
+        self._liststore = gtk.ListStore(*ctypes)
+        self._model = gtk.TreeModelSort(self._liststore)
         self._table = gtk.TreeView(self._model)
         #self._table.unset_flags(gtk.CAN_FOCUS)        
         self._table.get_selection().set_mode(gtk.SELECTION_MULTIPLE)
@@ -112,8 +113,6 @@ class TreeObjectsRenderer(ObjectsRenderer):
         self._table.connect("button-press-event", self.__on_button_press)        
         self._table.connect("row-activated", self.__on_row_activated)
         self._setup_view_columns()
-        for col in self._table.get_columns():
-            col.set_resizable(True)
         self.__selected_obj = None
 
     def __get_func_menuitems(self, iter):
@@ -150,9 +149,6 @@ class TreeObjectsRenderer(ObjectsRenderer):
         (model, rows) = self._table.get_selection().get_selected_rows()
         for row in rows:
             yield model[row][0]
-
-    def _create_model(self, column_types):
-        return gtk.ListStore(*column_types)
 
     def _setup_view_columns(self):
         colidx = self._table.insert_column_with_data_func(-1, 'Object',
@@ -238,7 +234,7 @@ class TreeObjectsRenderer(ObjectsRenderer):
         cell.set_property('text', unicode(repr(obj)))
 
     def append_obj(self, obj, **kwargs):
-        self._model.append((obj,))
+        self._liststore.append((obj,))
 
     def __onclick(self, path, col, rel_x, rel_y):
         iter = self._model.get_iter(path)

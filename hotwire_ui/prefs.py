@@ -101,6 +101,13 @@ class PrefEditorCombo(gtk.ComboBox):
         cell.set_property('text', e.name)
             
 class PrefsWindow(gtk.Dialog):
+    def __add_checkbutton(self, name, prefname, function, vbox):
+        prefs = Preferences.getInstance()
+        checkbutton = gtk.CheckButton(name)
+        checkbutton.set_property('active', prefs.get_pref(prefname, default=True))
+        checkbutton.connect('toggled', function)        
+        vbox.pack_start(hotwidgets.Align(checkbutton, padding_left=12), expand=False)
+
     def __init__(self):
         super(PrefsWindow, self).__init__(title=_('Preferences'),
                                           parent=None,
@@ -185,6 +192,37 @@ class PrefsWindow(gtk.Dialog):
         bg_color = self.__bg_color = gtk.ColorButton(gtk.gdk.color_parse(prefs.get_pref('term.background', default='#FFF')))
         hbox.pack_start(bg_color, expand=False)
         bg_color.connect('color-set', self.__on_fg_bg_changed)
+
+        self.__folders_tab = gtk.VBox()
+        self.__notebook.append_page(self.__folders_tab)
+        self.__notebook.set_tab_label_text(self.__folders_tab, _('Folders'))   
+
+        vbox = gtk.VBox()
+        vbox.set_border_width(12)
+        vbox.set_spacing(6) 
+        label = gtk.Label()
+        label.set_markup('<b>%s</b>' % (_('Default view'),))
+        label.set_alignment(0.0, 0.0)
+        vbox.pack_start(label, expand=False)
+        self.__folders_tab.pack_start(vbox, expand=False)
+        self.__add_checkbutton(_('Sort folders before files'), 'hotwire.ui.render.File.general.foldersbeforefiles', 
+                               self.__on_folders_before_files_toggled, vbox)
+
+        vbox = gtk.VBox()
+        vbox.set_border_width(12)
+        vbox.set_spacing(6) 
+        label = gtk.Label()
+        label.set_markup('<b>%s</b>' % (_('List columns'),))
+        label.set_alignment(0.0, 0.0)
+        vbox.pack_start(label, expand=False)
+        self.__folders_tab.pack_start(vbox, expand=False)
+
+        self.__add_checkbutton(_('Size'), 'hotwire.ui.render.File.columns.size', self.__on_list_size_toggled, vbox)
+        self.__add_checkbutton(_('Last modified'), 'hotwire.ui.render.File.columns.last_modified', self.__on_list_lastmodified_toggled, vbox)
+        self.__add_checkbutton(_('Owner'), 'hotwire.ui.render.File.columns.owner', self.__on_list_owner_toggled, vbox)
+        self.__add_checkbutton(_('Group'), 'hotwire.ui.render.File.columns.group', self.__on_list_group_toggled, vbox)
+        self.__add_checkbutton(_('Permissions'), 'hotwire.ui.render.File.columns.permissions', self.__on_list_permissions_toggled, vbox)
+        self.__add_checkbutton(_('File type'), 'hotwire.ui.render.File.columns.mime', self.__on_list_filetype_toggled, vbox)
         
     def __on_fg_bg_changed(self, cb):
         prefs = Preferences.getInstance()        
@@ -208,6 +246,46 @@ class PrefsWindow(gtk.Dialog):
         prefs = Preferences.getInstance()
         prefs.set_pref('ui.menuaccels', not active)
         self.__sync_emacs_sensitive()
+
+    def __on_folders_before_files_toggled(self, cb):
+        active = cb.get_property('active')
+        prefs = Preferences.getInstance()
+        prefs.set_pref('hotwire.ui.render.File.general.foldersbeforefiles', active)
+
+    def __on_list_name_toggled(self, cb):
+        active = cb.get_property('active')
+        prefs = Preferences.getInstance()
+        prefs.set_pref('hotwire.ui.render.File.columns.name', active)
+
+    def __on_list_size_toggled(self, cb):
+        active = cb.get_property('active')
+        prefs = Preferences.getInstance()
+        prefs.set_pref('hotwire.ui.render.File.columns.size', active)
+
+    def __on_list_lastmodified_toggled(self, cb):
+        active = cb.get_property('active')
+        prefs = Preferences.getInstance()
+        prefs.set_pref('hotwire.ui.render.File.columns.last_modified', active)
+
+    def __on_list_owner_toggled(self, cb):
+        active = cb.get_property('active')
+        prefs = Preferences.getInstance()
+        prefs.set_pref('hotwire.ui.render.File.columns.owner', active)
+
+    def __on_list_group_toggled(self, cb):
+        active = cb.get_property('active')
+        prefs = Preferences.getInstance()
+        prefs.set_pref('hotwire.ui.render.File.columns.group', active)
+
+    def __on_list_permissions_toggled(self, cb):
+        active = cb.get_property('active')
+        prefs = Preferences.getInstance()
+        prefs.set_pref('hotwire.ui.render.File.columns.permissions', active)
+
+    def __on_list_filetype_toggled(self, cb):
+        active = cb.get_property('active')
+        prefs = Preferences.getInstance()
+        prefs.set_pref('hotwire.ui.render.File.columns.mime', active)
         
     def __on_readline_toggled(self, cb):
         active = cb.get_property('active')
