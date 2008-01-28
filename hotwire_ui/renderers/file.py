@@ -112,16 +112,16 @@ class FilePathRenderer(TreeObjectsRenderer):
         prefs.monitor_prefs('hotwire.ui.render.File.columns.', self.__on_visible_columns_changed)
         self.__folders_before_files = prefs.get_pref('hotwire.ui.render.File.general.foldersbeforefiles', default=True)
 
-        cell_renderer = hotwidgets.CellRendererLink(underline=pango.UNDERLINE_NONE, family='Monospace')
+        cell_renderer = hotwidgets.CellRendererText(family='Monospace')
         self._column_info = {
             'icon': (_(''), self._render_icon, gtk.CellRendererPixbuf(), 0), 
-            'path': (_('Path'), self._render_objtext, cell_renderer, 1), 
-            'size': (_('Size'), self._render_size, cell_renderer, 2), 
-            'last_modified': (_('Last modified'), self._render_last_modified, cell_renderer, 3), 
-            'owner': (_('Owner'), self._render_owner, cell_renderer, 4), 
-            'group': (_('Group'), self._render_group, cell_renderer, 5), 
-            'permissions': (_('Permissions'), self._render_permissions, cell_renderer, 6), 
-            'mime': (_('File type'), self._render_mime, cell_renderer, 7) 
+            'path': (_('Path'), self._render_objtext, hotwidgets.CellRendererText(family='Monospace'), 1), 
+            'size': (_('Size'), self._render_size, hotwidgets.CellRendererText(family='Monospace'), 2), 
+            'last_modified': (_('Last modified'), self._render_last_modified, hotwidgets.CellRendererText(family='Monospace'), 3), 
+            'owner': (_('Owner'), self._render_owner, hotwidgets.CellRendererText(family='Monospace'), 4), 
+            'group': (_('Group'), self._render_group, hotwidgets.CellRendererText(family='Monospace'), 5), 
+            'permissions': (_('Permissions'), self._render_permissions, hotwidgets.CellRendererText(family='Monospace'), 6), 
+            'mime': (_('File type'), self._render_mime, hotwidgets.CellRendererText(family='Monospace'), 7) 
         }
 
         self._table.set_search_column(0)
@@ -179,7 +179,7 @@ class FilePathRenderer(TreeObjectsRenderer):
             text = path[len(self.__basedir)+offset:]
         else:
             text = path
-        cell.set_text(text)
+        cell.set_property('text', text)
 
     def _render_size(self, col, cell, model, iter):
         obj = self._file_for_iter(model, iter)
