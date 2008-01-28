@@ -235,7 +235,10 @@ class UnicodeRenderer(ObjectsRenderer):
         return self.__search
 
     def get_status_str(self):
-        charcount = self._buf.get_char_count()
+        if self.__empty:
+            charcount = 0
+        else:
+            charcount = self._buf.get_char_count()
         return gettext.ngettext('%d character' % (charcount,), '%d characters' % (charcount,), charcount)
 
     def __get_objects_from_iters(self, start, end):
