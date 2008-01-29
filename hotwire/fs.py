@@ -137,6 +137,7 @@ class FilePath(unicode):
     
 def iterd(dpath, fpath=False):
     """Generate full path names of files in directory named by dpath."""
+    dpath = unicode(dpath)
     entries = os.listdir(dpath)
     if fpath:
         for fname in entries:
