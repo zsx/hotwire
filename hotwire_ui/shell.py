@@ -404,6 +404,7 @@ class Hotwire(gtk.VBox):
     def __handle_bookmark_change(self, signal=None, sender=None):
         self.__sync_bookmarks()
         
+    @log_except(_logger)
     def __sync_bookmarks(self):
         gomenu = self.__ui.get_widget('/Menubar/WidgetMenuAdditions/GoMenu/Home').get_parent()
         removals = []
@@ -412,6 +413,7 @@ class Hotwire(gtk.VBox):
                 removals.append(child)
                 
         for removal in removals:
+            _logger.debug("removing %r", removal)
             gomenu.remove(removal)
             
         for bookmark in Filesystem.getInstance().get_bookmarks():
