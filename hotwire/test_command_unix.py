@@ -55,8 +55,8 @@ class PipelineRunTestsUnix(PipelineRunTestFramework):
         results = list(p.get_output())
         results.sort()
         self.assertEquals(len(results), 2)
-        self.assertEquals(results[0], 'testdir')
-        self.assertEquals(results[1], 'testf')
+        self.assertEquals(results[0], 'testdir\n')
+        self.assertEquals(results[1], 'testf\n')
 
     def testSh5(self):
         self._setupTree1()
@@ -65,7 +65,7 @@ class PipelineRunTestsUnix(PipelineRunTestFramework):
         results = list(p.get_output())
         results.sort()
         self.assertEquals(len(results), 1)
-        self.assertEquals(results[0], 'testdir')            
+        self.assertEquals(results[0], 'testdir\n')
 
     def testShCancel1(self):
         p = Pipeline.parse("sys sleep 5", self._context)

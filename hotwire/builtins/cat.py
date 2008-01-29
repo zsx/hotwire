@@ -43,5 +43,5 @@ class CatBuiltin(Builtin):
                     yield v
             else:
                 for line in open_text_file(fpath):
-                    yield line[0:-1]
+                    yield line
 BuiltinRegistry.getInstance().register(CatBuiltin())

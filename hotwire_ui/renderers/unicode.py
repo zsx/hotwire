@@ -254,11 +254,7 @@ class UnicodeRenderer(ObjectsRenderer):
             if iter.compare(end) > 0:
                 not_at_end = False
                 iter = end
-            elif not_at_end or at_realend:
-                iter.backward_char()
             yield self._buf.get_slice(startline, iter)
-            if not_at_end or at_realend:
-                iter.forward_char()
 
     def get_objects(self):
         for o in self.__get_objects_from_iters(self._buf.get_start_iter(), self._buf.get_end_iter()):
@@ -317,7 +313,6 @@ class UnicodeRenderer(ObjectsRenderer):
             self._buf.insert(self._buf.get_end_iter(), obj[prev_tagend:])
         else:
             self.__append_chunk(obj)
-        self._buf.insert(self._buf.get_end_iter(), '\n')
         
     def __spawn_terminal(self, fd, buf):
         # Undo terminal mode changes from sys_builtin.py

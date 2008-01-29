@@ -76,16 +76,14 @@ class SysBuiltin(Builtin):
                 if val is None:
                     stream.close()
                     return
-                stream.write(str(val))
-                stream.write('\n')
+                stream.write(unicode(val))
         except IOError, e:
             pass
             
     def __inputwriter(self, input, stdin):
         try:
             for val in input:
-                stdin.write(str(val))
-                stdin.write('\n')
+                stdin.write(unicode(val))
                 stdin.flush()
             stdin.close()
         except IOError, e:
@@ -247,7 +245,7 @@ class SysBuiltin(Builtin):
             stdout_fd = subproc.stdout.fileno()
         if out_opt_format is None:
             for line in SysBuiltin.__unbuffered_readlines(stdout_read):
-                yield line[:-1]
+                yield line
         elif out_opt_format == 'bytearray/chunked':     
             try:
                 for buf in SysBuiltin.__unbuffered_read_pipe(stream=stdout_read, fd=stdout_fd):

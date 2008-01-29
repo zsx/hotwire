@@ -163,7 +163,7 @@ class CommandFileQueue(object):
         
     def __iter__(self):
         for line in self.__f:
-            yield line[:-1]
+            yield line
         self.__f.close()
         self.__f = None
         
@@ -321,11 +321,8 @@ class Command(gobject.GObject):
                         self.emit("complete")                        
                         return
                     if outfile and (result is not None):
-                        if isinstance(result, basestring):
-                            outfile.write(result)
-                        else:
-                            outfile.write(repr(result))
-                        outfile.write('\n')
+                        result = unicode(result)
+                        outfile.write(result)
                     else:                        
                         self.output.put(self.map_fn(result))
             finally:
