@@ -44,7 +44,7 @@ class ProcessCompleter(Completer):
         super(ProcessCompleter, self).__init__() 
 
     def completions(self, text, cwd, **kwargs):
-        proclist = ProcessManager.getInstance().get_caced_processes()         
+        proclist = ProcessManager.getInstance().get_cached_processes()         
         try:
             textint = int(text)
         except ValueError, e:
