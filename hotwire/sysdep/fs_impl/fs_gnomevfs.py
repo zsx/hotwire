@@ -139,7 +139,7 @@ class GnomeVfsMonitor(object):
             self.__idle_id = 0
         if self.__monid:
             gnomevfs.monitor_cancel(self.__monid)
-            self.__monid = Nones
+            self.__monid = None
 
 class GnomeVFSFilesystem(UnixFilesystem):
     def __init__(self):

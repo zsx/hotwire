@@ -501,7 +501,7 @@ class PipelineRunTests(PipelineRunTestFramework):
         self.assertEquals(len(results), 1)
         self.assertEquals(results[0], 20)
         
-    def testFilter1(self):
+    def testFilter2(self):
         self._setupTree1()
         p = Pipeline.parse("py-eval '\"hello\"' | filter h", self._context)
         p.execute_sync()

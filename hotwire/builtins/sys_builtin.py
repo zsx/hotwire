@@ -231,7 +231,7 @@ class SysBuiltin(Builtin):
                 os.close(master_fd)
             if slave_fd is not None:
                 os.close(slave_fd)
-            raise ValueError('Failed to execute %s' % (arg,))
+            raise ValueError('Failed to execute %s' % (args[0],))
         context.attribs['pid'] = subproc.pid
         if using_pty_in or using_pty_out:
             os.close(slave_fd)

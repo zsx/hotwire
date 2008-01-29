@@ -92,8 +92,8 @@ class PathCompleter(Completer):
         expanded = path_expanduser(text)        
         fullpath = FilePath(expanded, cwd)
         try:
-            isdir = stat.S_ISDIR(os.stat(srcpath).st_mode)
-        except:
+            isdir = stat.S_ISDIR(os.stat(fullpath).st_mode)
+        except OSError, e:
             isdir = False
         fs = Filesystem.getInstance()
         if isdir and fullpath.endswith('/'):

@@ -21,6 +21,8 @@
 
 from hotwire.builtin import Builtin, BuiltinRegistry
 
+from hotwire.completion import BuiltinCompleter
+
 class HelpItem(object):
     def __init__(self, items):
         self.items = items

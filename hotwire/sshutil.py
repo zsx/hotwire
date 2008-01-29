@@ -19,11 +19,13 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR 
 # THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import os,sys
+import os,sys,logging
 
 from hotwire.sysdep.fs import Filesystem
 from hotwire.externals.singletonmixin import Singleton
 from hotwire.externals.dispatch import dispatcher
+
+_logger = logging.getLogger("hotwire.SshUtil")
 
 class OpenSSHKnownHosts(Singleton):
     def __init__(self):
