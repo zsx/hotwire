@@ -23,8 +23,6 @@ import os,sys,locale
 
 from hotwire.builtin import Builtin, BuiltinRegistry, InputStreamSchema
 
-import simplejson
-
 from hotwire.command import Pipeline,HotwireContext
 
 class ApplyBuiltin(Builtin):
