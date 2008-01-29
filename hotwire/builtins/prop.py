@@ -27,7 +27,7 @@ from hotwire.builtin import Builtin, BuiltinRegistry, InputStreamSchema
 class PropBuiltin(Builtin):
     __doc__ = _("""Return the property of an object.""")
     def __init__(self):
-        super(PropBuiltin, self).__init__('prop',
+        super(PropBuiltin, self).__init__('prop', 'fcb26732-6a03-4af6-ab64-7002338ca59a',
                                           input=InputStreamSchema('any'),
                                           output='any',
                                           idempotent=True,

@@ -15,7 +15,7 @@
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 # INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A 
 # PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE X CONSORTIUM BE 
-# LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, 
+# LIABLE FOR ANY CLAIM,  OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, 
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR 
 # THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
@@ -31,7 +31,8 @@ _logger = logging.getLogger("hotwire.builtins.ls")
 class LsBuiltin(Builtin):
     __doc__ = _("""List contents of a directory.""")
     def __init__(self):
-        super(LsBuiltin, self).__init__('ls', aliases=['dir'],
+        super(LsBuiltin, self).__init__('ls', '6b4e73d2-d02d-4d7a-91a0-f9a859a65d0e', 
+                                        aliases=['dir'],
                                         input=InputStreamSchema(str, optional=True),
                                         output=File,
                                         idempotent=True,

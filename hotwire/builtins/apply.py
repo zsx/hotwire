@@ -30,7 +30,7 @@ from hotwire.command import Pipeline,HotwireContext
 class ApplyBuiltin(Builtin):
     __doc__ = _("""Like Unix xargs - take input and convert to arguments.""")
     def __init__(self):
-        super(ApplyBuiltin, self).__init__('apply',
+        super(ApplyBuiltin, self).__init__('apply', '81d7ca39-5df2-4d7f-8cda-9abdc875ead1',
                                            output='any',
                                            input=InputStreamSchema('any'),                                         
                                            threaded=True)

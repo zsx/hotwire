@@ -24,7 +24,8 @@ from hotwire.builtin import Builtin, BuiltinRegistry
 class TermBuiltin(Builtin):
     __doc__ = _("""Execute a system command in a new terminal.""")
     def __init__(self):
-        super(TermBuiltin, self).__init__('term', nostatus=True,
+        super(TermBuiltin, self).__init__('term', 'b4754073-0001-47bf-94ae-842f484e41bb', 
+                                          nostatus=True,
                                           options=[['-w', '--window']])
 
     def execute(self, context, arg, options=[]):

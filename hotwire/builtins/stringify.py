@@ -26,7 +26,7 @@ from hotwire.builtin import Builtin, BuiltinRegistry, InputStreamSchema
 class StringifyBuiltin(Builtin):
     __doc__ = _("""Convert output to a string.""")
     def __init__(self):
-        super(StringifyBuiltin, self).__init__('stringify',
+        super(StringifyBuiltin, self).__init__('stringify', '5201b1e6-0879-4508-8bf9-3869e43b1e50',
                                                input=InputStreamSchema('any'),
                                                output=str,
                                                threaded=True)

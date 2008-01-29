@@ -43,7 +43,7 @@ class LossyObjectJSONDumper(simplejson.JSONEncoder):
 class JsonBuiltin(Builtin):
     __doc__ = _("""Convert object stream to JSON.""")
     def __init__(self):
-        super(JsonBuiltin, self).__init__('json',
+        super(JsonBuiltin, self).__init__('json', 'd5d1b62f-7317-448e-9cb0-3aa7ff459b8d',
                                           output=str, # 'any'
                                           input=InputStreamSchema('any'),
                                           idempotent=True,                                         

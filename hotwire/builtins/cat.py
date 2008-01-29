@@ -28,7 +28,7 @@ from hotwire.builtin import Builtin, BuiltinRegistry
 class CatBuiltin(Builtin):
     __doc__ = _("""Yield content lines from file path arguments.""")
     def __init__(self):
-        super(CatBuiltin, self).__init__('cat',
+        super(CatBuiltin, self).__init__('cat', '81d7ca39-5df2-4d7f-8cda-9abdc875ead1',
                                          output=str, # 'any'
                                          idempotent=True,
                                          #options=[['-p', '--pickle'],],                                          

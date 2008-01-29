@@ -29,7 +29,7 @@ from hotwire.sysdep.fs import Filesystem
 class WriteBuiltin(Builtin):
     __doc__ = _("""Save stream to files.""")
     def __init__(self):
-        super(WriteBuiltin, self).__init__('write',
+        super(WriteBuiltin, self).__init__('write', '5bf36eed-ad34-4453-933d-1a9ad18f59ec',
                                            input=InputStreamSchema('any', optional=False),
                                            options=[['-a', '--append'],['-p', '--pickle']],                                           
                                            threaded=True)

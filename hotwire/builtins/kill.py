@@ -44,7 +44,7 @@ class ProcessCompleter(Completer):
         super(ProcessCompleter, self).__init__() 
 
     def completions(self, text, cwd, **kwargs):
-        proclist = ProcessManager.getInstance().get_cached_processes()         
+        proclist = ProcessManager.getInstance().get_caced_processes()         
         try:
             textint = int(text)
         except ValueError, e:
@@ -68,7 +68,7 @@ class KillBuiltin(Builtin):
         for num in sorted(_sigvalue_to_sym):
             options.append(['-' + str(num)])
             options.append(['-' + _sigvalue_to_sym[num][3:]])
-        super(KillBuiltin, self).__init__('kill',
+        super(KillBuiltin, self).__init__('kill', 'd5d1b62f-7317-448e-9cb0-3aa7ff459b8d',
                                           nostatus=True,
                                           options=options,                                     
                                           threaded=True)

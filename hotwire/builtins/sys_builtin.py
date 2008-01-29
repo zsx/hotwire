@@ -64,7 +64,7 @@ class BareFdStreamWriter(object):
 class SysBuiltin(Builtin):
     __doc__ = _("""Execute a system command, returning output as text.""")
     def __init__(self, name='sys'):
-        super(SysBuiltin, self).__init__(name,
+        super(SysBuiltin, self).__init__(name, 'e97f1a3e-82c7-4edf-829a-7534ef26757a',
                                          input=InputStreamSchema(str, optional=True),
                                          output=OutputStreamSchema(str, opt_formats=['x-filedescriptor/special', 'bytearray/chunked']),
                                          hasstatus=True,

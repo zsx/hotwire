@@ -31,7 +31,8 @@ from hotwire.builtins.fileop import FileOpBuiltin
 class CpBuiltin(FileOpBuiltin):
     __doc__ = _("""Copy sources to destination.""")
     def __init__(self):
-        super(CpBuiltin, self).__init__('cp', aliases=['copy'],
+        super(CpBuiltin, self).__init__('cp', '81d7ca39-5df2-4d7f-8cda-9abdc875ead1', 
+                                        aliases=['copy'],
                                         hasstatus=True,
                                         threaded=True)
 

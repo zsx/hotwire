@@ -39,7 +39,7 @@ class CdCompleter(PathCompleter):
 class CdBuiltin(Builtin):
     __doc__ = _("""Change working directory and list its contents.""")
     def __init__(self):
-        super(CdBuiltin, self).__init__('cd',
+        super(CdBuiltin, self).__init__('cd', '81d7ca39-5df2-4d7f-8cda-9abdc875ead1',
                                         output=File,
                                         idempotent=True,
                                         threaded=True)

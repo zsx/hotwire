@@ -26,7 +26,7 @@ from hotwire.builtin import Builtin, BuiltinRegistry
 class SetenvBuiltin(Builtin):
     __doc__ = _("""Set environment variables.""")
     def __init__(self):
-        super(SetenvBuiltin, self).__init__('setenv',                                         
+        super(SetenvBuiltin, self).__init__('setenv', '560f4799-ff62-465d-8a19-b5891498f7ea',                                       
                                             threaded=True)
 
     def execute(self, context, args, options=[]):

@@ -23,7 +23,7 @@ from hotwire.builtin import Builtin, BuiltinRegistry, OutputStreamSchema
 
 class HistoryBuiltin(Builtin):
     def __init__(self):
-        super(HistoryBuiltin, self).__init__('history',
+        super(HistoryBuiltin, self).__init__('history', '81d7ca39-5df2-4d7f-8cda-9abdc875ead1',
                                              output=str)
 
     def execute(self, context, args):

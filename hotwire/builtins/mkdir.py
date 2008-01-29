@@ -31,7 +31,7 @@ from hotwire.builtins.fileop import FileOpBuiltin
 class MkdirBuiltin(FileOpBuiltin):
     __doc__ = _("""Create directories.""")
     def __init__(self):
-        super(MkdirBuiltin, self).__init__('mkdir',
+        super(MkdirBuiltin, self).__init__('mkdir', '6b4e73d2-d02d-4d7a-91a0-f9a859a65d0e',
                                            hasstatus=True,
                                            threaded=True)
 

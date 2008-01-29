@@ -34,7 +34,7 @@ Iterable return values (define __iter__) are expanded.  Other values are
 expressed as an iterable which yielded a single object.""")
  
     def __init__(self):
-        super(PyEvalBuiltin, self).__init__('py-eval',
+        super(PyEvalBuiltin, self).__init__('py-eval', 'fcb26732-6a03-4af6-ab64-7002338ca59a',
                                             threaded=True,
                                             output=OutputStreamSchema('any'),
                                             options=[['-f', '--file']])

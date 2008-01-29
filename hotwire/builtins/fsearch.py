@@ -51,7 +51,7 @@ class FileStringMatch(object):
 class FSearchBuiltin(FileOpBuiltin):
     __doc__ = _("""Search directory tree for files matching a regular expression.""")
     def __init__(self):
-        super(FSearchBuiltin, self).__init__('fsearch',
+        super(FSearchBuiltin, self).__init__('fsearch', '81d7ca39-5df2-4d7f-8cda-9abdc875ead1',
                                              output=FileStringMatch,
                                              threaded=True)
 

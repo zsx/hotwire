@@ -31,7 +31,8 @@ from hotwire.builtins.fileop import FileOpBuiltin
 class RmBuiltin(FileOpBuiltin):
     __doc__ = _("""Move a file to the trash.""")
     def __init__(self):
-        super(RmBuiltin, self).__init__('rm', aliases=['delete'],
+        super(RmBuiltin, self).__init__('rm', '4a57b506-dab6-47b9-b2f6-aec39428842e', 
+                                        aliases=['delete'],
                                         undoable=True,
                                         hasstatus=True,
                                         threaded=True,
