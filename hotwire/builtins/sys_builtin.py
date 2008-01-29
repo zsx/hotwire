@@ -192,6 +192,14 @@ class SysBuiltin(Builtin):
                         'stdout': stdout_target,
                         'stderr': subprocess.STDOUT,
                         'cwd': context.cwd}
+        
+        fs_encoding = sys.getfilesystemencoding()
+        stdin_encoding = sys.stdin.encoding
+        _logger.debug("recoding path to %r, args to %r", fs_encoding, stdin_encoding)
+        # We need to encode arguments to the system encoding because subprocess.py won't do it for us.
+        args[0] = args[0].encode(fs_encoding)
+        args[1:] = map(lambda x: x.encode(stdin_encoding), args[1:])
+        
         if is_windows():
             subproc_args['universal_newlines'] = True
         elif is_unix():

@@ -114,6 +114,9 @@ def main():
     _logger.debug("logging initialized, debug: %s", __debug__)
 
     locale.setlocale(locale.LC_ALL, '')
+    fs_encoding = sys.getfilesystemencoding()
+    stdin_encoding = sys.stdin.encoding
+    _logger.debug("recoding paths to %r, args to %r", fs_encoding, stdin_encoding)    
     import gettext
     gettext.install('hotwire')
 
