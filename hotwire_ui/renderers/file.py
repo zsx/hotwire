@@ -64,21 +64,8 @@ class FilePathRenderer(TreeObjectsRenderer):
         matches = (target.find(key) >= 0)
         # return value intentionally reversed
         return not matches
-    
-    def __get_column_value(self, obj, column):
-        compare_obj = {
-            0 : lambda x: x.path.lower(),
-            1 : lambda x: x.path.lower(),
-            2 : lambda x: x.size,
-            3 : lambda x: x.get_mtime(),
-            4 : lambda x: x.get_owner(),
-            5 : lambda x: x.get_group(),
-            6 : lambda x: x.get_permissions_string(),
-            7 : lambda x: x.get_mime()
-        } [column](obj)
-        return compare_obj
 
-    def __standard_compare(self, model, iter1, iter2, user_data):
+    def __compare_paths(self, model, iter1, iter2):
         ob1 = self._file_for_iter(model, iter1)
         ob2 = self._file_for_iter(model, iter2)
 
@@ -86,71 +73,50 @@ class FilePathRenderer(TreeObjectsRenderer):
         if (ob1 == None or ob2 == None):
             return 0
         
-        value1 = self.__get_column_value(ob1, user_data)
-        value2 = self.__get_column_value(ob2, user_data)
-        
         if (self.__folders_before_files):
             if (ob1.is_directory and (not ob2.is_directory)):
                 return -1
             if (ob2.is_directory and (not ob1.is_directory)):
                 return 1
         
-        return cmp(value1, value2)
-        
-    def _append_column(self, column_type):
-        colinfo = self._column_info[column_type]
-        colidx = self._table.insert_column_with_data_func(-1, colinfo[0],
-                                                            colinfo[2],
-                                                            colinfo[1])
-        col = self._table.get_column(colidx - 1)
-        col.set_sort_column_id(colidx - 1)
-        col.set_resizable(True)                
+        return cmp(ob1.path.lower(), ob2.path.lower())          
 
     def _setup_view_columns(self):
         prefs = Preferences.getInstance()
         prefs.monitor_prefs('hotwire.ui.render.File.general.foldersbeforefiles', self.__on_folders_before_files_changed)
         prefs.monitor_prefs('hotwire.ui.render.File.columns.', self.__on_visible_columns_changed)
         self.__folders_before_files = prefs.get_pref('hotwire.ui.render.File.general.foldersbeforefiles', default=True)
-
-        cell_renderer = hotwidgets.CellRendererText(family='Monospace')
-        self._column_info = {
-            'icon': (_(''), self._render_icon, gtk.CellRendererPixbuf(), 0), 
-            'path': (_('Path'), self._render_objtext, hotwidgets.CellRendererText(family='Monospace'), 1), 
-            'size': (_('Size'), self._render_size, hotwidgets.CellRendererText(family='Monospace'), 2), 
-            'last_modified': (_('Last modified'), self._render_last_modified, hotwidgets.CellRendererText(family='Monospace'), 3), 
-            'owner': (_('Owner'), self._render_owner, hotwidgets.CellRendererText(family='Monospace'), 4), 
-            'group': (_('Group'), self._render_group, hotwidgets.CellRendererText(family='Monospace'), 5), 
-            'permissions': (_('Permissions'), self._render_permissions, hotwidgets.CellRendererText(family='Monospace'), 6), 
-            'mime': (_('File type'), self._render_mime, hotwidgets.CellRendererText(family='Monospace'), 7) 
-        }
-
+        
         self._table.set_search_column(0)
         self._table.set_search_equal_func(self.__path_search_equal)
 
-        self._columns = ['icon', 'path', 'size', 'last_modified']
+        self._insert_column('icon', title='', renderfunc=self._render_icon, renderer=gtk.CellRendererPixbuf(), valuefunc=lambda x: x.mime)
+        self._insert_column('path', title=_('Path'), renderfunc=self._render_path,
+                                    sortfunc=self.__compare_paths, 
+                                    family='Monospace')
+        self._insert_column('size', title=_('Size'), renderfunc=self._render_size, family='Monospace')
+        self._insert_column('last_modified', title=_('Last Modified'), renderfunc=self._render_last_modified, family='Monospace',
+                            valuefunc=lambda x: x.get_mtime())
         if self.__fs.supports_owner():
-            self._columns.append('owner')
+            self._insert_column('owner', title=_('Owner'), renderfunc=self._render_owner, valuefunc=lambda x: x.get_owner(),
+                                family='Monospace')
         if self.__fs.supports_group():
-            self._columns.append('group')
-        self._columns.append('permissions')
-        self._columns.append('mime')
-
-        self.__set_sort_funcs()
-        self._model.set_default_sort_func(None)
-        self._model.set_sort_column_id(1, gtk.SORT_ASCENDING)
-
-        for col in self._columns:
-            self._append_column(col)
-
-        self._table.get_column(0).set_spacing(0)
-        self._table.get_column(1).set_spacing(0)
-        self._linkcolumns.append(self._table.get_column(1))
+            self._insert_column('group', title=_('Group'), renderfunc=self._render_group, valuefunc=lambda x: x.get_group(), family='Monospace')
+        self._insert_column('permissions', title=_('Permissions'), renderfunc=self._render_permissions,
+                            valuefunc=lambda x: x.get_permissions_string(), 
+                            family='Monospace')
+        self._insert_column('mime', title=_('Mime Type'), renderfunc=self._render_mime, valuefunc=lambda x: x.get_mime(), 
+                            family='Monospace')
+        
+        # Sort on path by default
+        self._model.set_sort_column_id(1, gtk.SORT_ASCENDING)        
+        
         self.__sync_visible_columns()
 
     def _file_for_iter(self, model, iter):
         return model.get_value(iter, 0)
 
-    def _render_icon(self, col, cell, model, iter):
+    def _render_icon(self, col, cell, model, iter, data):
         obj = self._file_for_iter(model, iter)
         icon_name = obj.icon
         if icon_name:
@@ -162,7 +128,7 @@ class FilePathRenderer(TreeObjectsRenderer):
         else:
             cell.set_property('icon-name', None)
 
-    def _render_objtext(self, col, cell, model, iter):
+    def _render_path(self, col, cell, model, iter, data):
         obj = self._file_for_iter(model, iter)
         path = obj.path
         if self.__basedir:
@@ -181,7 +147,7 @@ class FilePathRenderer(TreeObjectsRenderer):
             text = path
         cell.set_property('text', text)
 
-    def _render_size(self, col, cell, model, iter):
+    def _render_size(self, col, cell, model, iter, data):
         obj = self._file_for_iter(model, iter)
         size = obj.get_size()
         if size is not None: 
@@ -189,7 +155,7 @@ class FilePathRenderer(TreeObjectsRenderer):
         else:
             cell.set_property('text', '')
 
-    def _render_last_modified(self, col, cell, model, iter):
+    def _render_last_modified(self, col, cell, model, iter, data):
         obj = self._file_for_iter(model, iter)
         mtime = obj.get_mtime()
         if mtime is not None:
@@ -198,20 +164,20 @@ class FilePathRenderer(TreeObjectsRenderer):
         else:
             cell.set_property('text', '')
 
-    def _render_owner(self, col, cell, model, iter):
+    def _render_owner(self, col, cell, model, iter, data):
         obj = self._file_for_iter(model, iter)
         cell.set_property('text', obj.get_owner() or '')
 
-    def _render_group(self, col, cell, model, iter):
+    def _render_group(self, col, cell, model, iter, data):
         obj = self._file_for_iter(model, iter)
         cell.set_property('text', obj.get_group() or '')
             
-    def _render_permissions(self, col, cell, model, iter):
+    def _render_permissions(self, col, cell, model, iter, data):
         obj = self._file_for_iter(model, iter)
         perms = obj.get_permissions_string()
         cell.set_property('text', perms or '')
         
-    def _render_mime(self, col, cell, model, iter):
+    def _render_mime(self, col, cell, model, iter, data):
         obj = self._file_for_iter(model, iter)
         mime = obj.get_mime()
         cell.set_property('text', mime or '')
@@ -346,27 +312,23 @@ class FilePathRenderer(TreeObjectsRenderer):
         if (self._table == None):
             return
         prefs = Preferences.getInstance()
-        self._table.get_column(self._column_info['size'][3]).set_visible(prefs.get_pref('hotwire.ui.render.File.columns.size', default=True))
-        self._table.get_column(self._column_info['last_modified'][3]).set_visible(prefs.get_pref('hotwire.ui.render.File.columns.last_modified', default=True))
-        self._table.get_column(self._column_info['owner'][3]).set_visible(prefs.get_pref('hotwire.ui.render.File.columns.owner', default=True))
-        self._table.get_column(self._column_info['group'][3]).set_visible(prefs.get_pref('hotwire.ui.render.File.columns.group', default=True))
-        self._table.get_column(self._column_info['permissions'][3]).set_visible(prefs.get_pref('hotwire.ui.render.File.columns.permissions', default=True))
-        self._table.get_column(self._column_info['mime'][3]).set_visible(prefs.get_pref('hotwire.ui.render.File.columns.mime', default=True))
+        for colname in ['size', 'last_modified', 'owner', 'group', 'permissions', 'mime']:
+            try:
+                col = self._get_propcol_by_name(colname)
+            except KeyError, e:
+                _logger.debug("failed to find col %r", colname, exc_info=True)
+                continue
+            pref = prefs.get_pref('hotwire.ui.render.File.columns.' + colname, default=True)
+            col.set_visible(pref)
 
     def __on_visible_columns_changed(self, prefs, key, value):
         self.__sync_visible_columns()
-   
-    def __set_sort_funcs(self):
-        compare = self.__standard_compare
-        column_id = 0
-        for col in self._columns:
-            self._model.set_sort_func(column_id, compare, self._column_info[col][3])
-            column_id = column_id + 1
 
     def __on_folders_before_files_changed(self, prefs, key, value):
         prefs = Preferences.getInstance()
         self.__folders_before_files = prefs.get_pref('hotwire.ui.render.File.general.foldersbeforefiles', default=True)
-        self.__set_sort_funcs()
+        # Redo sort
+        self._model.set_sort_column_id(1, gtk.SORT_ASCENDING)        
 
 ClassRendererMapping.getInstance().register(File, FilePathRenderer)
 ClassRendererMapping.getInstance().register(FilePath, FilePathRenderer)

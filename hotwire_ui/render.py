@@ -157,25 +157,52 @@ class TreeObjectsRenderer(ObjectsRenderer):
         col = self._table.get_column(colidx-1)
         col.set_resizable(True)
 
-    def _insert_proptext(self, name, title=None, **kwargs):
-        colidx = self._table.insert_column_with_data_func(-1, title or (name[0].upper() + name[1:]),
-                                                          hotwidgets.CellRendererText(**kwargs),
-                                                          self._render_proptext, name)
+    def _insert_column(self, name, proptype=None,
+                         title=None, renderer=None, 
+                         renderfunc=None, idx=0,
+                         valuefunc=None, sortfunc=None, **kwargs):
+        if title is None:
+            target_title = (name[0].upper() + name[1:])
+        else:
+            target_title = title
+        colidx = self._table.insert_column_with_data_func(-1, title,
+                                                          renderer or hotwidgets.CellRendererText(**kwargs),
+                                                          renderfunc or self._render_propcol, (name, idx))
         col = self._table.get_column(colidx-1)
         col.set_data('hotwire-propname', name)
-        col.set_data('hotwire-proptype', unicode)
+        col.set_data('hotwire-proptype', proptype)
         col.set_resizable(True)
-        return col
+        col.set_sort_column_id(colidx - 1)        
+        if sortfunc:
+            self._model.set_sort_func(colidx-1, sortfunc)
+        else:
+            self._model.set_sort_func(colidx-1, self._default_compare, (idx, valuefunc or (lambda x: getattr(x, name))))
+        return col        
+
+    def _insert_proptext(self, name, title=None, **kwargs):
+        return self._insert_column(name, proptype=unicode, title=title, renderfunc=self._render_proptext, **kwargs)
 
     def _insert_propcol(self, name, title=None, idx=0, **kwargs):
-        colidx = self._table.insert_column_with_data_func(-1, title or (name[0].upper() + name[1:]),
-                                                          hotwidgets.CellRendererText(**kwargs),
-                                                          self._render_propcol, (name, idx))
-        col = self._table.get_column(colidx-1)
-        col.set_data('hotwire-propname', name)
-        col.set_data('hotwire-proptype', 'any')
-        col.set_resizable(True)
-        return col
+        return self._insert_column(name, proptype='any', title=title, renderfunc=self._render_propcol, **kwargs)
+
+    def _get_propcol_by_name(self, name):
+        for column in self._table.get_columns():
+            colname = column.get_data('hotwire-propname')
+            if colname == name:
+                return column
+        raise KeyError(name)
+
+    def _default_compare(self, model, iter1, iter2, args):
+        (idx, value_func) = args        
+        obj1 = model.get_value(iter1, idx)
+        obj2 = model.get_value(iter2, idx)
+        if obj1 is None and obj2 is not None:
+            return 1
+        elif obj1 is not None and obj2 is None:
+            return -1
+        value1 = value_func(obj1)
+        value2 = value_func(obj2)
+        return cmp(value1, value2)
 
     def _set_search_column(self, col):
         colidx = -1
@@ -193,9 +220,10 @@ class TreeObjectsRenderer(ObjectsRenderer):
         (prop, idx) = data        
         obj = model.get_value(iter, idx)
         propval = getattr(obj, prop)
-        cell.set_property('text', unicode(repr(propval)))
+        cell.set_property('text', unicode(propval))
 
-    def _render_proptext(self, col, cell, model, iter, prop):
+    def _render_proptext(self, col, cell, model, iter, data):
+        (prop, idx) = data
         obj = model.get_value(iter, 0)
         propval = getattr(obj, prop)
         cell.set_property('text', propval)
@@ -203,14 +231,14 @@ class TreeObjectsRenderer(ObjectsRenderer):
     def _search_propcol(self, model, col, key, iter, prop):
         obj = model.get_value(iter, 0)
         propval = getattr(obj, prop)
-        text = unicode(repr(propval)) 
+        text = unicode(propval) 
         if text.find(key) >= 0:
             return False
         return True
 
     def _search_proptext(self, model, col, key, iter, prop):
         obj = model.get_value(iter, 0)
-        propval = getattr(obj, prop)
+        propval = unicode(getattr(obj, prop))
         if propval.find(key) >= 0:
             return False
         return True
