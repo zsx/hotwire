@@ -357,6 +357,7 @@ class CompletionStatusDisplay(hotwidgets.TransientPopup):
         self.__completer = None
         self.__complsys = CompletionSystem()
         self.__current_completion = None
+        self.__current_history = None
         self.__pending_completion_load = False
         self.__completion_display = MatchPopup(_('Completions (%s)') % ('TAB',),
                                                TabCompletionView,                                                
@@ -453,8 +454,9 @@ class CompletionStatusDisplay(hotwidgets.TransientPopup):
             self.emit('completions-loaded')
             self.__pending_completion_load = False
         else:
-            self.show()
-            self.queue_reposition()
+            if self.__current_completion.results or self.__current_history:
+                self.show()
+                self.queue_reposition()
 
     def _set_size_request(self):            
         (ref_x, ref_y, ref_w, ref_h, bits) = self.__entry.get_parent_window().get_geometry()
@@ -463,6 +465,7 @@ class CompletionStatusDisplay(hotwidgets.TransientPopup):
         
     def set_history_search(self, lang_uuid, histsearch):
         histitems = map(lambda result: (lang_uuid,result), self.__context.history.search_commands(lang_uuid, histsearch))
+        self.__current_history = not not histitems
         self.__global_history_display.set_content(histitems, uniquify=True)
         self.__global_history_display.set_matchtext(histsearch)
             
