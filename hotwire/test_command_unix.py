@@ -95,3 +95,15 @@ class PipelineRunTestsUnix(PipelineRunTestFramework):
         self.assertEquals(os.access(newoutpath, os.R_OK), True)
         same_testdata = open(newoutpath).read()
         self.assertEquals(same_testdata, testdata)
+        
+    def testCatBinCat(self):
+        self._setupTree1()
+        p = Pipeline.parse("/bin/cat testf | sys wc -l", self._context)
+        p.execute_sync()
+        results = list(p.get_output())
+        results.sort()
+        self.assertEquals(len(results), 1)
+        self.assertEquals(results[0], '0\n')
+        
+        
+        
