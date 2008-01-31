@@ -19,7 +19,7 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR 
 # THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import os,sys,logging,time,datetime
+import os,sys,logging,time,datetime,threading
 if sys.version_info[0] < 2 or sys.version_info[1] < 5:
     from pysqlite2 import dbapi2 as sqlite3
 else:    
@@ -41,7 +41,7 @@ class History(Singleton):
     def __init__(self):
         super(History, self).__init__()
         self.__no_save = False
-        path = _get_state_path('history.sqlite')
+        self.__path = path = _get_state_path('history.sqlite')
         _logger.debug("opening connection to history db: %s", path)
         self.__conn = sqlite3.connect(path, isolation_level=None)
         cursor = self.__conn.cursor()
@@ -73,16 +73,32 @@ class History(Singleton):
     def set_no_save(self):
         self.__no_save = True
 
-    def append_command(self, lang_uuid, cmd, cwd):
-        if self.__no_save:
-            return
-        cursor = self.__conn.cursor()
+    def __do_run_async(self, func, args, kwargs):
+        _logger.debug("in async run of %r", func)
+        conn = sqlite3.connect(self.__path, isolation_level=None)
+        try:
+            func(conn, *args, **kwargs)
+        finally:
+            del conn
+
+    def __run_async(self, func, *args, **kwargs):
+        self.__thread = threading.Thread(target=self.__do_run_async, args=(func, args, kwargs))
+        self.__thread.setDaemon(True)
+        self.__thread.start()
+        
+    def __do_append_command(self, conn, lang_uuid, cmd, cwd):
+        cursor = conn.cursor()
         cursor.execute('''BEGIN TRANSACTION''')
         vals = (cmd, datetime.datetime.now(), cwd, lang_uuid)
         _logger.debug("doing insert of %s", vals)
         cursor.execute('''INSERT INTO Commands VALUES (NULL, ?, ?, ?, ?)''', vals)
         cursor.execute('''COMMIT''')
-        self.append_dir_usage(cwd)        
+        self.__append_countitem('Directories', 'path', cwd, conn=conn)
+
+    def append_command(self, lang_uuid, cmd, cwd):
+        if self.__no_save:
+            return
+        self.__run_async(self.__do_append_command, lang_uuid, cmd, cwd)
         
     def __search_limit_query(self, tablename, column, orderval, searchterm, limit, countmin=0, filters=[], distinct=False):
         queryclauses = []
@@ -114,8 +130,9 @@ class History(Singleton):
         for v in cursor.execute(sql, args):
             yield v[1]
         
-    def __append_countitem(self, tablename, colname, value):
-        cursor = self.__conn.cursor()
+    def __append_countitem(self, tablename, colname, value, conn=None):
+        src_conn = conn or self.__conn
+        cursor = src_conn.cursor()
         cursor.execute('''BEGIN TRANSACTION''')
         cursor.execute('''SELECT * FROM %s WHERE %s = ?''' % (tablename, colname), (value,))
         result = cursor.fetchone()
@@ -128,9 +145,6 @@ class History(Singleton):
         _logger.debug("doing insert of %s", vals)
         cursor.execute('''INSERT OR REPLACE INTO %s VALUES (NULL, ?, ?, ?)''' % (tablename,), vals)
         cursor.execute('''COMMIT''')
-        
-    def append_dir_usage(self, path):
-        self.__append_countitem('Directories', 'path', path)
         
     def search_dir_usage(self, searchterm, limit=20):
         cursor = self.__conn.cursor()
