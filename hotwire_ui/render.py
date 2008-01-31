@@ -228,6 +228,19 @@ class TreeObjectsRenderer(ObjectsRenderer):
         propval = getattr(obj, prop)
         cell.set_property('text', propval)
 
+    def _render_icon(self, col, cell, model, iter, data):
+        (prop, idx) = data
+        obj = model.get_value(iter, idx)
+        icon_name = getattr(obj, prop)
+        if icon_name:
+            if icon_name.startswith(os.sep):
+                pixbuf = PixbufCache.getInstance().get(icon_name)
+                cell.set_property('pixbuf', pixbuf)
+            else:
+                cell.set_property('icon-name', icon_name)
+        else:
+            cell.set_property('icon-name', None)
+
     def _search_propcol(self, model, col, key, iter, prop):
         obj = model.get_value(iter, 0)
         propval = getattr(obj, prop)

@@ -90,7 +90,7 @@ class FilePathRenderer(TreeObjectsRenderer):
         self._table.set_search_column(0)
         self._table.set_search_equal_func(self.__path_search_equal)
 
-        self._insert_column('icon', title='', renderfunc=self._render_icon, renderer=gtk.CellRendererPixbuf(), valuefunc=lambda x: x.mime)
+        self._insert_column('icon', title='', renderfunc=self._render_icon, renderer=gtk.CellRendererPixbuf(), valuefunc=lambda x: x.mimetype)
         self._insert_column('path', title=_('Path'), renderfunc=self._render_path,
                                     sortfunc=self.__compare_paths, 
                                     family='Monospace')
@@ -115,18 +115,6 @@ class FilePathRenderer(TreeObjectsRenderer):
 
     def _file_for_iter(self, model, iter):
         return model.get_value(iter, 0)
-
-    def _render_icon(self, col, cell, model, iter, data):
-        obj = self._file_for_iter(model, iter)
-        icon_name = obj.icon
-        if icon_name:
-            if icon_name.startswith(os.sep):
-                pixbuf = PixbufCache.getInstance().get(icon_name)
-                cell.set_property('pixbuf', pixbuf)
-            else:
-                cell.set_property('icon-name', icon_name)
-        else:
-            cell.set_property('icon-name', None)
 
     def _render_path(self, col, cell, model, iter, data):
         obj = self._file_for_iter(model, iter)
