@@ -20,11 +20,12 @@
 # THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import os,sys,signal
+from itertools import imap
 
 import hotwire
 
 from hotwire.sysdep.proc import ProcessManager, Process
-from hotwire.builtin import Builtin, BuiltinRegistry
+from hotwire.builtin import Builtin, BuiltinRegistry, InputStreamSchema
 from hotwire.externals.singletonmixin import Singleton
 from hotwire.completion import Completer, Completion
 
@@ -70,6 +71,7 @@ class KillBuiltin(Builtin):
             options.append(['-' + _sigvalue_to_sym[num][3:]])
         super(KillBuiltin, self).__init__('kill', 'd5d1b62f-7317-448e-9cb0-3aa7ff459b8d',
                                           nostatus=True,
+                                          input=InputStreamSchema(Process, optional=True),
                                           options=options,                                     
                                           threaded=True)
         
@@ -91,9 +93,10 @@ class KillBuiltin(Builtin):
                 if optnum in _sigvalue_to_sym:
                     signum = optnum
                     break
-        argpids = map(int, args)
-        for arg in argpids:
+        for arg in imap(int, args):
             os.kill(arg, signum)
+        for arg in context.input:
+            os.kill(arg.pid, signum)
         return []
         
 BuiltinRegistry.getInstance().register(KillBuiltin())
