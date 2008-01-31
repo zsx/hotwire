@@ -41,6 +41,36 @@ except ImportError, e:
     gtksourceview_avail = False
     _logger.debug("gtksourceview not available")
 
+class GotoLineDialog(gtk.Dialog):
+    def __init__(self, parent):
+        super(GotoLineDialog, self).__init__(title=_("Go to line"),
+                                             parent=parent,
+                                             flags=gtk.DIALOG_DESTROY_WITH_PARENT,
+                                             buttons=(gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL,
+                                                      gtk.STOCK_JUMP_TO, gtk.RESPONSE_ACCEPT))
+        self.set_default_response(gtk.RESPONSE_ACCEPT)
+        self.set_has_separator(False)
+        self.set_border_width(5)
+        
+        self.__vbox = gtk.VBox()
+        self.vbox.add(self.__vbox)   
+        self.vbox.set_spacing(6)
+        self.__entry = gtk.Entry()
+        self.__entry.set_activates_default(True)
+        self.__vbox.add(self.__entry)
+            
+    def run_get_line(self):
+        self.show_all()
+        resp = self.run()
+        _logger.debug("got response %r", resp)
+        if resp != gtk.RESPONSE_ACCEPT:
+            return None
+        active = self.__entry.get_text() 
+        _logger.debug("got response text %r", active)        
+        if not active:
+            return None
+        return int(active)
+
 class HotEditorWindow(gtk.Window):
     def __init__(self, filename=None, content=None, title=None, parent=None, autosave=False):
         gtk.Window.__init__(self, type=gtk.WINDOW_TOPLEVEL)
@@ -61,7 +91,8 @@ class HotEditorWindow(gtk.Window):
       <menuitem action='Undo'/>
       <menuitem action='Redo'/>
       <separator/>
-      <menuitem action='Find'/>      
+      <menuitem action='Find'/>
+      <menuitem action='GotoLine'/>
     </menu>
     <menu action='ToolsMenu'>
       <menuitem action='About'/>
@@ -119,6 +150,8 @@ class HotEditorWindow(gtk.Window):
         
         self.input.move_mark_by_name('insert', self.input.get_start_iter())
         self.input.move_mark_by_name('selection_bound', self.input.get_start_iter())
+        
+        self.input.connect('mark-set', self.__on_mark_set)
 
         self.__searcharea = InlineSearchArea(self.input_view)
         self.__searcharea.connect('close', self.__on_search_close)
@@ -127,9 +160,15 @@ class HotEditorWindow(gtk.Window):
         self.__searcharea.set_no_show_all(True)
         vbox.pack_start(self.__searcharea, expand=False)
 
+        self.__status_hbox = gtk.HBox()
         self.__statusbar = gtk.Statusbar()
+        self.__status_hbox.pack_start(self.__statusbar, expand=True)
         self.__statusbar_ctx = self.__statusbar.get_context_id("HotEditor")
-        vbox.pack_start(self.__statusbar, expand=False)
+        self.__pos_status = gtk.Statusbar()
+        self.__pos_status.set_size_request(160, 10) # Taken from GEdit
+        self.__pos_context = self.__pos_status.get_context_id("HotEditor")
+        self.__status_hbox.pack_start(self.__pos_status, expand=False)
+        vbox.pack_start(self.__status_hbox, expand=False)
         self.__sync_undoredo()
         self.__sync_modified_sensitivity()
 
@@ -241,6 +280,15 @@ class HotEditorWindow(gtk.Window):
 
         return False
     
+    def __on_mark_set(self, buf, iter, mark):
+        cursor = buf.get_insert()
+        if cursor != mark:
+            return
+        self.__pos_status.pop(self.__pos_context)
+        ln = iter.get_line()
+        col = iter.get_line_offset()        
+        self.__pos_status.push(self.__pos_context, _('Ln %d, Col %d') % (ln, col))
+    
     def __handle_text_changed(self, text):
         _logger.debug("handling text changed")
         self.__modified = True
@@ -256,15 +304,18 @@ class HotEditorWindow(gtk.Window):
             gobject.source_remove(self.__save_text_id)
         self.__save_text_id = gobject.timeout_add(15000, self.__idle_save_text, _("Autosaving"))
 
+    @log_except(_logger)
     def __revert_cb(self, action):
         self.__handle_revert()
 
     def __handle_revert(self):
         self.input.set_property('text', self.__original_text)
         
+    @log_except(_logger)        
     def __save_cb(self, action):
         self.__do_save(_("Saving..."))
         
+    @log_except(_logger)        
     def __save_as_cb(self, action):
         chooser = gtk.FileChooserDialog(_("Save As..."), self, gtk.FILE_CHOOSER_ACTION_SAVE,
                                         (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL,
@@ -280,6 +331,7 @@ class HotEditorWindow(gtk.Window):
     def __handle_delete_event(self, w, e):
         return self.__handle_close()
 
+    @log_except(_logger)
     def __close_cb(self, action):
         self.__handle_close()
         
@@ -313,9 +365,11 @@ class HotEditorWindow(gtk.Window):
                 self.destroy()
         return True                     
 
+    @log_except(_logger)
     def __undo_cb(self, action):
         self.input.undo()
 
+    @log_except(_logger)
     def __redo_cb(self, action):
         self.input.redo()
 
@@ -323,9 +377,20 @@ class HotEditorWindow(gtk.Window):
         self.__actiongroup.get_action('Redo').set_sensitive(gtksourceview_avail and self.input.can_redo())
         self.__actiongroup.get_action('Undo').set_sensitive(gtksourceview_avail and self.input.can_undo())
         
+    @log_except(_logger)        
     def __search_cb(self, a):
         self.__searcharea.show()
         self.__searcharea.focus()
+
+    @log_except(_logger)        
+    def __goto_line_cb(self, a):
+        dlg = GotoLineDialog(self)
+        line_num = dlg.run_get_line()
+        dlg.destroy()        
+        if line_num is None:
+            return
+        iter = self.input.get_iter_at_line(line_num)
+        self.input.place_cursor(iter)       
 
     def __create_ui(self):
         self.__actiongroup = ag = gtk.ActionGroup('WindowActions')
@@ -338,7 +403,8 @@ class HotEditorWindow(gtk.Window):
             ('EditMenu', None, '_Edit'),
             ('Undo', gtk.STOCK_UNDO, _('_Undo'), '<control>z', _('Undo previous action'), self.__undo_cb),
             ('Redo', gtk.STOCK_REDO, _('_Redo'), '<control><shift>Z', _('Redo action'), self.__redo_cb),
-            ('Find', gtk.STOCK_FIND, _('_Find'), '<control>f', _('Find text'), self.__search_cb),            
+            ('Find', gtk.STOCK_FIND, _('_Find'), '<control>f', _('Find text'), self.__search_cb),
+            ('GotoLine', gtk.STOCK_JUMP_TO, _('_Go to Line'), '<control>l', _('Jump to line number'), self.__goto_line_cb),
             ('ToolsMenu', None, _('_Tools')),                    
             ('About', gtk.STOCK_ABOUT, _('_About'), None, _('About Hotwire'), self.__help_about_cb),            
             ]
