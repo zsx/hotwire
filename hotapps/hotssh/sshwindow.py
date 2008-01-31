@@ -27,6 +27,7 @@ from hotvte.vteterm import VteTerminalWidget
 from hotvte.vtewindow import VteWindow
 from hotvte.vtewindow import VteApp
 
+from hotwire.logutil import log_except
 from hotwire.externals.dispatch import dispatcher
 from hotwire_ui.quickfind import QuickFindWindow
 from hotwire.sshutil import OpenSSHKnownHosts
@@ -207,15 +208,15 @@ class SshTerminalWidget(gtk.VBox):
         if self.__cmd_exited:
             return
         if self.__connecting_state:
-            text = 'Connecting'
+            text = _('Connecting')
         elif self.__connected is True:
-            text = 'Connected (%.2fs latency)' % (self.__latency)
+            text = _('Connected (%.2fs latency)') % (self.__latency)
         elif self.__connected is False:
-            text = '<span foreground="red">Disconnected</span>'
+            text = '<span foreground="red">%s</span>' % (_('Disconnected'))
         elif self.__connected is None:
-            text = 'Checking connection'
+            text = _('Checking connection')
         if len(self.__sshopts) > 1:
-            text += '; Options: ' + (' '.join(map(gobject.markup_escape_text, self.__sshopts)))
+            text += _('; Options: ') + (' '.join(map(gobject.markup_escape_text, self.__sshopts)))
         self.__msg.set_markup(text)
         
     def connect(self):
@@ -224,6 +225,9 @@ class SshTerminalWidget(gtk.VBox):
         term.connect('child-exited', self.__on_child_exited)
         term.show_all()
         self.pack_start(term, expand=True)
+        # For some reason, VTE doesn't have the CAN_FOCUS flag set, so we can't call
+        # grab_focus.  Do it manually then:
+        term.emit('focus', True)
         self.__sync_msg()
         
     def reconnect(self):
@@ -305,9 +309,11 @@ class SshWindow(VteWindow):
     def __on_dbus_error(self, *args):
         _logger.debug("caught DBus error: %r", args, exc_info=True)
         
+    @log_except(_logger)        
     def __on_nm_connections(self, connections):
         _logger.debug("nm connections: %s", connections)    
         
+    @log_except(_logger)        
     def __on_host_status(self, hostmon, host, connected, latency):
         _logger.debug("got host status host=%s conn=%s latency=%s", host, connected, latency)
         for widget in self._get_notebook().get_children():
@@ -316,6 +322,7 @@ class SshWindow(VteWindow):
                 continue
             widget.set_status(connected, latency)
             
+    @log_except(_logger)            
     def __on_is_active_changed(self, *args):
         isactive = self.get_property('is-active')
         if isactive:
@@ -330,6 +337,7 @@ class SshWindow(VteWindow):
         self.__idle_stop_monitoring_id = 0
         self.__stop_monitoring()
         
+    @log_except(_logger)
     def __on_page_switch(self, n, p, pn):
         # Becuase of the way get_current_page() works in this signal handler, this
         # will actually disable monitoring for the previous tab, and enable it
@@ -358,17 +366,18 @@ class SshWindow(VteWindow):
     def __merge_ssh_ui(self):
         self.__using_accels = True
         self.__actions = actions = [
-            ('NewConnection', gtk.STOCK_NEW, 'Connect to host', '<control><shift>O',
-             'Open a new SSH connection', self.__new_connection_cb),                                      
-            ('CopyConnection', gtk.STOCK_NEW, 'New tab for connection', '<control><shift>T',
-             'Open a new tab for the same remote computer', self.__copy_connection_cb),              
-            ('OpenSFTP', gtk.STOCK_NEW, 'Open SFTP', '<control><shift>S',
-             'Open a SFTP connection', self.__open_sftp_cb),            
-            ('ConnectionMenu', None, 'Connection'),
-            ('Reconnect', None, '_Reconnect', '<control><shift>R', 'Reset connection to server', self.__reconnect_cb),
+            ('NewConnection', gtk.STOCK_NEW, _('Connect to host'), '<control><shift>O',
+             _('Open a new SSH connection'), self.__new_connection_cb),                                      
+            ('CopyConnection', gtk.STOCK_NEW, _('New tab for connection'), '<control><shift>T',
+             _('Open a new tab for the same remote computer'), self.__copy_connection_cb),              
+            ('OpenSFTP', gtk.STOCK_NEW, _('Open SFTP'), '<control><shift>S',
+             _('Open a SFTP connection'), self.__open_sftp_cb),            
+            ('ConnectionMenu', None, _('Connection')),
+            ('Reconnect', None, _('_Reconnect'), '<control><shift>R', _('Reset connection to server'), self.__reconnect_cb),
             ]
         self._merge_ui(self.__actions, self.__ui_string)
         
+    @log_except(_logger)        
     def __copy_connection_cb(self, action):
         notebook = self._get_notebook()
         widget = notebook.get_nth_page(notebook.get_current_page())
@@ -378,6 +387,7 @@ class SshWindow(VteWindow):
         args.append(host)
         self.new_tab(args, None)
         
+    @log_except(_logger)        
     def __new_connection_cb(self, action):
         win = ConnectDialog(parent=self)
         sshargs = win.run_get_cmd()
@@ -385,12 +395,14 @@ class SshWindow(VteWindow):
             return
         self.new_tab(sshargs, None)
         
+    @log_except(_logger)        
     def __open_sftp_cb(self, action):
         notebook = self._get_notebook()        
         widget = notebook.get_nth_page(notebook.get_current_page())
         host = widget.get_host()
         subprocess.Popen(['nautilus', 'sftp://%s' % (host,)])
         
+    @log_except(_logger)        
     def __reconnect_cb(self, a):
         notebook = self._get_notebook()        
         widget = notebook.get_nth_page(notebook.get_current_page())
