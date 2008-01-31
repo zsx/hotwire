@@ -79,7 +79,7 @@ class History(Singleton):
         try:
             func(conn, *args, **kwargs)
         finally:
-            del conn
+            conn.close()
 
     def __run_async(self, func, *args, **kwargs):
         self.__thread = threading.Thread(target=self.__do_run_async, args=(func, args, kwargs))
