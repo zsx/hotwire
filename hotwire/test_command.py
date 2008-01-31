@@ -558,7 +558,12 @@ class PipelineRunTests(PipelineRunTestFramework):
         results = list(p.get_output())
         self.assertEquals(len(results), 1)
         self.assertEquals(results[0].basename, u'testf')
-
+        
+    def testSyncException(self):
+        self._setupTree1()
+        p = Pipeline.parse("py-eval 'None+2'", self._context)
+        self.assertRaises(TypeError, p.execute_sync)
+        
 def suite():
     loader = unittest.TestLoader()
     loader.loadTestsFromTestCase(PipelineParserTests)

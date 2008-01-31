@@ -330,8 +330,11 @@ class Command(gobject.GObject):
                     outfile.close()
                 self.builtin.cleanup(self.context)
         except Exception, e:
-            _logger.exception("Caught exception: %s", e)
-            self.emit("exception", e)
+            _logger.debug("Caught exception from command: %s", e, exc_info=True)
+            if self.__executing_sync:
+                raise e
+            else:
+                self.emit("exception", e)
         self.output.put(self.map_fn(None))
         self.emit("complete")  
         
@@ -449,6 +452,7 @@ class Pipeline(gobject.GObject):
                  idempotent=False,
                  undoable=False):
         super(Pipeline, self).__init__()
+        self.__executing_sync = False
         self.__components = components
         for component in self.__components:
             component.set_pipeline(self)
@@ -534,6 +538,7 @@ class Pipeline(gobject.GObject):
         self.__execute_internal(False, **kwargs)
 
     def execute_sync(self, **kwargs):
+        self.__executing_sync = True
         self.__execute_internal(True, **kwargs)
 
     def push_undo(self, fn):
