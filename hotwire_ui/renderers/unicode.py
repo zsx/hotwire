@@ -97,7 +97,8 @@ class InputArea(gtk.HBox):
         self.emit("close")
         
     def __do_send(self):
-        self.emit('object-input', self.__input.get_property('text'), self.__password_button.get_active())
+        obj = unicode(self.__input.get_property('text') + '\n')
+        self.emit('object-input', obj, self.__password_button.get_active())
         self.reset()
         
     def __recheck_password_mode(self):
