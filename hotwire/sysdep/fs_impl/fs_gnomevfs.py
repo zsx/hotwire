@@ -56,28 +56,25 @@ Important members include the "vfsstat" and "uri"."""
             stbuf = self.vfsstat
         return stbuf and (stbuf.type == gnomevfs.FILE_TYPE_DIRECTORY)
 
-    def get_size(self):
+    def _get_stat_mode(self):
+        return self.vfsstat.permissions
+
+    def _get_size(self):
         return self.vfsstat and self.vfsstat.size
 
-    def get_mtime(self):
+    def _get_mtime(self):
         return self.vfsstat and self.vfsstat.mtime
     
-    def get_mode(self):
-        return self.vfsstat and self.vfsstat.type
-    
-    def get_permissions(self):
-        return self.vfsstat and self.vfsstat.permissions
-    
-    def get_uid(self):
+    def _get_uid(self):
         return self.vfsstat and self.vfsstat.uid
     
-    def get_gid(self):
+    def _get_gid(self):
         return self.vfsstat and self.vfsstat.gid
     
-    def get_mime(self):
+    def _get_mime(self):
         return self.vfsstat and self.vfsstat.mime_type
             
-    def get_file_type_char(self):
+    def _get_file_type_char(self):
         vfsstat = self.vfsstat
         if vfsstat.type == gnomevfs.FILE_TYPE_REGULAR:
             return '-'
@@ -203,7 +200,7 @@ class GnomeVFSFilesystem(UnixFilesystem):
         if file_obj.test_directory(follow_link=True):
             return []
         
-        apps = gnomevfs.mime_get_all_applications(file_obj.get_mime())
+        apps = gnomevfs.mime_get_all_applications(file_obj.mimetype)
         menuitems = []
         pbcache = PixbufCache.getInstance()
         def add_menuitem(app):

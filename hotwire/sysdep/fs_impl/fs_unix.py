@@ -48,16 +48,22 @@ class UnixFilesystem(BaseFilesystem):
         
 class UnixFile(File): 
     """A bare Unix file abstraction, using just the builtin Python methods."""
+    
+    owner = property(lambda self: self._get_uid(), doc="""Owner UID""")
+    group = property(lambda self: self._get_gid(), doc="""Group GID""")
+    owner_name = property(lambda self: self._get_owner(), doc="""Owner name""")
+    group_name = property(lambda self: self._get_group(), doc="""Group name""")    
+    
     def __init__(self, *args, **kwargs):
         super(UnixFile, self).__init__(*args, **kwargs)
   
-    def get_uid(self):
+    def _get_uid(self):
         return self.stat and self.stat.st_uid
     
-    def get_gid(self):
+    def _get_gid(self):
         return self.stat and self.stat.st_gid
     
-    def get_file_type_char(self):
+    def _get_file_type_char(self):
         stmode = self.get_mode()
         if stat.S_ISREG(stmode): return '-'
         elif stat.S_ISDIR(stmode): return 'd'
@@ -67,8 +73,8 @@ class UnixFile(File):
     def _do_get_hidden(self):
         self._hidden = self.basename.startswith('.')        
     
-    def get_owner(self):
-        uid = self.get_uid()
+    def _get_owner(self):
+        uid = self.owner
         if uid is None:
             return
         try:
@@ -76,8 +82,8 @@ class UnixFile(File):
         except KeyError, e:
             return str(uid)
 
-    def get_group(self):
-        gid = self.get_gid()
+    def _get_group(self):
+        gid = self.group
         if gid is None:
             return
         try:

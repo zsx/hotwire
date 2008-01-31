@@ -96,16 +96,16 @@ class FilePathRenderer(TreeObjectsRenderer):
                                     family='Monospace')
         self._insert_column('size', title=_('Size'), renderfunc=self._render_size, family='Monospace')
         self._insert_column('last_modified', title=_('Last Modified'), renderfunc=self._render_last_modified, family='Monospace',
-                            valuefunc=lambda x: x.get_mtime())
+                            valuefunc=lambda x: x.mtime)
         if self.__fs.supports_owner():
             self._insert_column('owner', title=_('Owner'), renderfunc=self._render_owner, valuefunc=lambda x: x.get_owner(),
                                 family='Monospace')
         if self.__fs.supports_group():
             self._insert_column('group', title=_('Group'), renderfunc=self._render_group, valuefunc=lambda x: x.get_group(), family='Monospace')
         self._insert_column('permissions', title=_('Permissions'), renderfunc=self._render_permissions,
-                            valuefunc=lambda x: x.get_permissions_string(), 
+                            valuefunc=lambda x: x.permissions_string, 
                             family='Monospace')
-        self._insert_column('mime', title=_('Mime Type'), renderfunc=self._render_mime, valuefunc=lambda x: x.get_mime(), 
+        self._insert_column('mime', title=_('Mime Type'), renderfunc=self._render_mime, valuefunc=lambda x: x.mimetype, 
                             family='Monospace')
         
         # Sort on path by default
@@ -149,7 +149,7 @@ class FilePathRenderer(TreeObjectsRenderer):
 
     def _render_size(self, col, cell, model, iter, data):
         obj = self._file_for_iter(model, iter)
-        size = obj.get_size()
+        size = obj.size
         if size is not None: 
             cell.set_property('text', format_file_size(size))
         else:
@@ -157,7 +157,7 @@ class FilePathRenderer(TreeObjectsRenderer):
 
     def _render_last_modified(self, col, cell, model, iter, data):
         obj = self._file_for_iter(model, iter)
-        mtime = obj.get_mtime()
+        mtime = obj.mtime
         if mtime is not None:
             dt = datetime.datetime.fromtimestamp(mtime) 
             cell.set_property('text', dt.isoformat(' '))
@@ -166,20 +166,20 @@ class FilePathRenderer(TreeObjectsRenderer):
 
     def _render_owner(self, col, cell, model, iter, data):
         obj = self._file_for_iter(model, iter)
-        cell.set_property('text', obj.get_owner() or '')
+        cell.set_property('text', obj.owner_name or '')
 
     def _render_group(self, col, cell, model, iter, data):
         obj = self._file_for_iter(model, iter)
-        cell.set_property('text', obj.get_group() or '')
+        cell.set_property('text', obj.group_name or '')
             
     def _render_permissions(self, col, cell, model, iter, data):
         obj = self._file_for_iter(model, iter)
-        perms = obj.get_permissions_string()
+        perms = obj.permissions_string
         cell.set_property('text', perms or '')
         
     def _render_mime(self, col, cell, model, iter, data):
         obj = self._file_for_iter(model, iter)
-        mime = obj.get_mime()
+        mime = obj.mimetype
         cell.set_property('text', mime or '')
         
     @log_except(_logger)

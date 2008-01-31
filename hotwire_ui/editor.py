@@ -192,7 +192,7 @@ class HotEditorWindow(gtk.Window):
         self.input_view.modify_font(pango.FontDescription("monospace"))
         fs = Filesystem.getInstance()
         try:
-            mimetype = fs.get_file_sync(self.__filename).get_mime()
+            mimetype = fs.get_file_sync(self.__filename).mimetype
         except FileStatError, e:
             mimetype = None
         target_lang = None        

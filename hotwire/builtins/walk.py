@@ -65,8 +65,7 @@ class WalkBuiltin(FileOpBuiltin):
                     del subdirs[i-c]
             for fname in fnames:
                 fpath = path_join(dirpath, fname)                
-                fobj = fs.get_file(fpath)
-                fobj.get_stat_sync()
+                fobj = fs.get_file_sync(fpath)
                 if ignorecheck and fobj.hidden:
                     continue
                 yield fobj

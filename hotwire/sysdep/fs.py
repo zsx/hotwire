@@ -172,12 +172,17 @@ class File(object):
     path = property(lambda self: self._path, doc="""Complete path to file, expressed in Hotwire notation (always forward slashes)""")
     uri = property(lambda self: self._uri, doc="""URI notation for file""")
     basename = property(lambda self: self._basename, doc="""Name of file (without directory component)""")
-    size = property(lambda self: self.get_size(), doc="""Size in bytes of file, or None if unknown""")
+    size = property(lambda self: self._get_size(), doc="""Size in bytes of file, or None if unknown""")
     hidden = property(lambda self: self._hidden, doc="""Whether or not this file is normally visible in directory listings""")
     icon = property(lambda self: self._icon, doc="""Icon name (internal Hotwire/GTK+ representation)""")
     is_directory = property(lambda self: self.test_directory(), doc="""Whether or not this object represents a directory""")
     is_executable = property(lambda self: self._is_executable(), doc="""Whether or not this object represents an OS-executable file""")
     is_link = property(lambda self: self._is_link(), doc="""Whether or not this object represents a symbolic link""")
+    file_type_char = property(lambda self:self._get_file_type_char(), doc="""Unix-style file type character ('d' for directory, etc.)""")
+    stat_mode = property(lambda self: self._get_stat_mode(), doc="""Unix-style access mode""")
+    permissions_string = property(lambda self: self._get_permissions_string(), doc="""Unix-style compact permissions string""")
+    mtime = property(lambda self: self._get_mtime(), doc="""Modification time, in seconds since the epoch""")
+    mimetype = property(lambda self: self._get_mime(), doc="""MIME type""")
 
     __slots__ = ['fs', 'stat', 'xaccess', 'icon_error', '_permstring', 'target_stat', 'stat_error']
     def __init__(self, path, fs=None):
@@ -212,37 +217,34 @@ class File(object):
     def _is_executable(self):
         return self.xaccess
 
-    def get_size(self):
+    def _get_size(self):
         if self.stat and stat.S_ISREG(self.stat.st_mode):
             return self.stat.st_size
         return None
 
-    def get_mtime(self):
+    def _get_mtime(self):
         if self.stat:
             return self.stat.st_mtime
         return None
     
-    def get_mode(self):
-        return self.stat and self.stat.st_mode
-    
-    def get_permissions(self):
-        return self.stat and self.stat.st_mode
-    
-    def get_file_type_char(self):
+    def _get_file_type_char(self):
         if self.is_directory:
             return 'd'
-        return '-'    
+        return '-'
+    
+    def _get_stat_mode(self):
+        return self.stat.st_mode
 
-    def get_permissions_string(self):
+    def _get_permissions_string(self):
         if self._permstring:
             return self._permstring
         
-        perms = self.get_permissions()
+        perms = self.stat_mode
         if not perms:
             return
         buf = StringIO()
                 
-        buf.write(self.get_file_type_char())
+        buf.write(self.file_type_char)
         
         if perms & stat.S_ISUID: buf.write('s')
         elif perms &stat.S_IRUSR: buf.write('r')
@@ -270,7 +272,7 @@ class File(object):
         self._permstring = buf.getvalue()
         return self._permstring
     
-    def get_mime(self):
+    def _get_mime(self):
         return None
 
     def get_stat(self):
@@ -322,12 +324,6 @@ class File(object):
     def __idle_emit_changed(self):
         responses = dispatcher.send(sender=self)
         _logger.debug("idle changed dispatch from %r, responses=%r", self, responses)
-        
-    def set_icon(self, icon):
-        self._icon = icon
-        
-    def set_icon_error(self, err):
-        self.icon_error = err
         
 class BaseBookmarks(Singleton):
     def __init__(self):
