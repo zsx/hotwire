@@ -53,8 +53,6 @@ expressed as an iterable which yielded a single object.""")
             yield o         
 
     def execute(self, context, args, options=[]):
-        if len(args) > 1:
-            raise ValueError(_("Too many arguments specified"))
         if len(args) < 1:
             raise ValueError(_("Too few arguments specified"))
         locals = {'hot_context': context,
@@ -77,10 +75,12 @@ expressed as an iterable which yielded a single object.""")
             if not hasattr(mainfunc, '__call__'):
                 yield None
                 return
-            retv = mainfunc()
+            retv = mainfunc(*(args[1:]))
             for v in self.__itervalue(retv):
                 yield v
         else:
+            if len(args) > 1:
+                raise ValueError(_("Too many arguments specified"))            
         # We want to actually get the object that results from a user typing
         # input such as "20" or "import os; os".  The CPython interpreter
         # has some deep hackery inside which transforms "single" input styles
