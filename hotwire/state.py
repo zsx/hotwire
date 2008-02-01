@@ -71,7 +71,7 @@ class History(Singleton):
         # Currently just used to note which persist tables have been converted        
         cursor.execute('''CREATE TABLE IF NOT EXISTS Meta (keyName TEXT UNIQUE, keyValue)''')
         
-        if not have_history:
+        if not have_history and os.path.exists(os.path.expanduser("~/.bash_history")):
             self.__run_async(self.__import_bash_history)
 
     def __import_bash_history(self, conn):
