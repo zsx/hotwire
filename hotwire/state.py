@@ -42,6 +42,7 @@ class History(Singleton):
         super(History, self).__init__()
         self.__no_save = False
         self.__path = path = _get_state_path('history.sqlite')
+        have_history = os.path.exists(path)
         _logger.debug("opening connection to history db: %s", path)
         self.__conn = sqlite3.connect(path, isolation_level=None)
         cursor = self.__conn.cursor()
@@ -70,6 +71,24 @@ class History(Singleton):
         # Currently just used to note which persist tables have been converted        
         cursor.execute('''CREATE TABLE IF NOT EXISTS Meta (keyName TEXT UNIQUE, keyValue)''')
         
+        if not have_history:
+            self.__run_async(self.__import_bash_history)
+
+    def __import_bash_history(self, conn):
+        try:
+            f = open(os.path.expanduser("~/.bash_history"))
+            now = datetime.datetime.now()
+            cursor = conn.cursor()
+            cursor.execute('''BEGIN TRANSACTION''')
+            for line in f:
+                line = line.rstrip() # strip the newline
+                vals = (line, now, "/", "62270c40-a94a-44dd-aaa0-689f882acf34")
+                _logger.debug("doing insert of %s", vals)
+                cursor.execute('''INSERT INTO Commands VALUES (NULL, ?, ?, ?, ?)''', vals)
+            cursor.execute('''COMMIT''')
+        finally:
+            f.close()
+
     def set_no_save(self):
         self.__no_save = True
 
