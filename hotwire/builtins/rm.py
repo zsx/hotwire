@@ -36,7 +36,7 @@ class RmBuiltin(FileOpBuiltin):
                                         undoable=True,
                                         hasstatus=True,
                                         threaded=True,
-                                        options=[['-u', '--unlink']])
+                                        options=[['-u', '--unlink'],['-r', '--recursive']])
 
     def execute(self, context, args, options=[]):
         if len(args) == 0:
@@ -46,9 +46,13 @@ class RmBuiltin(FileOpBuiltin):
         undo_targets = []
         self._status_notify(context, sources_total, 0)
         fs = Filesystem.getInstance()
+        recursive = '-r' in options
         if '-u' in options:
-            for arg in sources:
-                os.unlink(arg)
+            for i,arg in enumerate(sources):
+                if recursive:
+                    shutil.rmtree(arg, True)
+                else:
+                    os.unlink(arg)
                 self._status_notify(context,sources_total,i+1)                
             return []
         else:
