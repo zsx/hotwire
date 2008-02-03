@@ -48,4 +48,4 @@ class MkdirBuiltin(FileOpBuiltin):
             self._status_notify(context, sources_total, i+1)
 
         return []
-BuiltinRegistry.getInstance().register(MkdirBuiltin())
+BuiltinRegistry.getInstance().register_hotwire(MkdirBuiltin())

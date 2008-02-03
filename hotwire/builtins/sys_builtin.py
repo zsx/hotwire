@@ -274,4 +274,4 @@ class SysBuiltin(Builtin):
             retcode_str = _('signal %d') % (abs(retcode),)
         context.status_notify(_('Exit %s') % (retcode_str,))
         
-BuiltinRegistry.getInstance().register(SysBuiltin())
+BuiltinRegistry.getInstance().register_hotwire(SysBuiltin())

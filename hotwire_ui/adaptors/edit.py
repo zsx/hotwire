@@ -41,4 +41,4 @@ class EditBuiltin(Builtin):
         prefeditor = EditorRegistry.getInstance().get_preferred()
         prefeditor.run_many(context.cwd, *args)
         return []
-BuiltinRegistry.getInstance().register(EditBuiltin())
+BuiltinRegistry.getInstance().register_hotwire(EditBuiltin())

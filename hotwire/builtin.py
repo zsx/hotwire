@@ -163,21 +163,67 @@ class Builtin(object):
         return self.api_version
 
 class BuiltinRegistry(Singleton):
+    """Manages the set of registered builtins.
+Currently there are 3 possible categories of builtin:
+ "system" - These builtins are part of extensions shipped with the operating system.
+ "hotwire" - Builtins included with the Hotwire source distribution
+ "user" - Custom builtins loaded from per-user configuration.
+"""    
+    
+    system_set = property(lambda self: self.__system_builtins, doc="""Set of system builtins""")
+    hotwire_set = property(lambda self: self.__hotwire_builtins, doc="""Set of system builtins""")
+    user_set = property(lambda self: self.__user_builtins, doc="""Set of user builtins""")
+
     def __init__(self):
-        self.__builtins = set()
+        self.__system_builtins = set()        
+        self.__hotwire_builtins = set()
+        self.__user_builtins = set()
+        self.__sets = [self.__user_builtins, self.__hotwire_builtins, self.__system_builtins]
 
+    def __lookup_builtin(self, bset, name):
+        for b in bset:
+            if b.name == name or name in b.aliases:
+                return b
+        return None
+    
     def __getitem__(self, name):
-        for x in self.__builtins:
-            if x.name == name or name in x.aliases:
-                return x
+        for bset in self.__sets:
+            b = self.__lookup_builtin(bset, name)
+            if b: 
+                return b
         raise KeyError(name)
-
+        
     def __iter__(self):
-        for x in self.__builtins:
-            yield x
+        for bset in self.__sets:
+            for b in bset:
+                yield b   
 
-    def register(self, builtin):
-        self.__builtins.add(builtin)
+    def __register(self, bset, builtin):
+        existing = None
+        for b in bset:
+            if b.name == builtin.name:
+                existing = b
+                break
+            b_aliases = set(b.aliases)
+            builtin_aliases = set(builtin.aliases)
+            inter = b_aliases.intersection(builtin_aliases)
+            if len(inter) > 0:
+                existing = b
+                break
+        if existing is not None:
+            _logger.debug("deregistering existing instance %r", existing)
+            bset.remove(existing)
+        _logger.debug("registering %r (set: %r)", builtin, bset)
+        bset.add(builtin)
+
+    def register_system(self, builtin):
+        self.__register(self.__system_builtins, builtin)
+        
+    def register_hotwire(self, builtin):
+        self.__register(self.__hotwire_builtins, builtin)
+        
+    def register_user(self, builtin):
+        self.__register(self.__user_builtins, builtin)                     
 
 def load():
     import hotwire.builtins.apply    

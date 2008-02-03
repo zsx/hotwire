@@ -46,4 +46,4 @@ Single integer argument selects object at that index.""")
         elif len(args) > 2:
             raise ValueError(_("Too many arguments specified"))            
     
-BuiltinRegistry.getInstance().register(SelectionBuiltin())
+BuiltinRegistry.getInstance().register_hotwire(SelectionBuiltin())

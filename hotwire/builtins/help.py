@@ -41,4 +41,4 @@ class HelpBuiltin(Builtin):
         yield HelpItem(args)
             
     
-BuiltinRegistry.getInstance().register(HelpBuiltin())
+BuiltinRegistry.getInstance().register_hotwire(HelpBuiltin())

@@ -64,4 +64,4 @@ class RmBuiltin(FileOpBuiltin):
             finally:
                 context.push_undo(lambda: fs.undo_trashed(undo_targets))
         return []
-BuiltinRegistry.getInstance().register(RmBuiltin())
+BuiltinRegistry.getInstance().register_hotwire(RmBuiltin())

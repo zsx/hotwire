@@ -99,4 +99,4 @@ class KillBuiltin(Builtin):
             os.kill(arg.pid, signum)
         return []
         
-BuiltinRegistry.getInstance().register(KillBuiltin())
+BuiltinRegistry.getInstance().register_hotwire(KillBuiltin())

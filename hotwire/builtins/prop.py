@@ -45,4 +45,4 @@ class PropBuiltin(Builtin):
                 yield (arg, target_propvalue)
             else:
                 yield target_propvalue
-BuiltinRegistry.getInstance().register(PropBuiltin())
+BuiltinRegistry.getInstance().register_hotwire(PropBuiltin())

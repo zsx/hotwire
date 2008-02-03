@@ -31,4 +31,4 @@ class TermBuiltin(Builtin):
         context.hotwire.open_term(context.cwd, context.pipeline, arg, window=('-w' in options))
         return []
         
-BuiltinRegistry.getInstance().register(TermBuiltin())
+BuiltinRegistry.getInstance().register_hotwire(TermBuiltin())

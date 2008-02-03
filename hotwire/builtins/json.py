@@ -59,4 +59,4 @@ class JsonBuiltin(Builtin):
                 yield line[0:-1]
             else:
                 yield line
-BuiltinRegistry.getInstance().register(JsonBuiltin())
+BuiltinRegistry.getInstance().register_hotwire(JsonBuiltin())

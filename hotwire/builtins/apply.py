@@ -49,4 +49,4 @@ class ApplyBuiltin(Builtin):
         for result in pipeline.get_output():
             yield result
 
-BuiltinRegistry.getInstance().register(ApplyBuiltin())
+BuiltinRegistry.getInstance().register_hotwire(ApplyBuiltin())

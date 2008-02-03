@@ -39,4 +39,4 @@ class StringifyBuiltin(Builtin):
                 yield str(arg)
             else:
                 yield arg
-BuiltinRegistry.getInstance().register(StringifyBuiltin())
+BuiltinRegistry.getInstance().register_hotwire(StringifyBuiltin())

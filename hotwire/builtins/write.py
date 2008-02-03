@@ -54,4 +54,4 @@ class WriteBuiltin(Builtin):
         map(lambda x: x.close(), streams)
         return []
 
-BuiltinRegistry.getInstance().register(WriteBuiltin())
+BuiltinRegistry.getInstance().register_hotwire(WriteBuiltin())

@@ -60,4 +60,4 @@ class CdBuiltin(Builtin):
         new_dir = context.hotwire.chdir(target_dir)
         for result in BuiltinRegistry.getInstance()['ls'].execute(context, [new_dir]):
             yield result
-BuiltinRegistry.getInstance().register(CdBuiltin())
+BuiltinRegistry.getInstance().register_hotwire(CdBuiltin())

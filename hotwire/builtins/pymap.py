@@ -59,4 +59,4 @@ def execute(context, input):
         else:
             yield custom_out
 
-BuiltinRegistry.getInstance().register(PyMapBuiltin())
+BuiltinRegistry.getInstance().register_hotwire(PyMapBuiltin())

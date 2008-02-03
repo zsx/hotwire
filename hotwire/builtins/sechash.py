@@ -55,4 +55,4 @@ class SecHashBuiltin(Builtin):
             stream.close()
             yield hashval.hexdigest()
 
-BuiltinRegistry.getInstance().register(SecHashBuiltin())
+BuiltinRegistry.getInstance().register_hotwire(SecHashBuiltin())

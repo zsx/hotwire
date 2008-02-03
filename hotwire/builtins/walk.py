@@ -70,4 +70,4 @@ class WalkBuiltin(FileOpBuiltin):
                     continue
                 yield fobj
 
-BuiltinRegistry.getInstance().register(WalkBuiltin())
+BuiltinRegistry.getInstance().register_hotwire(WalkBuiltin())

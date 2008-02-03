@@ -65,4 +65,4 @@ class CpBuiltin(FileOpBuiltin):
             self._status_notify(context, sources_total, 1)
             
         return []
-BuiltinRegistry.getInstance().register(CpBuiltin())
+BuiltinRegistry.getInstance().register_hotwire(CpBuiltin())

@@ -37,4 +37,4 @@ class HotSudoBuiltin(Builtin):
         subprocess.Popen(argv, cwd=context.cwd)
         return []
         
-BuiltinRegistry.getInstance().register(HotSudoBuiltin())
+BuiltinRegistry.getInstance().register_hotwire(HotSudoBuiltin())

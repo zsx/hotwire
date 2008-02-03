@@ -60,4 +60,4 @@ def execute(context, input):
         else:
             yield custom_out
 
-BuiltinRegistry.getInstance().register(PyFilterBuiltin())
+BuiltinRegistry.getInstance().register_hotwire(PyFilterBuiltin())

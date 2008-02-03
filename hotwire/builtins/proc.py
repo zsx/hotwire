@@ -46,4 +46,4 @@ class PsBuiltin(Builtin):
                 if proc.owner_name != selfname:
                     continue
                 yield proc
-BuiltinRegistry.getInstance().register(PsBuiltin())
+BuiltinRegistry.getInstance().register_hotwire(PsBuiltin())

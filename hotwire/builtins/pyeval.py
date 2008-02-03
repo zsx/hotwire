@@ -98,4 +98,4 @@ expressed as an iterable which yielded a single object.""")
             for v in self.__itervalue(locals['_hotwire_handle_output_self']['result']):
                 yield v
 
-BuiltinRegistry.getInstance().register(PyEvalBuiltin())
+BuiltinRegistry.getInstance().register_hotwire(PyEvalBuiltin())

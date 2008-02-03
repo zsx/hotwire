@@ -72,4 +72,4 @@ class FilterBuiltin(Builtin):
                     yield StringMatch(target_propvalue, match)
                 else:
                     yield arg
-BuiltinRegistry.getInstance().register(FilterBuiltin())
+BuiltinRegistry.getInstance().register_hotwire(FilterBuiltin())

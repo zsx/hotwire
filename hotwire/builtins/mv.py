@@ -64,4 +64,4 @@ class MvBuiltin(FileOpBuiltin):
             self._status_notify(context,sources_total,1)
             
         return []
-BuiltinRegistry.getInstance().register(MvBuiltin())
+BuiltinRegistry.getInstance().register_hotwire(MvBuiltin())

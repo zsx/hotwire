@@ -63,4 +63,4 @@ class ReplaceBuiltin(Builtin):
                 yield re.sub(regexp,args[1],arg)
             else:
                 yield arg
-BuiltinRegistry.getInstance().register(ReplaceBuiltin())
+BuiltinRegistry.getInstance().register_hotwire(ReplaceBuiltin())

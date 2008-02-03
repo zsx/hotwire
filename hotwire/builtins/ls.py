@@ -61,4 +61,4 @@ class LsBuiltin(Builtin):
             for x in sorted(xmap(lambda arg: fs.get_file_sync(FilePath(arg, context.cwd)), args), 
                             lambda a,b: locale.strcoll(a.path, b.path)):
                 yield x
-BuiltinRegistry.getInstance().register(LsBuiltin())
+BuiltinRegistry.getInstance().register_hotwire(LsBuiltin())

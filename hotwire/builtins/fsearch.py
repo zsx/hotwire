@@ -84,4 +84,4 @@ class FSearchBuiltin(FileOpBuiltin):
                 fp.close()
             except OSError, e:
                 _logger.exception(_("Failed searching file"))
-BuiltinRegistry.getInstance().register(FSearchBuiltin())
+BuiltinRegistry.getInstance().register_hotwire(FSearchBuiltin())

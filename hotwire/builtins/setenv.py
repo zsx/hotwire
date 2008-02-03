@@ -34,4 +34,4 @@ class SetenvBuiltin(Builtin):
             k,v = arg.split('=', 1)
             os.environ[k] = v
         return []
-BuiltinRegistry.getInstance().register(SetenvBuiltin())
+BuiltinRegistry.getInstance().register_hotwire(SetenvBuiltin())

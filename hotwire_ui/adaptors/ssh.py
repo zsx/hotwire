@@ -55,4 +55,4 @@ class HotSshBuiltin(Builtin):
         subprocess.Popen(argv, env=newenv)
         return []
         
-BuiltinRegistry.getInstance().register(HotSshBuiltin())
+BuiltinRegistry.getInstance().register_hotwire(HotSshBuiltin())

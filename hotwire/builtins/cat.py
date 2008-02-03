@@ -45,4 +45,4 @@ class CatBuiltin(Builtin):
             else:
                 for line in open_text_file(fpath):
                     yield line
-BuiltinRegistry.getInstance().register(CatBuiltin())
+BuiltinRegistry.getInstance().register_hotwire(CatBuiltin())

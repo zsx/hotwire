@@ -29,4 +29,4 @@ class HistoryBuiltin(Builtin):
     def execute(self, context, args):
         return context.hotwire.get_history()
     
-BuiltinRegistry.getInstance().register(HistoryBuiltin())
+BuiltinRegistry.getInstance().register_hotwire(HistoryBuiltin())

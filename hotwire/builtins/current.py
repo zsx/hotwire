@@ -38,4 +38,4 @@ class CurrentBuiltin(Builtin):
         for obj in current:
             yield obj
     
-BuiltinRegistry.getInstance().register(CurrentBuiltin())
+BuiltinRegistry.getInstance().register_hotwire(CurrentBuiltin())

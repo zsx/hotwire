@@ -50,4 +50,4 @@ class HttpGetBuiltin(Builtin):
         conn.request('GET', path)
         response = conn.getresponse() 
         yield response
-BuiltinRegistry.getInstance().register(HttpGetBuiltin())
+BuiltinRegistry.getInstance().register_hotwire(HttpGetBuiltin())

@@ -37,4 +37,4 @@ class OpenBuiltin(Builtin):
             fs.launch_open_file(FilePath(arg, context.cwd), context.cwd)
         return [] 
 
-BuiltinRegistry.getInstance().register(OpenBuiltin())
+BuiltinRegistry.getInstance().register_hotwire(OpenBuiltin())
