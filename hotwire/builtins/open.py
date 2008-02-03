@@ -27,7 +27,7 @@ from hotwire.sysdep.fs import Filesystem
 class OpenBuiltin(Builtin):
     __doc__ = _("""Open a file using default program.""")
     def __init__(self):
-        super(OpenBuiltin, self).__init__('open', 'fcb26732-6a03-4af6-ab64-7002338ca59a',
+        super(OpenBuiltin, self).__init__('open', 
                                           idempotent=True,
                                           nostatus=True)
 

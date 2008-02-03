@@ -34,7 +34,7 @@ _logger = logging.getLogger("hotwire.builtins.Walk")
 class WalkBuiltin(FileOpBuiltin):
     __doc__ = _("""Recursively traverse directory tree.""")
     def __init__(self):
-        super(WalkBuiltin, self).__init__('walk', 'b6589c3c-6860-4eeb-9424-b7e361f4a16d',
+        super(WalkBuiltin, self).__init__('walk',
                                           output=File,
                                           options=[['-a', '--all']],                                          
                                           threaded=True)

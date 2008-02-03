@@ -26,6 +26,8 @@ from hotwire.fs import FilePath
 from hotwire.sysdep.fs import File
 from hotwire.completion import PathCompleter
 
+if '_' not in globals(): globals()['_'] = lambda x: x
+
 class CdCompleter(PathCompleter):
     def __init__(self):
         super(CdCompleter, self).__init__()
@@ -39,7 +41,7 @@ class CdCompleter(PathCompleter):
 class CdBuiltin(Builtin):
     __doc__ = _("""Change working directory and list its contents.""")
     def __init__(self):
-        super(CdBuiltin, self).__init__('cd', '81d7ca39-5df2-4d7f-8cda-9abdc875ead1',
+        super(CdBuiltin, self).__init__('cd',
                                         output=File,
                                         idempotent=True,
                                         threaded=True)

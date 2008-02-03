@@ -27,7 +27,7 @@ from hotwire.builtin import Builtin, BuiltinRegistry
 class PsBuiltin(Builtin):
     __doc__ = _("""List processes.""")
     def __init__(self):
-        super(PsBuiltin, self).__init__('proc', 'fcb26732-6a03-4af6-ab64-7002338ca59a',
+        super(PsBuiltin, self).__init__('proc',
                                         output=Process,
                                         idempotent=True,
                                         options=[['-a', '--all'],],                                        

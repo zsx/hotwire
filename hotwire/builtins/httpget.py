@@ -30,7 +30,7 @@ from hotwire.builtin import Builtin, BuiltinRegistry, InputStreamSchema
 class HttpGetBuiltin(Builtin):
     __doc__ = _("""Perform a HTTP GET.""")
     def __init__(self):
-        super(HttpGetBuiltin, self).__init__('http-get', '1cd6f5d0-1cfd-4d82-8686-eaa2a8cbce15',
+        super(HttpGetBuiltin, self).__init__('http-get',
                                              output=HTTPResponse,
                                              input=None,                                        
                                              threaded=True)

@@ -35,7 +35,7 @@ def execute(context, input):
   for it in input:
     yield %s''' 
     def __init__(self):
-        super(PyMapBuiltin, self).__init__('py-map', '02706589-aad0-49c6-a821-e08a05265f7d',
+        super(PyMapBuiltin, self).__init__('py-map',
                                            threaded=True,
                                            input=InputStreamSchema('any', optional=True),
                                            output=OutputStreamSchema('any'))

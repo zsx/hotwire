@@ -28,11 +28,12 @@ from hotwire.fs import FilePath
 from hotwire.builtin import Builtin, BuiltinRegistry  
 from hotwire.builtins.fileop import FileOpBuiltin
 
+if '_' not in globals(): globals()['_'] = lambda x: x
+
 class CpBuiltin(FileOpBuiltin):
     __doc__ = _("""Copy sources to destination.""")
     def __init__(self):
-        super(CpBuiltin, self).__init__('cp', '81d7ca39-5df2-4d7f-8cda-9abdc875ead1', 
-                                        aliases=['copy'],
+        super(CpBuiltin, self).__init__('cp', aliases=['copy'],
                                         hasstatus=True,
                                         threaded=True)
 

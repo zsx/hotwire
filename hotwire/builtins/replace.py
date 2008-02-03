@@ -21,12 +21,15 @@
 
 import re
 
+
 from hotwire.builtin import Builtin, BuiltinRegistry, InputStreamSchema
+
+
 
 class ReplaceBuiltin(Builtin):
     __doc__ = _("""Replace input objects by regular expression, matching on a property (or repr)""")
     def __init__(self):
-        super(ReplaceBuiltin, self).__init__('replace', '4519b0f0-8272-4354-be8b-c03293bcb1b8',
+        super(ReplaceBuiltin, self).__init__('replace',
                                             input=InputStreamSchema('any'),
                                             output='identity',
                                             options=[['-s', '--stringify'], ['-i', '--ignore-case'],],

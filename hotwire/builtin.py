@@ -53,7 +53,7 @@ def _attr_or_none(o, a):
     return hasattr(o, a) and getattr(o, a) or None
 
 class Builtin(object):
-    def __init__(self, name, uuid,
+    def __init__(self, name, 
                  input=None,
                  output=None,
                  outputs=[],
@@ -68,7 +68,6 @@ class Builtin(object):
                  threaded=False,
                  locality='local',
                  api_version=0):
-        self.uuid = uuid
         self.input=input
         self.outputs = [isinstance(o, OutputStreamSchema) and o or OutputStreamSchema(o) for o in (output and [output] or outputs)]
         self.options = options

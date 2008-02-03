@@ -31,7 +31,7 @@ class EditBuiltin(Builtin):
     _ws_re = re.compile(r'\s+')
     
     def __init__(self):
-        super(EditBuiltin, self).__init__('edit', 'a322ed51-4d72-4d36-946d-33bfa842f485',
+        super(EditBuiltin, self).__init__('edit',
                                           aliases=['ed'],
                                           nostatus=True,
                                           idempotent=True)

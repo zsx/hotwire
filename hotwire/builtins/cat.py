@@ -22,13 +22,14 @@
 import os,sys,pickle
 
 from hotwire.fs import FilePath, open_text_file
-
 from hotwire.builtin import Builtin, BuiltinRegistry
+
+if '_' not in globals(): globals()['_'] = lambda x: x
 
 class CatBuiltin(Builtin):
     __doc__ = _("""Yield content lines from file path arguments.""")
     def __init__(self):
-        super(CatBuiltin, self).__init__('cat', '81d7ca39-5df2-4d7f-8cda-9abdc875ead1',
+        super(CatBuiltin, self).__init__('cat',
                                          output=str, # 'any'
                                          idempotent=True,
                                          #options=[['-p', '--pickle'],],                                          

@@ -30,7 +30,7 @@ class HelpItem(object):
 class HelpBuiltin(Builtin):
     __doc__ = _("""Display help.""")
     def __init__(self):
-        super(HelpBuiltin, self).__init__('help', '81d7ca39-5df2-4d7f-8cda-9abdc875ead1',
+        super(HelpBuiltin, self).__init__('help',
                                           output=HelpItem,
                                           idempotent=True)
 

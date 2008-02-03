@@ -25,8 +25,7 @@ class SelectionBuiltin(Builtin):
     __doc__ = _("""With no arguments, returns currently selected objects.
 Single integer argument selects object at that index.""")
     def __init__(self):
-        super(SelectionBuiltin, self).__init__('selection', 'f9aa2c82-c2d8-4190-a8a8-1482195d8fac', 
-                                               aliases=['sel'],
+        super(SelectionBuiltin, self).__init__('selection', aliases=['sel'],
                                                output=OutputStreamSchema('any', 
                                                                          typefunc=lambda hotwire: hotwire.get_current_output_type()))
 

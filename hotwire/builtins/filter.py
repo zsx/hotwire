@@ -34,7 +34,7 @@ class StringMatch(MarkupText):
 class FilterBuiltin(Builtin):
     __doc__ = _("""Filter input objects by regular expression, matching on a property (or repr)""")
     def __init__(self):
-        super(FilterBuiltin, self).__init__('filter', '81d7ca39-5df2-4d7f-8cda-9abdc875ead1',
+        super(FilterBuiltin, self).__init__('filter',
                                             input=InputStreamSchema('any'),
                                             output='identity',
                                             options=[['-s', '--stringify'], ['-i', '--ignore-case'],],

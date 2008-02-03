@@ -22,13 +22,14 @@
 import os,sys,locale
 
 from hotwire.builtin import Builtin, BuiltinRegistry, InputStreamSchema
-
 from hotwire.command import Pipeline,HotwireContext
+
+if '_' not in globals(): globals()['_'] = lambda x: x 
 
 class ApplyBuiltin(Builtin):
     __doc__ = _("""Like Unix xargs - take input and convert to arguments.""")
     def __init__(self):
-        super(ApplyBuiltin, self).__init__('apply', '81d7ca39-5df2-4d7f-8cda-9abdc875ead1',
+        super(ApplyBuiltin, self).__init__('apply',
                                            output='any',
                                            input=InputStreamSchema('any'),                                         
                                            threaded=True)

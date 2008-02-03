@@ -36,7 +36,7 @@ def execute(context, input):
     if %s:
       yield it''' 
     def __init__(self):
-        super(PyFilterBuiltin, self).__init__('py-filter', 'fcb26732-6a03-4af6-ab64-7002338ca59a',
+        super(PyFilterBuiltin, self).__init__('py-filter',
                                               threaded=True,
                                               input=InputStreamSchema('any'),
                                               output='identity')
