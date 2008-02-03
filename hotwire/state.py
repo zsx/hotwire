@@ -29,6 +29,7 @@ import gobject
 
 from hotwire.externals.singletonmixin import Singleton
 from hotwire.sysdep.fs import Filesystem
+from hotwire.logutil import log_except
 #import processing
 
 _logger = logging.getLogger("hotwire.State")
@@ -92,6 +93,7 @@ class History(Singleton):
     def set_no_save(self):
         self.__no_save = True
 
+    @log_except(_logger)
     def __do_run_async(self, func, args, kwargs):
         _logger.debug("in async run of %r", func)
         conn = sqlite3.connect(self.__path, isolation_level=None)
