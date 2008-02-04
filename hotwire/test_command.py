@@ -493,6 +493,15 @@ class PipelineRunTests(PipelineRunTestFramework):
         self.assertEquals(results[0], '22596363b3de40b06f981fb85d82312e8c0ed511')
         self.assertEquals(results[1], '84b5d4093c8ffaf2eca0feaf014a53b9f41d28ed')
         
+    def testWrite1(self):
+        self._setupTree1()
+        p = Pipeline.parse("ls | py-map 'it.path+\"\\n\"' | write outtest.txt", self._context)
+        p.execute_sync()
+        outpath = path_join(self._tmpd, 'outtest.txt')
+        self.assertEquals(os.access(outpath, os.R_OK), True)
+        lines = list(open(outpath))
+        self.assertEquals(len(lines), 3)        
+        
     def testFilter1(self):
         self._setupTree1()
         p = Pipeline.parse("py-eval 20 | filter -s 2", self._context)

@@ -31,12 +31,14 @@ class WriteBuiltin(Builtin):
     def __init__(self):
         super(WriteBuiltin, self).__init__('write',
                                            input=InputStreamSchema('any', optional=False),
-                                           options=[['-a', '--append'],['-p', '--pickle']],                                           
+                                           options=[['-a', '--append'],['-p', '--pickle'],
+                                                    ['-n', '--newline']],                                           
                                            threaded=True)
 
     def execute(self, context, args, options=[]):
         open_mode = ('-a' in options) and 'a+' or 'w'
         do_pickle = '-p' in options
+        with_newline = '-n' in options
         if do_pickle:
             open_mode = 'wb'
         if not context.input:
@@ -45,7 +47,9 @@ class WriteBuiltin(Builtin):
         if not do_pickle:
             for arg in context.input:
                 for stream in streams:
-                    stream.write('%s\n' % (unicode(arg),))
+                    stream.write('%s' % (unicode(arg),))
+                    if with_newline:
+                        stream.write('\n')
         else:
             # Kind of annoying pickle makes you do this.
             arglist = list(context.input)
