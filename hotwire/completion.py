@@ -207,7 +207,11 @@ class CompletionSystem(object):
     @log_except(_logger)
     def __do_async_complete(self, completer, text, cwd, cb):
         _logger.debug("in async complete for %r", text)
-        result = self.__get_completions(completer, text, cwd)
+        try:
+            result = self.__get_completions(completer, text, cwd)
+        except:
+            _logger.exception("failed to get completions")
+            result = CompletionResults([])
         _logger.debug("completions for %r: pfx: %r results: %r", text, result.common_prefix, result.results)        
         def do_cb(*args):
             cb(*args)
