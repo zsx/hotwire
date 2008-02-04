@@ -32,9 +32,14 @@ class HotSudoBuiltin(Builtin):
                                               threaded=True)
 
     def execute(self, context, args, options=[]):
+        subproc_args = {}
+        if context.gtk_event_time:
+            env = dict(os.environ)
+            env['DESKTOP_STARTUP_ID'] = 'hotwire%d_TIME%d' % (os.getpid(), context.gtk_event_time,)
+            subproc_args['env'] = env
         argv = ['hotwire-sudo']
         argv.extend(args)
-        subprocess.Popen(argv, cwd=context.cwd)
+        subprocess.Popen(argv, cwd=context.cwd, **subproc_args)
         return []
         
 BuiltinRegistry.getInstance().register_hotwire(HotSudoBuiltin())

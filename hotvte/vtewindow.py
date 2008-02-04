@@ -360,12 +360,14 @@ class UiProxy(dbus.service.Object):
         self.__winfactory = factory
         # This is a disturbing hack.  But it works.
         def RunCommand(self, timestamp, istab, cmd, cwd):
-            _logger.debug("Handling RunCommand method invocation ts=%s cmd=%s cwd=%s)", timestamp, cmd, cwd)
+            _logger.debug("Handling RunCommand method invocation ts=%r cmd=%r cwd=%r)", timestamp, cmd, cwd)
             if istab:
                 curwin = self.__winfactory.remote_new_tab(cmd, cwd)
             else:
                 raise NotImplementedError('can only create new tabs')
+            timestamp = long(timestamp)+1
             if timestamp > 0:
+                _logger.debug("presenting with timestamp %r", timestamp)
                 curwin.present_with_time(timestamp)
             else:
                 curwin.present()
