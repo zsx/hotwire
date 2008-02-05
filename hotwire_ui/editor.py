@@ -83,6 +83,8 @@ class HotEditorWindow(gtk.Window):
       <menuitem action='Save'/>
       <menuitem action='SaveAs'/>
       <separator/>
+      <menuitem action='ReadOnly'/>
+      <separator/>
       <menuitem action='Revert'/>
       <separator/>
       <menuitem action='Close'/>
@@ -175,13 +177,17 @@ class HotEditorWindow(gtk.Window):
         self.input.connect("changed", self.__handle_text_changed)
 
         self.connect("delete-event", self.__handle_delete_event)
-        self.__sync_title()      
+        self.__sync_title()
         if parent:
             self.set_transient_for(parent)
         self.set_size_request(640, 480)
         
     def __on_search_close(self, sa):
         self.__searcharea.hide()
+        
+    def set_read_only(self, readonly):
+        readonly_toggle = self.__actiongroup.get_action('ReadOnly')
+        readonly_toggle.set_active(readonly)
         
     def set_code_mode(self, codemode):
         if not self.gtksourceview_mode:
@@ -391,6 +397,11 @@ class HotEditorWindow(gtk.Window):
             return
         iter = self.input.get_iter_at_line(line_num)
         self.input.place_cursor(iter)       
+        
+    @log_except(_logger)
+    def __toggle_read_only_cb(self, a):
+        active = a.get_active()
+        self.input_view.set_editable(not active)
 
     def __create_ui(self):
         self.__actiongroup = ag = gtk.ActionGroup('WindowActions')
@@ -408,7 +419,11 @@ class HotEditorWindow(gtk.Window):
             ('ToolsMenu', None, _('_Tools')),                    
             ('About', gtk.STOCK_ABOUT, _('_About'), None, _('About Hotwire'), self.__help_about_cb),            
             ]
+        toggle_actions = [
+            ('ReadOnly', None, _('Read _Only'), None, _('Toggle read-only mode'), self.__toggle_read_only_cb),                          
+        ]
         ag.add_actions(actions)
+        ag.add_toggle_actions(toggle_actions)
         self._ui = gtk.UIManager()
         self._ui.insert_action_group(ag, 0)
         self._ui.add_ui_from_string(self.__ui_string)

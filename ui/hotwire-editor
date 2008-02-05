@@ -48,7 +48,7 @@ def usage():
 
 def main():
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "hd", ["help", "debug", "debug-modules=","icon-name="])
+        opts, args = getopt.getopt(sys.argv[1:], "hdr", ["help", "debug", "debug-modules=","icon-name=", "read-only"])
     except getopt.GetoptError:
         usage()
         sys.exit(2)
@@ -74,6 +74,7 @@ def main():
     debug = False
     debug_modules = []
     icon_name = 'gtk-floppy'
+    readonly = False
     for o, v in opts:
         if o in ('-d', '--debug'):
             debug = True
@@ -82,6 +83,8 @@ def main():
         elif o in ("-h", "--help"):
             usage()
             sys.exit()
+        elif o in ('-r' , '--read-only'):
+            readonly = True
 
     default_log_level = logging.ERROR
     if debug:
@@ -102,6 +105,8 @@ def main():
         wincount += 1
         w.set_code_mode(True)
         w.set_icon_name(icon_name)
+        if readonly:
+            w.set_read_only(readonly)
         if lineno >= 0:
             w.goto_line(lineno)
             lineno = -1
