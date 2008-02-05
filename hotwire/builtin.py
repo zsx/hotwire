@@ -255,6 +255,7 @@ def load():
     import hotwire.builtins.pymap
     import hotwire.builtins.replace    
     import hotwire.builtins.rm
+    import hotwire.builtins.newline    
     import hotwire.builtins.sechash
     import hotwire.builtins.selection    
     import hotwire.builtins.setenv

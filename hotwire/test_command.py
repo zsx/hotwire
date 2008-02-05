@@ -500,7 +500,23 @@ class PipelineRunTests(PipelineRunTestFramework):
         outpath = path_join(self._tmpd, 'outtest.txt')
         self.assertEquals(os.access(outpath, os.R_OK), True)
         lines = list(open(outpath))
-        self.assertEquals(len(lines), 3)        
+        self.assertEquals(len(lines), 3)
+        
+    def testNewlineAndWrite1(self):
+        self._setupTree1()
+        p = Pipeline.parse("ls|prop path|newline|write outtest.txt", self._context)
+        p.execute_sync()
+        outpath = path_join(self._tmpd, 'outtest.txt')
+        self.assertEquals(os.access(outpath, os.R_OK), True)
+        lines = list(open(outpath))
+        self.assertEquals(len(lines), 3)
+        
+    def testNewline2(self):
+        self._setupTree1()
+        p = Pipeline.parse("py-eval '[\"hello\\n\", \"world\"]' | newline", self._context)
+        p.execute_sync()
+        results = list(p.get_output())
+        self.assertEquals(len(results), 2)
         
     def testFilter1(self):
         self._setupTree1()
