@@ -19,29 +19,23 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR 
 # THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import os,sys
+import os,sys,re,os.path, stat,subprocess
 
-from hotwire.cmdalias import AliasRegistry
+from hotwire.builtin import Builtin, BuiltinRegistry
+from hotwire.fs import FilePath
+from hotwire.sysdep.fs import Filesystem
 
-default_aliases = {'sudo': 'term -w sudo',
-                   'su': 'term -w su',                   
-                   'vi': 'term vi',
-                   'vim': 'term vim',
-                   'gdb': 'term -w gdb',                   
-                   'ssh': 'term -w ssh',
-                   'man': 'term man',
-                   'info': 'term info',
-                   'less': 'term less',
-                   'more': 'view',  # More sucks enough that we just override it
-                   'ipython': 'term ipython',                     
-                   'top': 'term top',
-                   'iotop': 'term iotop',                   
-                   'powertop': 'term powertop',                   
-                   'nano': 'term nano',
-                   'pico': 'term pico',
-                   'irssi': 'term -w irssi',
-                   'mutt': 'term -w mutt',
-                  }
-aliases = AliasRegistry.getInstance()
-for name,value in default_aliases.iteritems():
-    aliases.insert(name, value)
+class ViewBuiltin(Builtin):
+    __doc__ = _("""Launch the text viewer.""")
+    
+    def __init__(self):
+        super(ViewBuiltin, self).__init__('view',
+                                          nostatus=True,
+                                          idempotent=True)
+ 
+    def execute(self, context, args):
+        from hotwire_ui.adaptors.editors import EditorRegistry
+        prefeditor = EditorRegistry.getInstance().get_preferred()
+        prefeditor.run_many_readonly(context.cwd, *args)
+        return []
+BuiltinRegistry.getInstance().register_hotwire(ViewBuiltin())

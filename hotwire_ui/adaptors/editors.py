@@ -40,7 +40,8 @@ class Editor(object):
     args = property(lambda self: self._args, doc="""Default arguments for program.""")
     requires_terminal = property(lambda self: self._requires_terminal, doc="""Whether or not this program should be run in a terminal.""")
     goto_line_arg_prefix = property(lambda self: self._goto_line_arg, doc="""Prefix argument required to jump to a specific line number.""")
-    goto_line_arg = property(lambda self: self._goto_line_arg, doc="""Full argument required to jump to a specific line number.""")    
+    goto_line_arg = property(lambda self: self._goto_line_arg, doc="""Full argument required to jump to a specific line number.""")
+    read_only_arg = property(lambda self: self._read_only_arg, doc="""Argument for using read-only mode.""")
     
     def __init__(self, uuid, name, icon, executable, args=[]):
         super(Editor, self).__init__()
@@ -52,6 +53,7 @@ class Editor(object):
         self._requires_terminal = False
         self._goto_line_arg_prefix = '+'
         self._goto_line_arg = None
+        self._read_only_arg = None
         
     def _get_startup_env(self):
         env = dict(os.environ)
@@ -63,13 +65,15 @@ class Editor(object):
         cb()
         return False
     
-    def build_default_arguments(self):
+    def build_default_arguments(self, readonly=False):
         args = [self.executable]
+        if readonly and self._read_only_arg is not None:
+            args.append(self._read_only_arg)
         args.extend(self._args)
         return args
     
-    def build_arguments(self, file, lineno):
-        args = self.build_default_arguments()
+    def build_arguments(self, file, lineno, **kwargs):
+        args = self.build_default_arguments(**kwargs)
         if lineno >= 0:
             if self.goto_line_arg_prefix:
                 args.append('%s%d', self.goto_line_arg_prefix, lineno)
@@ -85,6 +89,11 @@ class Editor(object):
         args = self.build_default_arguments()
         args.extend(files)
         subprocess.Popen(args, env=self._get_startup_env(), cwd=cwd)
+        
+    def run_many_readonly(self, cwd, *files):
+        args = self.build_default_arguments(readonly=True)
+        args.extend(files)
+        subprocess.Popen(args, env=self._get_startup_env(), cwd=cwd)        
         
     def run_sync(self, cwd, file, **kwargs):
         args = self.build_arguments(file, lineno)
@@ -145,12 +154,14 @@ class HotwireEditor(Editor):
     def __init__(self):
         super(HotwireEditor, self).__init__('c5851b9c-2618-4078-8905-13bf76f0a94f', 'Hotwire Edit',
                                             'hotwire', 'hotwire-editor')
+        self._read_only_arg = '-r'
 EditorRegistry.getInstance().register(HotwireEditor())    
         
 class GVimEditor(Editor):
     def __init__(self):
         super(GVimEditor, self).__init__('eb88b728-42d1-4dc0-a20b-c885497520a2', 'GVim', 'gvim.png', 'gvim',
                                          args=['--remote-wait'])
+        self._read_only_arg = '-R'
 EditorRegistry.getInstance().register(GVimEditor())
 
 class EmacsClientEditor(Editor):
