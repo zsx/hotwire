@@ -396,7 +396,8 @@ class HotEditorWindow(gtk.Window):
         if line_num is None:
             return
         iter = self.input.get_iter_at_line(line_num)
-        self.input.place_cursor(iter)       
+        self.input.place_cursor(iter)
+        self.input_view.scroll_mark_onscreen(self.input.get_mark('insert')) 
         
     @log_except(_logger)
     def __toggle_read_only_cb(self, a):
