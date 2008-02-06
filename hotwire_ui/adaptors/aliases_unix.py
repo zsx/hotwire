@@ -32,7 +32,7 @@ default_aliases = {'sudo': 'term -w sudo',
                    'man': 'term man',
                    'info': 'term info',
                    'less': 'term less',
-                   'more': 'view',  # More sucks enough that we just override it
+                   'more': 'term -w more',
                    'ipython': 'term ipython',                     
                    'top': 'term top',
                    'iotop': 'term iotop',                   
