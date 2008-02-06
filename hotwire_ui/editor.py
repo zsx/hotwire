@@ -180,7 +180,7 @@ class HotEditorWindow(gtk.Window):
         self.__sync_title()
         if parent:
             self.set_transient_for(parent)
-        self.set_size_request(640, 480)
+        self.set_size_request(800, 600)
         
     def __on_search_close(self, sa):
         self.__searcharea.hide()
@@ -214,7 +214,6 @@ class HotEditorWindow(gtk.Window):
                 if target_lang:
                     break
             self.input.set_highlight_syntax(True)
-            self.input_view.set_auto_indent(True)
         else:
             import gtksourceview
             target_lang = gtksourceview.SourceLanguagesManager().get_language_from_mime_type(mimetype)
