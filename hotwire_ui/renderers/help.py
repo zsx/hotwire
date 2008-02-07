@@ -50,7 +50,16 @@ class HelpItemRenderer(UnicodeRenderer):
         self.append_link(_('Tutorial'), 'http://code.google.com/p/hotwire-shell/wiki/GettingStarted0700')
         self._buf.insert_markup('\n\n')
 
-        self._buf.insert_markup('<larger>%s:</larger>\n' % (_('Languages'),))
+        self._buf.insert_markup('<larger>%s:</larger>\n' % (_('Builtin Commands'),))
+        builtins = list(BuiltinRegistry.getInstance())
+        builtins.sort(lambda a,b: cmp(a.name, b.name))
+        for builtin in builtins:
+            self.__append_builtin_base_help(builtin)
+            self.__append_builtin_aliases(builtin)
+            self.__append_builtin_arghelp(builtin)            
+            self.__append_builtin_doc(builtin)
+
+        self._buf.insert_markup('\n<larger>%s:</larger>\n' % (_('Languages'),))
         langreg = PipelineLanguageRegistry.getInstance()
         hotwire_lang = langreg['62270c40-a94a-44dd-aaa0-689f882acf34']
         python_lang = langreg['da3343a0-8bce-46ed-a463-2d17ab09d9b4']
@@ -61,17 +70,7 @@ class HelpItemRenderer(UnicodeRenderer):
         for language in languages:
             if language in [hotwire_lang, python_lang]:
                 continue
-            self.__append_language(language)
-        self._buf.insert_markup('\n')
-
-        self._buf.insert_markup('<larger>%s:</larger>\n' % (_('Builtin Commands'),))
-        builtins = list(BuiltinRegistry.getInstance())
-        builtins.sort(lambda a,b: cmp(a.name, b.name))
-        for builtin in builtins:
-            self.__append_builtin_base_help(builtin)
-            self.__append_builtin_aliases(builtin)
-            self.__append_builtin_arghelp(builtin)            
-            self.__append_builtin_doc(builtin)
+            self.__append_language(language)           
             
         self._buf.insert_markup('\n<larger>%s:</larger>\n' % (_('Aliases'),))
         aliases = list(AliasRegistry.getInstance())
