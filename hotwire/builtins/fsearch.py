@@ -70,10 +70,6 @@ class FSearchBuiltin(FileOpBuiltin):
         walk_builtin = BuiltinRegistry.getInstance()['walk']
         newctx = HotwireContext(context.cwd)
         for fobj in walk_builtin.execute(newctx, [path]):
-            # FIXME - this should really be "if file_is_binary", because
-            # currently it's broken in non-UTF8 locales.      
-            if not file_is_valid_utf8(fobj.path):
-                continue
             fp = None
             try:
                 fp = open_text_file(fobj.path) 
@@ -83,5 +79,7 @@ class FSearchBuiltin(FileOpBuiltin):
                         yield FileStringMatch(fobj.path, line[:-1], i, match.start(), match.end())
                 fp.close()
             except OSError, e:
-                _logger.exception(_("Failed searching file"))
+                pass
+            except UnicodeDecodeError, e:
+                pass
 BuiltinRegistry.getInstance().register_hotwire(FSearchBuiltin())
