@@ -30,7 +30,7 @@ class ViewBuiltin(Builtin):
     
     def __init__(self):
         super(ViewBuiltin, self).__init__('view',
-                                          nostatus=True,
+                                          nodisplay=True,
                                           idempotent=True)
  
     def execute(self, context, args):

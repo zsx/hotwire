@@ -28,8 +28,9 @@ from hotwire.sysdep.fs import Filesystem
 class HotSudoBuiltin(Builtin):
     __doc__ =  _("""Run a command as root.""")
     def __init__(self):
-        super(HotSudoBuiltin, self).__init__('sudo', nostatus=True,
-                                              threaded=True)
+        super(HotSudoBuiltin, self).__init__('sudo', 
+                                             nodisplay=True,
+                                             threaded=True)
 
     def execute(self, context, args, options=[]):
         subproc_args = {}

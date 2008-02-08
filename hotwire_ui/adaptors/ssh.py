@@ -40,7 +40,8 @@ class OpenSshKnownHostCompleter(Completer):
 class HotSshBuiltin(Builtin):
     __doc__ =  _("""Open a connection via SSH.""")
     def __init__(self):
-        super(HotSshBuiltin, self).__init__('ssh', nostatus=True,
+        super(HotSshBuiltin, self).__init__('ssh', 
+                                            nodisplay=True,
                                             threaded=True)
 
     def get_completer(self, context, args, i):

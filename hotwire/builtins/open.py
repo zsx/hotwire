@@ -29,7 +29,7 @@ class OpenBuiltin(Builtin):
     def __init__(self):
         super(OpenBuiltin, self).__init__('open', 
                                           idempotent=True,
-                                          nostatus=True)
+                                          nodisplay=True)
 
     def execute(self, context, args):
         fs = Filesystem.getInstance()

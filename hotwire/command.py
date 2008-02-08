@@ -203,10 +203,11 @@ class Command(gobject.GObject):
                   out_append=False):
         super(Command, self).__init__()
         self.builtin = builtin
-        self.context = CommandContext(hotwire) 
-        for schema in self.builtin.get_aux_outputs():
-            self.context.attach_auxstream(CommandAuxStream(self, schema))
-        if self.builtin.get_hasmeta():
+        self.context = CommandContext(hotwire)
+        # The concept of multiple object streams is dead. 
+        #for schema in self.builtin.get_aux_outputs():
+        #    self.context.attach_auxstream(CommandAuxStream(self, schema))
+        if self.builtin.hasmeta:
             self.context.set_metadata_handler(lambda *args: self.emit("metadata", *args))
         self.input = None
         self.output = CommandQueue()
@@ -247,13 +248,13 @@ class Command(gobject.GObject):
         self.builtin.cancel(self.context)
 
     def get_input_opt_formats(self):
-        return self.builtin.get_input_opt_formats()
+        return self.builtin.input_opt_formats
 
     def get_output_opt_formats(self):
         return self.builtin.get_output_opt_formats()
 
     def execute(self, force_sync, **kwargs):
-        if force_sync or not self.builtin.get_threaded():
+        if force_sync or not self.builtin.threaded:
             _logger.debug("executing sync: %s", self)
             self.__executing_sync = True
             self.__run(**kwargs)
@@ -315,7 +316,7 @@ class Command(gobject.GObject):
             try:
                 for result in self.builtin.execute(self.context, *target_args, **kwargs):
                     # if it has status, let it do its own cleanup
-                    if self._cancelled and not self.builtin.get_hasstatus():
+                    if self._cancelled and not self.builtin.hasstatus:
                         _logger.debug("%s cancelled, returning", self)
                         self.output.put(self.map_fn(None))
                         self.emit("complete")                        
@@ -486,7 +487,7 @@ class Pipeline(gobject.GObject):
             cmd.connect("exception", self.__on_cmd_exception)            
             # Here we record which commands include metadata, and
             # pass in the index in the pipeline for them.
-            if cmd.builtin.get_hasmeta():
+            if cmd.builtin.hasmeta:
                 _logger.debug("connecting to metadata on cmd %s, idx=%s", cmd, meta_idx)
                 cmd.connect("metadata", self.__on_cmd_metadata, meta_idx)
                 meta_idx += 1                
@@ -560,7 +561,7 @@ class Pipeline(gobject.GObject):
 
     def get_status_commands(self):
         for cmd in self.__components:
-            if cmd.builtin.get_hasstatus():
+            if cmd.builtin.hasstatus:
                 yield cmd.builtin.name
 
     def __on_cmd_metadata(self, cmd, key, flags, meta, cmdidx):
@@ -632,8 +633,8 @@ class Pipeline(gobject.GObject):
         for component in self.__components:
             component.cancel()        
 
-    def is_nostatus(self):
-        return self.__components[0].builtin.nostatus
+    def is_nodisplay(self):
+        return self.__components[0].builtin.nodisplay
 
     def set_output_queue(self, queue, map_fn):
         self.__components[-1].set_output_queue(queue, map_fn)
@@ -834,7 +835,7 @@ Otherwise, return arg."""
                     alltokens.append(cmdarg)
                     cmdargs.append(cmdarg)         
 
-            builtin_opts = b.get_options()
+            builtin_opts = b.options
 
             options = []
             expanded_cmdargs = []
@@ -861,8 +862,8 @@ Otherwise, return arg."""
                 cmd.set_input(prev.output)
             if pipeline_output_type:
                 cmd.set_input_type(pipeline_output_type)
-            input_accepts_type = cmd.builtin.get_input_type()
-            input_optional = cmd.builtin.get_input_optional()
+            input_accepts_type = cmd.builtin.input_type
+            input_optional = cmd.builtin.input_is_optional
             if pipeline_input_optional == 'unknown':
                 pipeline_input_optional = input_optional
             _logger.debug("Validating input %s vs prev %s", input_accepts_type, pipeline_output_type)
@@ -880,7 +881,7 @@ Otherwise, return arg."""
             if (not input_optional) and (not input_accepts_type) and pipeline_output_type:
                 raise PipelineParseException(_("Command %s takes no input but type '%s' given") % \
                                              (cmd.builtin.name, pipeline_output_type))
-            locality = cmd.builtin.get_locality()
+            locality = cmd.builtin.locality
             if prev_locality and locality and (locality != prev_locality):
                 raise PipelineParseException(_("Command %s locality conflict with '%s'") % \
                                              (cmd.builtin.name, prev.builtin.name))
@@ -893,19 +894,19 @@ Otherwise, return arg."""
             if pipeline_input_type == 'unknown':
                 pipeline_input_type = input_accepts_type
 
-            if cmd.builtin.get_output_type() != 'identity':
-                if context and cmd.builtin.get_output_typefunc():
-                    pipeline_output_type = cmd.builtin.get_output_typefunc()(context)
+            if cmd.builtin.output_type != 'identity':
+                if context and cmd.builtin.output_typefunc:
+                    pipeline_output_type = cmd.builtin.output_typefunc(context)
                     _logger.debug("retrieved type %r from typefunc", pipeline_output_type)
                 else:
-                    pipeline_output_type = cmd.builtin.get_output_type()
+                    pipeline_output_type = cmd.builtin.output_type
 
             if undoable is None:
-                undoable = cmd.builtin.get_undoable()
-            elif not cmd.builtin.get_undoable():
+                undoable = cmd.builtin.undoable
+            elif not cmd.builtin.undoable:
                 undoable = False
 
-            if not cmd.builtin.get_idempotent():
+            if not cmd.builtin.idempotent:
                 idempotent = False
                 
         if len(components) == 0:

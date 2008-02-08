@@ -583,7 +583,7 @@ class Hotwire(gtk.VBox):
                             origtext=None):
         _logger.debug("pipeline: %s", pipeline)
 
-        if pipeline.is_nostatus():
+        if pipeline.is_nodisplay():
             pipeline.execute_sync()
 
         curlang = self.get_active_lang()
@@ -600,7 +600,7 @@ class Hotwire(gtk.VBox):
 
         self.__update_status()
 
-        if pipeline.is_nostatus():
+        if pipeline.is_nodisplay():
             return
 
         self.__unset_welcome()

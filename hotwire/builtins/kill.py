@@ -70,7 +70,7 @@ class KillBuiltin(Builtin):
             options.append(['-' + str(num)])
             options.append(['-' + _sigvalue_to_sym[num][3:]])
         super(KillBuiltin, self).__init__('kill',
-                                          nostatus=True,
+                                          nodisplay=True,
                                           input=InputStreamSchema(Process, optional=True),
                                           options=options,                                     
                                           threaded=True)

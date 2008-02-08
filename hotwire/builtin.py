@@ -53,35 +53,51 @@ def _attr_or_none(o, a):
     return hasattr(o, a) and getattr(o, a) or None
 
 class Builtin(object):
+    name = property(lambda self: self._name)
+    input = property(lambda self: self._input)
+    input_type = property(lambda self: self._input and self._input.otype)
+    input_is_optional = property(lambda self: self._input and self._input.optional)
+    input_opt_formats = property(lambda self: self._input and self._input.opt_formats)
+    outputs = property(lambda self: self._outputs)
+    output_type = property(lambda self: self._outputs and self._outputs[0].otype or None)
+    output_typefunc = property(lambda self: self._outputs and self._outputs[0].typefunc or None)    
+    options = property(lambda self: self._options)
+    aliases = property(lambda self: self._aliases)
+    idempotent = property(lambda self: self._idempotent)
+    undoable = property(lambda self: self._undoable)
+    hasstatus = property(lambda self: self._hasstatus)
+    hasmeta = property(lambda self: self._hasmeta)
+    nodisplay = property(lambda self: self._nodisplay)
+    threaded = property(lambda self: self._threaded)
+    locality = property(lambda self: self._locality)
+    api_version = property(lambda self: self._api_version)
     def __init__(self, name, 
                  input=None,
                  output=None,
                  outputs=[],
                  options=[],
-                 aliases=[], 
-                 remote_only=False, 
-                 nostatus=False,
+                 aliases=[],
                  idempotent=False,
                  undoable=False,
                  hasstatus=False,
                  hasmeta=False,
+                 nodisplay=False,
                  threaded=False,
                  locality='local',
                  api_version=0):
-        self.input=input
-        self.outputs = [isinstance(o, OutputStreamSchema) and o or OutputStreamSchema(o) for o in (output and [output] or outputs)]
-        self.options = options
-        self.name = name
-        self.aliases = aliases 
-        self.remote_only = remote_only 
-        self.nostatus = nostatus
-        self.idempotent = idempotent
-        self.undoable = undoable
-        self.hasstatus = hasstatus
-        self.hasmeta = hasstatus or hasmeta
-        self.threaded = threaded
-        self.locality = locality
-        self.api_version = api_version
+        self._input=input
+        self._outputs = [isinstance(o, OutputStreamSchema) and o or OutputStreamSchema(o) for o in (output and [output] or outputs)]
+        self._options = options
+        self._name = name
+        self._aliases = aliases 
+        self._idempotent = idempotent
+        self._undoable = undoable
+        self._hasstatus = hasstatus
+        self._hasmeta = hasstatus or hasmeta
+        self._nodisplay = nodisplay
+        self._threaded = threaded
+        self._locality = locality
+        self._api_version = api_version
 
     def get_completer(self, *args, **kwargs):
         return None
@@ -99,68 +115,13 @@ class Builtin(object):
         func = self.execute 
         return _attr_or_none(func, attr)
 
-    def get_input(self):
-        return self.input
-
     def get_outputs(self):
         return self.outputs
-
-    def get_input_opt_formats(self):
-        if self.input:
-            return self.input.opt_formats
-        return []
     
     def get_output_opt_formats(self):
         if self.outputs:
             return self.outputs[0].opt_formats
         return []
-
-    def get_aux_outputs(self):
-        return self.outputs[1:]
-
-    def get_input_type(self):
-        if self.input:
-            return self.input.otype
-        return None
-
-    def get_input_optional(self):
-        if self.input:
-            return self.input.optional
-        return False
-
-    def get_output_type(self):
-        if self.outputs:
-            return self.outputs[0].otype
-        return None
-
-    def get_output_typefunc(self):
-        if self.outputs:
-            return self.outputs[0].typefunc
-        return None
-
-    def get_locality(self):
-        return self.locality
-
-    def get_options(self):
-        return self.options
-
-    def get_idempotent(self):
-        return self.idempotent
-
-    def get_undoable(self):
-        return self.undoable
-    
-    def get_threaded(self):
-        return self.threaded
-
-    def get_hasstatus(self):
-        return self.hasstatus
-    
-    def get_hasmeta(self):
-        return self.hasmeta
-    
-    def get_api_version(self):
-        return self.api_version
 
 class BuiltinRegistry(Singleton):
     """Manages the set of registered builtins.

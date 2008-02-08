@@ -33,7 +33,7 @@ class EditBuiltin(Builtin):
     def __init__(self):
         super(EditBuiltin, self).__init__('edit',
                                           aliases=['ed'],
-                                          nostatus=True,
+                                          nodisplay=True,
                                           idempotent=True)
  
     def execute(self, context, args):

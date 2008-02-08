@@ -100,16 +100,16 @@ class HelpItemRenderer(UnicodeRenderer):
         self.append_inspectlink(builtin.name, builtin)        
         self._buf.insert_markup(' - %s%s ' \
                                 % (_('in'),
-                                   builtin.get_input_optional() and ' (opt):' or ':'))
+                                   builtin.input_is_optional and ' (opt):' or ':'))
         def append_type(t):
             if isinstance(t, type):
                 self.append_inspectlink(str(t), t)
             else:
                 self._buf.insert_markup(str(t))
-        itype = builtin.get_input_type()
+        itype = builtin.input_type
         append_type(itype)
         self._buf.insert_markup('  %s: ' % (_('out'),))
-        otype = builtin.get_output_type()
+        otype = builtin.output_type
         append_type(otype)
         self._buf.insert_markup('\n')
         
