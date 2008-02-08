@@ -19,7 +19,8 @@
 import os,sys,logging,locale,codecs,gettext
 
 # Older webbrowser.py didn't check gconf
-if sys.version_info[0] == 2 and sys.version_info[1] < 6:
+from hotwire.sysdep import is_windows
+if sys.version_info[0] == 2 and sys.version_info[1] < 6 and (not is_windows()):
     import hotwire.externals.webbrowser as webbrowser
 else:
     import webbrowser
