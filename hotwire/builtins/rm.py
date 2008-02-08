@@ -20,27 +20,32 @@
 # THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import os, shutil
+from itertools import imap
 
 import hotwire
 from hotwire.fs import FilePath, unix_basename
-from hotwire.sysdep.fs import Filesystem
+from hotwire.sysdep.fs import Filesystem, File
 
-from hotwire.builtin import BuiltinRegistry
+from hotwire.builtin import BuiltinRegistry, InputStreamSchema
 from hotwire.builtins.fileop import FileOpBuiltin
 
 class RmBuiltin(FileOpBuiltin):
     __doc__ = _("""Move a file to the trash.""")
     def __init__(self):
         super(RmBuiltin, self).__init__('rm', aliases=['delete'],
+                                        input=InputStreamSchema(File, optional=True),
                                         undoable=True,
                                         hasstatus=True,
                                         threaded=True,
                                         options=[['-u', '--unlink'],['-r', '--recursive']])
 
     def execute(self, context, args, options=[]):
-        if len(args) == 0:
+        if len(args) == 0 and context.input is None:
             raise ValueError(_("Must specify at least one file"))
-        sources = map(lambda arg: FilePath(arg, context.cwd), args) 
+        mkfile = lambda arg: FilePath(arg, context.cwd)
+        sources = map(mkfile, args)
+        if context.input is not None:
+            sources.extend(imap(lambda f: f.path, context.input)) 
         sources_total = len(sources)
         undo_targets = []
         self._status_notify(context, sources_total, 0)

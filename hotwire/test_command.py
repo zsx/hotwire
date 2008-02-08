@@ -25,6 +25,7 @@ import os, sys, unittest, tempfile, shutil
 import hotwire
 from hotwire.command import *
 from hotwire.sysdep import is_windows, is_unix
+from hotwire.sysdep.fs import File
 import hotwire.script
 from hotwire.fs import unix_basename, path_join, path_abs, path_dirname, path_fastnormalize
 
@@ -172,7 +173,7 @@ class PipelineInstantiateTests(unittest.TestCase):
 
     def testRm(self):
         p = Pipeline.parse('rm foo bar', self._context)
-        self.assertEquals(p.get_input_type(), None)
+        self.assertEquals(p.get_input_type(), File)
         self.assertEquals(p.get_output_type(), None)
         self.assertEquals(p.get_undoable(), True)
         self.assertEquals(p.get_idempotent(), False)
@@ -299,6 +300,15 @@ class PipelineRunTests(PipelineRunTestFramework):
         self.assertEquals(os.access(testf_path, os.R_OK), False)
         p.undo()
         self.assertEquals(os.access(testf_path, os.R_OK), True)
+        
+    def testRm8(self):
+        self._setupTree2()
+        self.assertEquals(os.access(path_join(self._tmpd, 'testf'), os.R_OK), True)
+        self.assertEquals(os.access(path_join(self._tmpd, 'f3test'), os.R_OK), True)               
+        p = Pipeline.parse('ls testf f3test | rm --unlink', self._context)
+        p.execute_sync()
+        self.assertEquals(os.access(path_join(self._tmpd, 'testf'), os.R_OK), False)
+        self.assertEquals(os.access(path_join(self._tmpd, 'f3test'), os.R_OK), False)               
 
     def testMv(self):
         self._setupTree2()
