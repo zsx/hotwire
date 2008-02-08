@@ -251,7 +251,7 @@ class Command(gobject.GObject):
         return self.builtin.input_opt_formats
 
     def get_output_opt_formats(self):
-        return self.builtin.get_output_opt_formats()
+        return self.builtin.output_opt_formats
 
     def execute(self, force_sync, **kwargs):
         if force_sync or not self.builtin.threaded:
@@ -314,18 +314,25 @@ class Command(gobject.GObject):
             else:
                 outfile = None
             try:
-                for result in self.builtin.execute(self.context, *target_args, **kwargs):
-                    # if it has status, let it do its own cleanup
-                    if self._cancelled and not self.builtin.hasstatus:
-                        _logger.debug("%s cancelled, returning", self)
-                        self.output.put(self.map_fn(None))
-                        self.emit("complete")                        
-                        return
-                    if outfile and (result is not None):
-                        result = unicode(result)
-                        outfile.write(result)
-                    else:                        
-                        self.output.put(self.map_fn(result))
+                if self.builtin.singlevalue:
+                    result = self.builtin.execute(self.context, *target_args, **kwargs)
+                    if outfile:
+                        outfile.write(unicode(result))
+                    else:
+                        self.output.put(result)
+                else:
+                    for result in self.builtin.execute(self.context, *target_args, **kwargs):
+                        # if it has status, let it do its own cleanup
+                        if self._cancelled and not self.builtin.hasstatus:
+                            _logger.debug("%s cancelled, returning", self)
+                            self.output.put(self.map_fn(None))
+                            self.emit("complete")                        
+                            return
+                        if outfile and (result is not None):
+                            result = unicode(result)
+                            outfile.write(result)
+                        else:                        
+                            self.output.put(self.map_fn(result))
             finally:
                 if outfile:
                     outfile.close()
@@ -439,6 +446,8 @@ class BaseCommandResolver(object):
 
 class Pipeline(gobject.GObject):
     """A sequence of Commands."""
+    
+    is_singlevalue = property(lambda self: self._is_singlevalue)
 
     __gsignals__ = {
         "state-changed" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, []),
@@ -451,7 +460,8 @@ class Pipeline(gobject.GObject):
     def __init__(self, components, input_type='unknown', input_optional=False,
                  output_type='unknown', locality=None,
                  idempotent=False,
-                 undoable=False):
+                 undoable=False,
+                 is_singlevalue=False):
         super(Pipeline, self).__init__()
         self.__executing_sync = False
         self.__components = components
@@ -462,6 +472,7 @@ class Pipeline(gobject.GObject):
         self.__input_optional = input_optional
         self.__idempotent = idempotent
         self.__undoable = undoable
+        self._is_singlevalue = is_singlevalue
         self.__output_type = output_type
         self.__undo = []
         self.__cmd_metadata_lock = threading.Lock()

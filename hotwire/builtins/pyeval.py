@@ -36,21 +36,9 @@ expressed as an iterable which yielded a single object.""")
     def __init__(self):
         super(PyEvalBuiltin, self).__init__('py-eval',
                                             threaded=True,
+                                            singlevalue=True,
                                             output=OutputStreamSchema('any'),
-                                            options=[['-f', '--file']])
-
-    def __itervalue(self, o):
-        if isinstance(o, dict):
-            for v in o.iteritems():
-                yield v
-        elif isinstance(o, tuple):
-            # Don't expand tuples, not usually desired.
-            yield o
-        elif hasattr(o, '__iter__'):
-            for v in o:
-                yield v
-        else:
-            yield o         
+                                            options=[['-f', '--file']])      
 
     def execute(self, context, args, options=[]):
         if len(args) < 1:
@@ -70,14 +58,10 @@ expressed as an iterable which yielded a single object.""")
             try:
                 mainfunc = locals['main']
             except KeyError, e:
-                yield None
-                return
+                return None
             if not hasattr(mainfunc, '__call__'):
-                yield None
-                return
-            retv = mainfunc(*(args[1:]))
-            for v in self.__itervalue(retv):
-                yield v
+                return None
+            return mainfunc(*(args[1:]))
         else:
             if len(args) > 1:
                 raise ValueError(_("Too many arguments specified"))            
@@ -95,7 +79,6 @@ expressed as an iterable which yielded a single object.""")
             locals['_hotwire_handle_output_self'] = {'result': None}
             (compiled, mutated) = rewrite_and_compile(args[0], output_func_name='_hotwire_handle_output', output_func_self='_hotwire_handle_output_self')
             exec compiled in locals
-            for v in self.__itervalue(locals['_hotwire_handle_output_self']['result']):
-                yield v
+            return locals['_hotwire_handle_output_self']['result']
 
 BuiltinRegistry.getInstance().register_hotwire(PyEvalBuiltin())

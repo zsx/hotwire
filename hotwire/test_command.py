@@ -513,7 +513,7 @@ class PipelineRunTests(PipelineRunTestFramework):
         
     def testNewline2(self):
         self._setupTree1()
-        p = Pipeline.parse("py-eval '[\"hello\\n\", \"world\"]' | newline", self._context)
+        p = Pipeline.parse("py-eval '[\"hello\\n\", \"world\"]' | iter | newline", self._context)
         p.execute_sync()
         results = list(p.get_output())
         self.assertEquals(len(results), 2)
@@ -569,7 +569,7 @@ class PipelineRunTests(PipelineRunTestFramework):
         
     def testStringify3(self):
         self._setupTree1()
-        p = Pipeline.parse("py-eval 'import os,sys; [os,sys]' | stringify", self._context)
+        p = Pipeline.parse("py-eval 'import os,sys; [os,sys]' | iter | stringify", self._context)
         p.execute_sync()
         results = list(p.get_output())
         self.assertEquals(len(results), 2)
@@ -578,7 +578,7 @@ class PipelineRunTests(PipelineRunTestFramework):
         
     def testApply1(self):
         self._setupTree1()
-        p = Pipeline.parse("py-eval '[\"testf\"]' | apply ls -a", self._context)
+        p = Pipeline.parse("py-eval '\"testf\"' | apply ls -a", self._context)
         p.execute_sync()
         results = list(p.get_output())
         self.assertEquals(len(results), 1)

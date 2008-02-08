@@ -59,8 +59,9 @@ class Builtin(object):
     input_is_optional = property(lambda self: self._input and self._input.optional)
     input_opt_formats = property(lambda self: self._input and self._input.opt_formats)
     outputs = property(lambda self: self._outputs)
-    output_type = property(lambda self: self._outputs and self._outputs[0].otype or None)
-    output_typefunc = property(lambda self: self._outputs and self._outputs[0].typefunc or None)    
+    output_type = property(lambda self: self._output and self._output.otype or None)
+    output_typefunc = property(lambda self: self._output and self._output.typefunc or None)
+    output_opt_formats = property(lambda self: self._output and self._output.opt_formats or [])
     options = property(lambda self: self._options)
     aliases = property(lambda self: self._aliases)
     idempotent = property(lambda self: self._idempotent)
@@ -71,10 +72,10 @@ class Builtin(object):
     threaded = property(lambda self: self._threaded)
     locality = property(lambda self: self._locality)
     api_version = property(lambda self: self._api_version)
+    singlevalue = property(lambda self: self._singlevalue)
     def __init__(self, name, 
                  input=None,
                  output=None,
-                 outputs=[],
                  options=[],
                  aliases=[],
                  idempotent=False,
@@ -84,9 +85,10 @@ class Builtin(object):
                  nodisplay=False,
                  threaded=False,
                  locality='local',
-                 api_version=0):
+                 api_version=0,
+                 singlevalue=False):
         self._input=input
-        self._outputs = [isinstance(o, OutputStreamSchema) and o or OutputStreamSchema(o) for o in (output and [output] or outputs)]
+        self._output = isinstance(output, OutputStreamSchema) and output or OutputStreamSchema(output)
         self._options = options
         self._name = name
         self._aliases = aliases 
@@ -98,6 +100,7 @@ class Builtin(object):
         self._threaded = threaded
         self._locality = locality
         self._api_version = api_version
+        self._singlevalue = singlevalue
 
     def get_completer(self, *args, **kwargs):
         return None
@@ -110,18 +113,6 @@ class Builtin(object):
     
     def cleanup(self, context):
         pass
-
-    def __get_exec_attr_or_none(self, attr):
-        func = self.execute 
-        return _attr_or_none(func, attr)
-
-    def get_outputs(self):
-        return self.outputs
-    
-    def get_output_opt_formats(self):
-        if self.outputs:
-            return self.outputs[0].opt_formats
-        return []
 
 class BuiltinRegistry(Singleton):
     """Manages the set of registered builtins.
@@ -205,6 +196,7 @@ def load():
         import hotwire.builtins.json
     import hotwire.builtins.httpget
     import hotwire.builtins.kill
+    import hotwire.builtins.iter
     import hotwire.builtins.ls
     import hotwire.builtins.mkdir
     import hotwire.builtins.mv
