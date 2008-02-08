@@ -691,8 +691,8 @@ class Pipeline(gobject.GObject):
         if in_spec in ('any', 'identity'):
             return True
         if out_spec == 'any':
-            # An output of any can only connect to another any
-            return False
+            # Allow anys to connect to anything...even though it may TypeError
+            return True
         if out_spec is in_spec:
             return True
         for base in out_spec.__bases__:
