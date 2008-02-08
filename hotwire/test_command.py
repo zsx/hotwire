@@ -589,6 +589,11 @@ class PipelineRunTests(PipelineRunTestFramework):
         p = Pipeline.parse("py-eval 'None+2'", self._context)
         self.assertRaises(TypeError, p.execute_sync)
         
+    def testPyEvalSingle(self):
+        self._setupTree1()
+        p = Pipeline.parse("py-eval '42'", self._context)
+        self.assertTrue(p.is_singlevalue)
+        
 def suite():
     loader = unittest.TestLoader()
     loader.loadTestsFromTestCase(PipelineParserTests)

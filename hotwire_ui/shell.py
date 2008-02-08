@@ -16,11 +16,12 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-import os, sys, re, logging, string, locale
+import os, sys, re, logging, string, locale, weakref
 
 import gtk, gobject, pango
 
-from hotwire.command import PipelineFactory,Pipeline,Command,HotwireContext,PipelineLanguageRegistry,BaseCommandResolver
+from hotwire.command import PipelineFactory,Pipeline,Command,HotwireContext
+from hotwire.command import PipelineLanguageRegistry,BaseCommandResolver
 from hotwire.completion import Completion, VerbCompleter, TokenCompleter
 import hotwire.command
 import hotwire.version
@@ -74,14 +75,17 @@ class HotwireClientContext(hotwire.command.HotwireContext):
     def push_msg(self, text, **kwargs):
         self.__hotwire.push_msg(text, **kwargs)
 
-    def get_current_output_type(self):
-        return self.__hotwire.get_current_output_type()
-
-    def get_current_output(self):
-        return self.__hotwire.get_current_output()
+    def get_current_output_metadata(self):
+        return self.__hotwire.get_current_output_metadata()
     
-    def get_current_selected_output(self):
-        return self.__hotwire.get_current_selected_output()    
+    def get_current_output_ref(self):
+        return self.__hotwire.get_current_output_ref()
+    
+    def snapshot_output(self, ref):
+        return self.__hotwire.snapshot_output(ref)
+    
+    def snapshot_selected_output(self, ref):
+        return self.__hotwire.snapshot_selected_output(ref) 
 
     def get_history(self):
         # FIXME arbitrary limit
@@ -515,24 +519,33 @@ class Hotwire(gtk.VBox):
         d = self.__recentdirs.get_model().get_value(iter, 0)
         _logger.debug("selected recent dir %s", d)
         self.context.do_cd(d)        
-
-    def get_current_output_type(self):
-        odisp = self.__outputs.get_current()
-        if not odisp:
-            return None
-        return odisp.get_pipeline().get_output_type()
     
-    def get_current_output(self):
-        odisp = self.__outputs.get_current()
-        if not odisp:
-            return None
-        return odisp.get_objects()
+    def __mk_snapshot(self, value, odisp):
+        return HotwireOutputState(value, odisp.get_pipeline.get_output_type(), odisp.get_pipeline.is_singlevalue)
     
-    def get_current_selected_output(self):
+    def __do_snapshot(self, ref, selected=False):
+        odisp = ref()
+        if not odisp:
+            return None
+        return odisp.make_snapshot(selected=selected)        
+    
+    def get_current_output_metadata(self):
         odisp = self.__outputs.get_current()
         if not odisp:
             return None
-        return odisp.get_selected_objects()          
+        return odisp.get_pipeline().get_output_metadata()
+    
+    def get_current_output_ref(self):
+        odisp = self.__outputs.get_current()
+        if odisp:
+            return weakref.ref(odisp)
+        return None
+    
+    def snapshot_output(self, ref):
+        return self.__do_snapshot(ref)
+    
+    def snapshot_selected_output(self, ref):
+        return self.__do_snapshot(ref, selected=True)        
     
     def do_copy_url_drag_to_dir(self, urls, path):
         def fstrip(url):

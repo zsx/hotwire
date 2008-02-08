@@ -39,6 +39,16 @@ from hotwire.externals.dispatch import dispatcher
 
 _logger = logging.getLogger("hotwire.Command")
 
+class PipelineTypeData(object):
+    """Represents a snapshot of metadata from a pipeline execution."""
+    type = property(lambda self: self._type)
+    single = property(lambda self: self._single)
+    __slots__ = ['_type', '_single']
+    def __init__(self, pipeline):
+        super(PipelineTypeData, self).__init__()
+        self._type = pipeline.get_output_type()
+        self._single = pipeline.is_singlevalue
+
 class HotwireContext(gobject.GObject):
     __gsignals__ = {
         "cwd" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (gobject.TYPE_STRING,)),
@@ -74,15 +84,18 @@ class HotwireContext(gobject.GObject):
 
     def info_msg(self, msg):
         _logger.info("msg: %s", msg)
-
-    def get_current_output_type(self):
-        return None
     
-    def get_current_output(self):
-        return None
+    def get_current_output_metadata(self):
+        raise NotImplementedError()
     
-    def get_current_selected_output(self):
-        return None
+    def get_current_output_ref(self):
+        raise NotImplementedError()
+    
+    def snapshot_output(self, ref):
+        raise NotImplementedError()
+    
+    def snapshot_selected_output(self, ref):
+        raise NotImplementedError()
 
 class CommandContext(object):
     """An execution snapshot for a Command.  Holds the working directory
@@ -95,18 +108,28 @@ class CommandContext(object):
         self.pipeline = None
         self.cwd = hotwire.get_cwd()
         self.gtk_event_time = hotwire.get_gtk_event_time()
-        # This is kind of a hack; we need to store a snapshot of the
-        # currently displayed output when executing a new command.
-        # We should be sure this isn't creating circular references.
-        self.current_output_type = hotwire.get_current_output_type()
-        self.current_output = hotwire.get_current_output()
-        self.selected_output = hotwire.get_current_selected_output()
+        try:
+            self.current_output_metadata = hotwire.get_current_output_metadata()
+            self.current_output_ref = hotwire.get_current_output_ref()
+            _logger.debug("got current metadata %r, ref: %r", self.current_output_metadata,
+                          self.current_output_ref)
+        except NotImplementedError, e:
+            self.current_output_metadata = None
+            self.current_output_ref = None
         self.hotwire = hotwire
         self.__auxstreams = {}
         self.__metadata_handler = None
         # Private attributes to be used by the builtin
         self.attribs = {}
         self.cancelled = False
+        
+    def snapshot_current_output(self, selected=False):
+        if self.current_output_ref is None:
+            return None
+        if selected:
+            return self.hotwire.snapshot_current_output(self.current_output_ref)
+        else:
+            return self.hotwire.snapshot_selected_output(self.current_output_ref)
 
     def set_pipeline(self, pipeline):
         self.pipeline = pipeline
@@ -461,7 +484,7 @@ class Pipeline(gobject.GObject):
                  output_type='unknown', locality=None,
                  idempotent=False,
                  undoable=False,
-                 is_singlevalue=False):
+                 singlevalue=False):
         super(Pipeline, self).__init__()
         self.__executing_sync = False
         self.__components = components
@@ -472,7 +495,7 @@ class Pipeline(gobject.GObject):
         self.__input_optional = input_optional
         self.__idempotent = idempotent
         self.__undoable = undoable
-        self._is_singlevalue = is_singlevalue
+        self._is_singlevalue = singlevalue
         self.__output_type = output_type
         self.__undo = []
         self.__cmd_metadata_lock = threading.Lock()
@@ -630,6 +653,9 @@ class Pipeline(gobject.GObject):
 
     def get_output_type(self):
         return self.__output_type
+    
+    def get_output_metadata(self):
+        return PipelineTypeData(self)
 
     def get_auxstreams(self):
         for cmd in self.__components:
@@ -770,6 +796,7 @@ Otherwise, return arg."""
         pipeline_input_optional = 'unknown'
         pipeline_output_type = None
         prev_locality = None
+        pipeline_singlevalue = None
         pipeline_type_validates = True
         pushback = []
         tokens = list(tokens)
@@ -904,6 +931,9 @@ Otherwise, return arg."""
                 prev = cmd
             if pipeline_input_type == 'unknown':
                 pipeline_input_type = input_accepts_type
+                
+            if pipeline_singlevalue is None or (pipeline_singlevalue):
+                pipeline_singlevalue = cmd.builtin.singlevalue
 
             if cmd.builtin.output_type != 'identity':
                 if context and cmd.builtin.output_typefunc:
@@ -931,7 +961,8 @@ Otherwise, return arg."""
                             output_type=pipeline_output_type,
                             locality=prev_locality,
                             undoable=undoable,
-                            idempotent=idempotent)
+                            idempotent=idempotent,
+                            singlevalue=pipeline_singlevalue)
         _logger.debug("Parsed pipeline %s (%d components, input %s, output %s)",
                       pipeline, len(components),
                       pipeline.get_input_type(),

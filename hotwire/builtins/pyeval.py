@@ -43,9 +43,13 @@ expressed as an iterable which yielded a single object.""")
     def execute(self, context, args, options=[]):
         if len(args) < 1:
             raise ValueError(_("Too few arguments specified"))
-        locals = {'hot_context': context,
-                  'hot_selected': context.selected_output,
-                  'hot_current': context.current_output}
+        locals = {'hot_context': context}
+        if context.current_output_metadata:
+            if context.current_output_metadata.single:
+                locals['it'] = context.snapshot_current_output()
+            else:
+                locals['current'] = lambda: context.snapshot_current_output()
+                locals['selected'] = lambda: context.snapshot_current_selected_output(selected=True)                
         last_value = None
         if '-f' in options:
             fpath = path_join(context.cwd, args[0])

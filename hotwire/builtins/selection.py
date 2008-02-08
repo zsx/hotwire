@@ -25,20 +25,21 @@ class SelectionBuiltin(Builtin):
     __doc__ = _("""With no arguments, returns currently selected objects.
 Single integer argument selects object at that index.""")
     def __init__(self):
-        super(SelectionBuiltin, self).__init__('selection', aliases=['sel'],
+        super(SelectionBuiltin, self).__init__('selection', 
+                                               aliases=['sel'],
                                                output=OutputStreamSchema('any', 
                                                                          typefunc=lambda hotwire: hotwire.get_current_output_type()))
 
     def execute(self, context, args):
+        current = context.hotwire.snapshot_current_selected_output()        
         if len(args) == 0:
-            current = context.selected_output
-            if not current:
+            if current is None:
                 return
-            for obj in current:
+            for obj in current.value:
                 yield obj
         elif len(args) == 1:
             idx = int(args[0])
-            for i,obj in enumerate(context.current_output):
+            for i,obj in enumerate(current.value):
                 if i == idx:
                     yield obj
                     return

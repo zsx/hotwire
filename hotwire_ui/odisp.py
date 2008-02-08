@@ -130,11 +130,15 @@ class ObjectsDisplay(gtk.VBox):
         if self.__display:
             for obj in self.__display.get_objects():
                 yield obj
+        else:
+            raise ValueError("Can't get object snapshot, no display")
             
     def get_selected_objects(self):
         if self.__display:
             for obj in self.__display.get_selected_objects():
                 yield obj
+        else:
+            raise ValueError("Can't get object snapshot, no display")            
             
     def get_output_type(self):
         """Return the typespec for the current pipeline.  See Pipeline
@@ -278,14 +282,18 @@ class MultiObjectsDisplay(gtk.Notebook):
         if self.__default_odisp:
             return self.__default_odisp.get_output_common_supertype()
         return None
-
-    def get_objects(self):
-        for obj in self.__default_odisp.get_objects():
-            yield obj
-        
-    def get_selected_objects(self):
-        for obj in self.__default_odisp.get_selected_objects():
-            yield obj        
+    
+    def make_snapshot(self, selected=False):
+        odisp = self.__default_odisp
+        if selected:
+            objs = self.__default_odisp.get_selected_objects()
+        else:
+            objs = self.__default_odisp.get_objects()
+        # snapshot it - FIXME this should really be async
+        objs = list(objs)
+        if self.__pipeline.is_singlevalue:
+            return objs[0]
+        return objs
 
     def append_ostream(self, otype, name, queue, merged):
         label = name or ''

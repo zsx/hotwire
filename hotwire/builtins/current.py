@@ -28,14 +28,15 @@ class CurrentBuiltin(Builtin):
     def __init__(self):
         super(CurrentBuiltin, self).__init__('current', aliases=['cur'],
                                              idempotent=True,
-                                             output=OutputStreamSchema('any', 
-                                                                       typefunc=lambda hotwire: hotwire.get_current_output_type()))
+                                             output=OutputStreamSchema('any'))
 
     def execute(self, context, args):
-        current = context.current_output
-        if not current:
+        current = context.snapshot_current_output()
+        if current is None:
             return
-        for obj in current:
-            yield obj
-    
+        if current.single:
+            yield current.value
+        else:
+            for obj in current.value:
+                yield obj
 BuiltinRegistry.getInstance().register_hotwire(CurrentBuiltin())
