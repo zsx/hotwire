@@ -58,7 +58,7 @@ class Builtin(object):
     input_type = property(lambda self: self._input and self._input.otype)
     input_is_optional = property(lambda self: self._input and self._input.optional)
     input_opt_formats = property(lambda self: self._input and self._input.opt_formats)
-    outputs = property(lambda self: self._outputs)
+    output = property(lambda self: self._output)
     output_type = property(lambda self: self._output and self._output.otype or None)
     output_typefunc = property(lambda self: self._output and self._output.typefunc or None)
     output_opt_formats = property(lambda self: self._output and self._output.opt_formats or [])
