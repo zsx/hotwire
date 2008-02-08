@@ -52,14 +52,14 @@ try:
 except:
     pass
 
-if sys.version_info[0] == 2 and sys.version_info[1] < 6:
-    import hotwire.externals.webbrowser as webbrowser
-else:
-    import webbrowser
-
 _logger = logging.getLogger("hotwire.Main")
 
 def on_about_dialog_url(dialog, link):
+    from hotwire.sysdep import is_windows
+    if sys.version_info[0] == 2 and sys.version_info[1] < 6 and (not is_windows()):
+        import hotwire.externals.webbrowser as webbrowser
+    else:
+        import webbrowser
     webbrowser.open(link)
 
 def usage(ver, svnstr):
