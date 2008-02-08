@@ -891,8 +891,25 @@ Otherwise, return arg."""
                     if argopts:
                         options.extend(argopts)
                     else:
-                        expanded_cmdargs.append(arg)                        
+                        expanded_cmdargs.append(arg)
                         
+            argspec = b.argspec
+            if argspec is False:
+                # If we don't have an argspec, don't do any checking
+                pass
+            elif isinstance(argspec, tuple):
+                mincount = 0
+                for o in argspec:
+                    if not o.opt: 
+                        mincount += 1
+                if len(expanded_cmdargs) > len(argspec):
+                    raise PipelineParseException(_("Command %s takes at most %d args, %d given") % (b.name,
+                                                                                                    len(argspec),
+                                                                                                    len(expanded_cmdargs)))
+                if len(expanded_cmdargs) < mincount:
+                    raise PipelineParseException(_("Command %s requires %d args, %d given") % (b.name,
+                                                                                               mincount,
+                                                                                               len(expanded_cmdargs)))                
             cmdtokens = [builtin_token]
             cmdtokens.extend(cmdargs)
             cmd = Command(b, expanded_cmdargs, options, context, tokens=alltokens, in_redir=in_redir, out_redir=out_redir)

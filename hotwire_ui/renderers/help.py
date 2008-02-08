@@ -128,13 +128,23 @@ class HelpItemRenderer(UnicodeRenderer):
             self._buf.insert_markup('\n')        
                 
     def __append_builtin_arghelp(self, builtin):
+        if isinstance(builtin.argspec, tuple):
+            self._buf.insert_markup('    %s: ' % (_('Arguments'),)) 
+            for arg in builtin.argspec:
+                argname = gobject.markup_escape_text(arg.name)
+                if arg.opt:
+                    argname = '[%s]' % (argname,)
+                self._buf.insert_markup('%s ' % (argname,))
+            self._buf.insert_markup('\n')
+        elif builtin.argspec is False:
+            self._buf.insert_markup('    <i>%s</i>\n' % (_('(Unspecified arguments)'),))
         if not builtin.options:
             self._buf.insert_markup('    <i>%s</i>\n' % (_('(No options)'),))
-            return
-        argstr = '  '.join(map(lambda x: ','.join(x), builtin.options))
-        self._buf.insert_markup('    %s: ' % (_('Options'),))
-        self._buf.insert_markup('<tt>' + gobject.markup_escape_text(argstr) + '</tt>')
-        self._buf.insert_markup('\n')                
+        else:
+            argstr = '  '.join(map(lambda x: ','.join(x), builtin.options))
+            self._buf.insert_markup('    %s: ' % (_('Options'),))
+            self._buf.insert_markup('<tt>' + gobject.markup_escape_text(argstr) + '</tt>')
+            self._buf.insert_markup('\n')                
         
     def __help_items(self, items):
         builtins = BuiltinRegistry.getInstance()        

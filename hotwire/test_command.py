@@ -190,6 +190,9 @@ class PipelineInstantiateTests(unittest.TestCase):
     def testInvalid4(self):
         self.assertRaises(hotwire.command.PipelineParseException, lambda: Pipeline.parse('ls | cd test', self._context))
 
+    def testInvalidArgCount1(self):
+        self.assertRaises(hotwire.command.PipelineParseException, lambda: Pipeline.parse('fsearch', self._context))
+
 class PipelineRunTestFramework(unittest.TestCase):
     def setUp(self):
         self._context = HotwireContext()

@@ -22,7 +22,7 @@
 import re
 
 from hotwire.text import MarkupText
-from hotwire.builtin import Builtin, BuiltinRegistry, InputStreamSchema
+from hotwire.builtin import Builtin, BuiltinRegistry, InputStreamSchema, ArgSpec
 
 class StringMatch(MarkupText):
     def __new__(cls, value, match):
@@ -38,13 +38,10 @@ class FilterBuiltin(Builtin):
                                             input=InputStreamSchema('any'),
                                             output='identity',
                                             options=[['-s', '--stringify'], ['-i', '--ignore-case'],],
+                                            argspec=('regexp', ArgSpec('property', opt=True)),
                                             threaded=True)
 
-    def execute(self, context, args, options=[]):
-        if len(args) > 2:
-            raise ValueError(_("Too many arguments specified"))
-        if len(args) == 0:
-            raise ValueError(_("Too few arguments specified"))        
+    def execute(self, context, args, options=[]):     
         if len(args) == 2:
             prop = args[1]
         else:

@@ -26,7 +26,7 @@ import hotwire.fs
 from hotwire.fs import FilePath, file_is_valid_utf8, open_text_file
 
 from hotwire.command import HotwireContext
-from hotwire.builtin import Builtin, BuiltinRegistry
+from hotwire.builtin import Builtin, BuiltinRegistry, ArgSpec
 from hotwire.builtins.fileop import FileOpBuiltin
 from hotwire.sysdep.fs import Filesystem, FileStatError
 
@@ -53,13 +53,10 @@ class FSearchBuiltin(FileOpBuiltin):
     def __init__(self):
         super(FSearchBuiltin, self).__init__('fsearch',
                                              output=FileStringMatch,
+                                             argspec=('regexp', ArgSpec('directory', opt=True)),                                             
                                              threaded=True)
 
-    def execute(self, context, args):
-        if len(args) > 2:
-            raise ValueError(_("Too many arguments specified"))
-        if len(args) == 0:
-            raise ValueError(_("Too few arguments specified"))        
+    def execute(self, context, args):       
         regexp = args[0]
         if len(args) == 2:
             path = args[1]

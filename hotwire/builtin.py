@@ -43,11 +43,11 @@ class OutputStreamSchema(ObjectStreamSchema):
         self.merge_default = merge_default
         self.typefunc = typefunc
 
-class HotwireBuiltinArg(object):
-    def __init__(self, t, optional, completer_class=None):
-        self.argtype = t
-        self.optional = optional
-        self.completer_class = completer_class
+class ArgSpec(object):
+    __slots__ = ['name', 'opt']
+    def __init__(self, name, opt=False):
+        self.name = name
+        self.opt = opt
 
 def _attr_or_none(o, a):
     return hasattr(o, a) and getattr(o, a) or None
@@ -63,6 +63,7 @@ class Builtin(object):
     output_typefunc = property(lambda self: self._output and self._output.typefunc or None)
     output_opt_formats = property(lambda self: self._output and self._output.opt_formats or [])
     options = property(lambda self: self._options)
+    argspec = property(lambda self: self._argspec)
     aliases = property(lambda self: self._aliases)
     idempotent = property(lambda self: self._idempotent)
     undoable = property(lambda self: self._undoable)
@@ -77,6 +78,7 @@ class Builtin(object):
                  input=None,
                  output=None,
                  options=[],
+                 argspec=False,
                  aliases=[],
                  idempotent=False,
                  undoable=False,
@@ -90,6 +92,10 @@ class Builtin(object):
         self._input=input
         self._output = isinstance(output, OutputStreamSchema) and output or OutputStreamSchema(output)
         self._options = options
+        if isinstance(argspec, tuple):
+            self._argspec = tuple([isinstance(a, ArgSpec) and a or ArgSpec(a) for a in argspec])
+        else:
+            self._argspec = argspec
         self._name = name
         self._aliases = aliases 
         self._idempotent = idempotent
