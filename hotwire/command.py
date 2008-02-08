@@ -114,6 +114,7 @@ class CommandContext(object):
             _logger.debug("got current metadata %r, ref: %r", self.current_output_metadata,
                           self.current_output_ref)
         except NotImplementedError, e:
+            _logger.debug("no current output!")
             self.current_output_metadata = None
             self.current_output_ref = None
         self.hotwire = hotwire
@@ -127,9 +128,9 @@ class CommandContext(object):
         if self.current_output_ref is None:
             return None
         if selected:
-            return self.hotwire.snapshot_current_output(self.current_output_ref)
-        else:
             return self.hotwire.snapshot_selected_output(self.current_output_ref)
+        else:
+            return self.hotwire.snapshot_output(self.current_output_ref)
 
     def set_pipeline(self, pipeline):
         self.pipeline = pipeline

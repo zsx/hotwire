@@ -287,10 +287,10 @@ class MultiObjectsDisplay(gtk.Notebook):
         odisp = self.__default_odisp
         if selected:
             objs = self.__default_odisp.get_selected_objects()
-        else:
+        else:          
             objs = self.__default_odisp.get_objects()
         # snapshot it - FIXME this should really be async
-        objs = list(objs)
+        objs = list(objs)      
         if self.__pipeline.is_singlevalue:
             return objs[0]
         return objs

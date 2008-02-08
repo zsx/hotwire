@@ -31,12 +31,13 @@ class CurrentBuiltin(Builtin):
                                              output=OutputStreamSchema('any'))
 
     def execute(self, context, args):
+        meta = context.current_output_metadata
         current = context.snapshot_current_output()
         if current is None:
             return
-        if current.single:
-            yield current.value
+        if meta.single:
+            yield current
         else:
-            for obj in current.value:
+            for obj in current:
                 yield obj
 BuiltinRegistry.getInstance().register_hotwire(CurrentBuiltin())

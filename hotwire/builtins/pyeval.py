@@ -44,7 +44,7 @@ expressed as an iterable which yielded a single object.""")
         if len(args) < 1:
             raise ValueError(_("Too few arguments specified"))
         locals = {'hot_context': context}
-        if context.current_output_metadata:
+        if context.current_output_metadata and context.current_output_metadata.type is not None:
             if context.current_output_metadata.single:
                 locals['it'] = context.snapshot_current_output()
             else:
