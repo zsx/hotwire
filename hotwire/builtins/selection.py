@@ -19,7 +19,7 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR 
 # THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-from hotwire.builtin import Builtin, BuiltinRegistry, OutputStreamSchema
+from hotwire.builtin import Builtin, BuiltinRegistry, OutputStreamSchema, ArgSpec
 
 class SelectionBuiltin(Builtin):
     __doc__ = _("""With no arguments, returns currently selected objects.
@@ -27,6 +27,7 @@ Single integer argument selects object at that index.""")
     def __init__(self):
         super(SelectionBuiltin, self).__init__('selection', 
                                                aliases=['sel'],
+                                               argspec=(ArgSpec('index', opt=True),),
                                                output=OutputStreamSchema('any', 
                                                                          typefunc=lambda hotwire: hotwire.get_current_output_type()))
 

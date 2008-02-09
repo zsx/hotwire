@@ -30,7 +30,7 @@ import hotwire
 from hotwire.text import MarkupText
 from hotwire.async import MiniThreadPool
 from hotwire.externals.singletonmixin import Singleton
-from hotwire.builtin import Builtin, BuiltinRegistry, InputStreamSchema, OutputStreamSchema
+from hotwire.builtin import Builtin, BuiltinRegistry, InputStreamSchema, OutputStreamSchema, MultiArgSpec
 from hotwire.sysdep import is_windows, is_unix
 from hotwire.sysdep.proc import ProcessManager
 
@@ -68,6 +68,7 @@ class SysBuiltin(Builtin):
                                          input=InputStreamSchema(str, optional=True),
                                          output=OutputStreamSchema(str, opt_formats=['x-filedescriptor/special', 'bytearray/chunked']),
                                          hasstatus=True,
+                                         argspec=MultiArgSpec('args'),
                                          threaded=True)
 
     def __on_input(self, input, stream):

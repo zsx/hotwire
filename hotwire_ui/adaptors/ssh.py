@@ -21,7 +21,7 @@
 
 import os,sys,subprocess
 
-from hotwire.builtin import Builtin, BuiltinRegistry
+from hotwire.builtin import Builtin, BuiltinRegistry, MultiArgSpec
 from hotwire.externals.singletonmixin import Singleton
 from hotwire.completion import Completer, Completion
 from hotwire.sysdep.fs import Filesystem
@@ -42,6 +42,7 @@ class HotSshBuiltin(Builtin):
     def __init__(self):
         super(HotSshBuiltin, self).__init__('ssh', 
                                             nodisplay=True,
+                                            argspec=MultiArgSpec('args', min=1),
                                             threaded=True)
 
     def get_completer(self, context, args, i):

@@ -22,7 +22,7 @@
 import os,sys,pickle
 
 from hotwire.fs import FilePath, open_text_file
-from hotwire.builtin import Builtin, BuiltinRegistry
+from hotwire.builtin import Builtin, BuiltinRegistry, MultiArgSpec
 
 if '_' not in globals(): globals()['_'] = lambda x: x
 
@@ -32,6 +32,7 @@ class CatBuiltin(Builtin):
         super(CatBuiltin, self).__init__('cat',
                                          output=str, # 'any'
                                          idempotent=True,
+                                         argspec=MultiArgSpec('files'),
                                          #options=[['-p', '--pickle'],],                                          
                                          threaded=True)
 

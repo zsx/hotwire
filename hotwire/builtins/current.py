@@ -28,6 +28,7 @@ class CurrentBuiltin(Builtin):
     def __init__(self):
         super(CurrentBuiltin, self).__init__('current', aliases=['cur'],
                                              idempotent=True,
+                                             argspec=None,
                                              output=OutputStreamSchema('any'))
 
     def execute(self, context, args):

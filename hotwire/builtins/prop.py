@@ -22,7 +22,7 @@
 import re
 
 from hotwire.text import MarkupText
-from hotwire.builtin import Builtin, BuiltinRegistry, InputStreamSchema
+from hotwire.builtin import Builtin, BuiltinRegistry, InputStreamSchema, ArgSpec
 
 class PropBuiltin(Builtin):
     __doc__ = _("""Return the property of an object.""")
@@ -31,11 +31,10 @@ class PropBuiltin(Builtin):
                                           input=InputStreamSchema('any'),
                                           output='any',
                                           idempotent=True,
+                                          argspec=(ArgSpec('name'),),
                                           options=[['-t', '--tuple']])
 
     def execute(self, context, args, options=[]):
-        if len(args) != 1:
-            raise ValueError(_("Must specify exactly one property name"))
         prop = args[0]            
         target_prop = prop
         tuplify = '-t' in options

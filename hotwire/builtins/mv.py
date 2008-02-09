@@ -24,7 +24,7 @@ import os, sys, shutil, stat
 import hotwire
 from hotwire.fs import FilePath, unix_basename
 
-from hotwire.builtin import BuiltinRegistry
+from hotwire.builtin import BuiltinRegistry, MultiArgSpec
 from hotwire.builtins.fileop import FileOpBuiltin
 
 class MvBuiltin(FileOpBuiltin):
@@ -32,11 +32,10 @@ class MvBuiltin(FileOpBuiltin):
     def __init__(self):
         super(MvBuiltin, self).__init__('mv', aliases=['move'],
                                         hasstatus=True,
+                                        argspec=MultiArgSpec('paths', min=2),
                                         threaded=True)
 
     def execute(self, context, args):
-        if not args:
-            raise ValueError(_("Need source and destination"))
         target = FilePath(args[-1], context.cwd)
         try:
             target_is_dir = stat.S_ISDIR(os.stat(target).st_mode)
@@ -46,8 +45,6 @@ class MvBuiltin(FileOpBuiltin):
             target_exists = False
         
         sources = args[:-1]
-        if not sources:
-            raise ValueError(_("Need source and destination"))
         if (not target_is_dir) and len(sources) > 1:
             raise ValueError(_("Can't move multiple items to non-directory"))
 

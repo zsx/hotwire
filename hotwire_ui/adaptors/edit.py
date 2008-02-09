@@ -21,7 +21,7 @@
 
 import os,sys,re,os.path, stat,subprocess
 
-from hotwire.builtin import Builtin, BuiltinRegistry
+from hotwire.builtin import Builtin, BuiltinRegistry, MultiArgSpec
 from hotwire.fs import FilePath
 from hotwire.sysdep.fs import Filesystem
 
@@ -33,6 +33,7 @@ class EditBuiltin(Builtin):
     def __init__(self):
         super(EditBuiltin, self).__init__('edit',
                                           aliases=['ed'],
+                                          argspec=MultiArgSpec('paths', min=1),
                                           nodisplay=True,
                                           idempotent=True)
  

@@ -25,7 +25,7 @@ import hotwire
 import hotwire.fs
 from hotwire.fs import FilePath, file_is_valid_utf8, path_join
 
-from hotwire.builtin import Builtin, BuiltinRegistry
+from hotwire.builtin import Builtin, BuiltinRegistry, ArgSpec
 from hotwire.builtins.fileop import FileOpBuiltin
 from hotwire.sysdep.fs import Filesystem, File, FileStatError
 
@@ -36,14 +36,13 @@ class WalkBuiltin(FileOpBuiltin):
     def __init__(self):
         super(WalkBuiltin, self).__init__('walk',
                                           output=File,
+                                          argspec=(ArgSpec('directory', opt=True),),
                                           options=[['-a', '--all']],                                          
                                           threaded=True)
 
     def execute(self, context, args, options=[]):
         fs = Filesystem.getInstance()
-        if len(args) > 1:
-            raise ValueError(_("Too many arguments given"))
-        elif len(args) == 1:
+        if len(args) == 1:
             path = path_join(context.cwd, args[0])
         else:
             path = context.cwd

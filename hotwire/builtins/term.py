@@ -19,17 +19,18 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR 
 # THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-from hotwire.builtin import Builtin, BuiltinRegistry
+from hotwire.builtin import Builtin, BuiltinRegistry, MultiArgSpec
 
 class TermBuiltin(Builtin):
     __doc__ = _("""Execute a system command in a new terminal.""")
     def __init__(self):
         super(TermBuiltin, self).__init__('term',
                                           nodisplay=True,
+                                          argspec=MultiArgSpec('args'),
                                           options=[['-w', '--window']])
 
-    def execute(self, context, arg, options=[]):
-        context.hotwire.open_term(context.cwd, context.pipeline, arg, window=('-w' in options))
+    def execute(self, context, args, options=[]):
+        context.hotwire.open_term(context.cwd, context.pipeline, args, window=('-w' in options))
         return []
         
 BuiltinRegistry.getInstance().register_hotwire(TermBuiltin())

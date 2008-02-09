@@ -29,11 +29,10 @@ class IterBuiltin(Builtin):
         super(IterBuiltin, self).__init__('iter',
                                           input=InputStreamSchema('any'),
                                           output='any',
+                                          argspec=None,
                                           idempotent=True)
 
     def execute(self, context, args, options=[]):
-        if len(args) != 0:
-            raise ValueError(_("Too many arguments specified"))
         for item in context.input:
             for value in item:
                 yield value

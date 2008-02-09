@@ -25,7 +25,7 @@ from itertools import imap
 import hotwire
 
 from hotwire.sysdep.proc import ProcessManager, Process
-from hotwire.builtin import Builtin, BuiltinRegistry, InputStreamSchema
+from hotwire.builtin import Builtin, BuiltinRegistry, InputStreamSchema, MultiArgSpec
 from hotwire.externals.singletonmixin import Singleton
 from hotwire.completion import Completer, Completion
 
@@ -72,7 +72,8 @@ class KillBuiltin(Builtin):
         super(KillBuiltin, self).__init__('kill',
                                           nodisplay=True,
                                           input=InputStreamSchema(Process, optional=True),
-                                          options=options,                                     
+                                          options=options,
+                                          argspec=MultiArgSpec('pid', min=1),                                 
                                           threaded=True)
         
     def get_completer(self, context, args, i):

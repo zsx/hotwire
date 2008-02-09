@@ -29,7 +29,7 @@ import hotwire.fs
 from hotwire.fs import path_normalize, unix_basename, FilePath, open_text_file
 from hotwire.sysdep.fs import Filesystem, File
 from hotwire.async import IterableQueue, MiniThreadPool
-from hotwire.builtin import BuiltinRegistry, Builtin
+from hotwire.builtin import BuiltinRegistry, Builtin, ArgSpec, MultiArgSpec
 import hotwire.util
 from hotwire.util import quote_arg, assert_strings_equal
 import hotwire.script
@@ -897,6 +897,14 @@ Otherwise, return arg."""
             if argspec is False:
                 # If we don't have an argspec, don't do any checking
                 pass
+            elif argspec is None:
+                if len(expanded_cmdargs) > 0:
+                    raise PipelineParseException(_('Command %s takes no arguments, %d given') % (b.name, len(expanded_cmdargs)))
+            elif isinstance(argspec, MultiArgSpec):
+                if len(expanded_cmdargs) < argspec.min:
+                    raise PipelineParseException(_("Command %s requires %d args, %d given") % (b.name,
+                                                                                               mincount,
+                                                                                               len(expanded_cmdargs)))  
             elif isinstance(argspec, tuple):
                 mincount = 0
                 for o in argspec:

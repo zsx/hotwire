@@ -24,7 +24,7 @@ from hotwire_ui.render import ClassRendererMapping
 from hotwire_ui.renderers.unicode import UnicodeRenderer
 from hotwire.cmdalias import AliasRegistry
 from hotwire.command import PipelineLanguageRegistry
-from hotwire.builtin import BuiltinRegistry
+from hotwire.builtin import BuiltinRegistry, MultiArgSpec, ArgSpec
 from hotwire.builtins.help import HelpItem
 from hotwire_ui.pixbufcache import PixbufCache
 from hotwire_ui.oinspect import InspectWindow 
@@ -128,15 +128,24 @@ class HelpItemRenderer(UnicodeRenderer):
             self._buf.insert_markup('\n')        
                 
     def __append_builtin_arghelp(self, builtin):
-        if isinstance(builtin.argspec, tuple):
-            self._buf.insert_markup('    %s: ' % (_('Arguments'),)) 
-            for arg in builtin.argspec:
-                argname = gobject.markup_escape_text(arg.name)
-                if arg.opt:
-                    argname = '[%s]' % (argname,)
-                self._buf.insert_markup('%s ' % (argname,))
+        if builtin.argspec is None:
+            self._buf.insert_markup('    <i>%s</i>\n' % (_('(No arguments)'),))                        
+        elif builtin.argspec is not False:
+            self._buf.insert_markup('    %s: ' % (_('Arguments'),))             
+            if isinstance(builtin.argspec, tuple):
+                for arg in builtin.argspec:
+                    argname = gobject.markup_escape_text(arg.name)
+                    if arg.opt:
+                        argname = '[%s]' % (argname,)
+                    self._buf.insert_markup('%s ' % (argname,))
+            elif isinstance(builtin.argspec, MultiArgSpec):
+                argname = gobject.markup_escape_text(builtin.argspec.name) + '*'
+                self._buf.insert_markup(argname)
+            else:
+                assert False 
             self._buf.insert_markup('\n')
-        elif builtin.argspec is False:
+        else:
+            assert builtin.argspec is False
             self._buf.insert_markup('    <i>%s</i>\n' % (_('(Unspecified arguments)'),))
         if not builtin.options:
             self._buf.insert_markup('    <i>%s</i>\n' % (_('(No options)'),))

@@ -25,7 +25,7 @@ import hotwire
 import hotwire.fs
 from hotwire.fs import FilePath
 
-from hotwire.builtin import Builtin, BuiltinRegistry  
+from hotwire.builtin import Builtin, BuiltinRegistry, MultiArgSpec
 from hotwire.builtins.fileop import FileOpBuiltin
 
 class MkdirBuiltin(FileOpBuiltin):
@@ -33,11 +33,10 @@ class MkdirBuiltin(FileOpBuiltin):
     def __init__(self):
         super(MkdirBuiltin, self).__init__('mkdir',
                                            hasstatus=True,
+                                           argspec=MultiArgSpec('paths', min=1),
                                            threaded=True)
 
     def execute(self, context, args):
-        if not args:
-            raise ValueError(_("Need directory to create"))
         sources_total = len(args)
         for i,arg in enumerate(args):
             arg_path = FilePath(arg, context.cwd)

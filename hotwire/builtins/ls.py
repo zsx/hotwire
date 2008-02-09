@@ -21,7 +21,7 @@
 
 import os, sys, os.path, stat, logging, locale
 
-from hotwire.builtin import Builtin, BuiltinRegistry, InputStreamSchema
+from hotwire.builtin import Builtin, BuiltinRegistry, InputStreamSchema, MultiArgSpec
 from hotwire.fs import FilePath
 from hotwire.sysdep.fs import Filesystem,File
 from hotwire.util import xmap
@@ -36,6 +36,7 @@ class LsBuiltin(Builtin):
                                         output=File,
                                         idempotent=True,
                                         threaded=True,
+                                        argspec=MultiArgSpec('paths'),
                                         options=[['-l', '--long'],['-a', '--all']])
 
     def execute(self, context, args, options=[]):

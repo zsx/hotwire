@@ -1,6 +1,7 @@
 # This file is part of the Hotwire Shell project API.
 
 # Copyright (C) 2008 Kevin Kubasik <kevin@kubasik.net>
+# Copyright (C) 2008 Colin Walters <walters@verbum.org>
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy 
 # of this software and associated documentation files (the "Software"), to deal 
@@ -19,12 +20,9 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR 
 # THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import re
+import os,sys,re
 
-
-from hotwire.builtin import Builtin, BuiltinRegistry, InputStreamSchema
-
-
+from hotwire.builtin import Builtin, BuiltinRegistry, InputStreamSchema, ArgSpec
 
 class ReplaceBuiltin(Builtin):
     __doc__ = _("""Replace input objects by regular expression, matching on a property (or repr)""")
@@ -32,35 +30,14 @@ class ReplaceBuiltin(Builtin):
         super(ReplaceBuiltin, self).__init__('replace',
                                             input=InputStreamSchema('any'),
                                             output='identity',
-                                            options=[['-s', '--stringify'], ['-i', '--ignore-case'],],
+                                            argspec=(ArgSpec('regexp'), ArgSpec('replacement')),                                            
                                             threaded=True)
 
     def execute(self, context, args, options=[]):
-        if len(args) > 2:
-            raise ValueError(_("Too many arguments specified"))
-        if len(args) == 0 or len(args) == 1:
-            raise ValueError(_("Too few arguments specified"))        
-        if len(args) == 3:
-            prop = args[2]
-        else:
-            prop = None
         regexp = args[0]
-        target_prop = prop
+        replacement = args[1]
         stringify = '-s' in options
         compiled_re = re.compile(regexp, (('-i' in options) and re.IGNORECASE or 0) | re.UNICODE)
         for arg in context.input:
-            target_propvalue = target_prop and getattr(arg, target_prop) or arg
-            if not isinstance(target_propvalue, basestring):
-                if not stringify:
-                    raise ValueError(_("Value not a string: %r" % (target_propvalue,)))
-                else:
-                    target_propvalue = unicode(target_propvalue, 'utf-8')
-            elif not isinstance(target_propvalue, unicode):
-                target_propvalue = unicode(target_propvalue, 'utf-8')                
-                        
-            
-            if isinstance(arg, str):
-                yield re.sub(regexp,args[1],arg)
-            else:
-                yield arg
+            yield compiled_re.sub(regexp,replacement,arg)
 BuiltinRegistry.getInstance().register_hotwire(ReplaceBuiltin())

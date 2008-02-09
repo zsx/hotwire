@@ -19,7 +19,7 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR 
 # THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-from hotwire.builtin import Builtin, BuiltinRegistry
+from hotwire.builtin import Builtin, BuiltinRegistry, ArgSpec
 
 from hotwire.completion import BuiltinCompleter
 
@@ -32,6 +32,7 @@ class HelpBuiltin(Builtin):
     def __init__(self):
         super(HelpBuiltin, self).__init__('help',
                                           output=HelpItem,
+                                          argspec=(ArgSpec('builtin', opt=True),),
                                           idempotent=True)
 
     def get_completer(self, context, args, i):

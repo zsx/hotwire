@@ -20,7 +20,7 @@
 # THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import hotwire
-from hotwire.builtin import Builtin, BuiltinRegistry
+from hotwire.builtin import Builtin, BuiltinRegistry, MultiArgSpec
 from hotwire.fs import FilePath
 from hotwire.sysdep.fs import Filesystem
 
@@ -29,6 +29,7 @@ class OpenBuiltin(Builtin):
     def __init__(self):
         super(OpenBuiltin, self).__init__('open', 
                                           idempotent=True,
+                                          argspec=MultiArgSpec('paths', min=1),
                                           nodisplay=True)
 
     def execute(self, context, args):

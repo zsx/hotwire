@@ -21,7 +21,7 @@
 
 import os, sys, stat
 
-from hotwire.builtin import Builtin, BuiltinRegistry
+from hotwire.builtin import Builtin, BuiltinRegistry, ArgSpec
 from hotwire.fs import FilePath
 from hotwire.sysdep.fs import File
 from hotwire.completion import PathCompleter
@@ -44,15 +44,13 @@ class CdBuiltin(Builtin):
         super(CdBuiltin, self).__init__('cd',
                                         output=File,
                                         idempotent=True,
+                                        argspec=(ArgSpec('directory', opt=True),),
                                         threaded=True)
 
     def get_completer(self, context, args, i):
         return CdCompleter()
 
     def execute(self, context, args):
-        if len(args) > 1:
-            raise ValueError(_('Multiple directories specified'))
-        
         if not args:
             target_dir = os.path.expanduser("~")
         else:

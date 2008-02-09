@@ -48,6 +48,13 @@ class ArgSpec(object):
     def __init__(self, name, opt=False):
         self.name = name
         self.opt = opt
+        
+class MultiArgSpec(object):
+    """Specifies an unlimited number of similar arguments, with optional minimum."""
+    __slots__ = ['name', 'min']
+    def __init__(self, name, min=0):
+        self.name = name
+        self.min = min
 
 def _attr_or_none(o, a):
     return hasattr(o, a) and getattr(o, a) or None

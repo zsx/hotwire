@@ -22,7 +22,7 @@
 import os,sys,md5,sha
 
 import hotwire
-from hotwire.builtin import Builtin, BuiltinRegistry, InputStreamSchema
+from hotwire.builtin import Builtin, BuiltinRegistry, InputStreamSchema, MultiArgSpec
 from hotwire.fs import FilePath
 from hotwire.sysdep.fs import Filesystem
 
@@ -31,7 +31,8 @@ class SecHashBuiltin(Builtin):
     def __init__(self):
         super(SecHashBuiltin, self).__init__('sechash', idempotent=True,
                                              input=InputStreamSchema('any', optional=True),
-                                             output=str,                                           
+                                             output=str,
+                                             argspec=MultiArgSpec('paths'),                      
                                              options=[['-5', '--md5'],],
                                              threaded=True)
 

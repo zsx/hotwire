@@ -21,7 +21,7 @@
 
 import os,sys,re,os.path, stat,subprocess
 
-from hotwire.builtin import Builtin, BuiltinRegistry
+from hotwire.builtin import Builtin, BuiltinRegistry, MultiArgSpec
 from hotwire.fs import FilePath
 from hotwire.sysdep.fs import Filesystem
 
@@ -31,6 +31,7 @@ class ViewBuiltin(Builtin):
     def __init__(self):
         super(ViewBuiltin, self).__init__('view',
                                           nodisplay=True,
+                                          argspec=MultiArgSpec('paths', min=1),
                                           idempotent=True)
  
     def execute(self, context, args):

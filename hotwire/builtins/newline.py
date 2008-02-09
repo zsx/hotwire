@@ -29,11 +29,10 @@ class NewlineBuiltin(Builtin):
         super(NewlineBuiltin, self).__init__('newline',
                                              input=InputStreamSchema('any'),
                                              output=str,
+                                             argspec=None,
                                              threaded=True)
 
     def execute(self, context, args, options=[]):
-        if len(args) != 0:
-            raise ValueError(_("Too many arguments specified"))
         for arg in context.input:
             if not isinstance(arg, basestring):
                 arg = str(arg) 

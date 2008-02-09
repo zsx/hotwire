@@ -21,7 +21,7 @@
 
 import os,sys,locale
 
-from hotwire.builtin import Builtin, BuiltinRegistry, InputStreamSchema
+from hotwire.builtin import Builtin, BuiltinRegistry, InputStreamSchema, MultiArgSpec
 from hotwire.command import Pipeline,HotwireContext
 
 if '_' not in globals(): globals()['_'] = lambda x: x 
@@ -31,6 +31,7 @@ class ApplyBuiltin(Builtin):
     def __init__(self):
         super(ApplyBuiltin, self).__init__('apply',
                                            output='any',
+                                           argspec=MultiArgSpec('args'),
                                            input=InputStreamSchema('any'),                                         
                                            threaded=True)
 

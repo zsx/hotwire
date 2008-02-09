@@ -21,7 +21,7 @@
 
 import os,sys,subprocess
 
-from hotwire.builtin import Builtin, BuiltinRegistry
+from hotwire.builtin import Builtin, BuiltinRegistry, MultiArgSpec
 from hotwire.externals.singletonmixin import Singleton
 from hotwire.sysdep.fs import Filesystem
 
@@ -30,6 +30,7 @@ class HotSudoBuiltin(Builtin):
     def __init__(self):
         super(HotSudoBuiltin, self).__init__('sudo', 
                                              nodisplay=True,
+                                             argspec=MultiArgSpec('args'),
                                              threaded=True)
 
     def execute(self, context, args, options=[]):

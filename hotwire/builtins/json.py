@@ -46,7 +46,8 @@ class JsonBuiltin(Builtin):
         super(JsonBuiltin, self).__init__('json',
                                           output=str, # 'any'
                                           input=InputStreamSchema('any'),
-                                          idempotent=True,                                         
+                                          idempotent=True,
+                                          argspec=None,                            
                                           threaded=True)
 
     def execute(self, context, args, options=[]):

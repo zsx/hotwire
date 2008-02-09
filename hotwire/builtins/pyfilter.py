@@ -21,7 +21,7 @@
 
 import os,sys,re,subprocess,sha,tempfile
 
-from hotwire.builtin import Builtin, BuiltinRegistry, InputStreamSchema, OutputStreamSchema
+from hotwire.builtin import Builtin, BuiltinRegistry, InputStreamSchema, OutputStreamSchema, ArgSpec
 
 from hotwire.fs import path_join
 from hotwire.sysdep.fs import Filesystem
@@ -38,14 +38,11 @@ def execute(context, input):
     def __init__(self):
         super(PyFilterBuiltin, self).__init__('py-filter',
                                               threaded=True,
+                                              argspec=(ArgSpec('expression'),),
                                               input=InputStreamSchema('any'),
                                               output='identity')
 
     def execute(self, context, args, options=[]):
-        if len(args) > 1:
-            raise ValueError(_("Too many arguments specified"))
-        if len(args) < 1:
-            raise ValueError(_("Too few arguments specified"))
         buf = self.PYFILTER_CONTENT % (args[0],)
         code = compile(buf, '<input>', 'exec')
         locals = {}

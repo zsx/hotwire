@@ -30,7 +30,8 @@ class PsBuiltin(Builtin):
         super(PsBuiltin, self).__init__('proc',
                                         output=Process,
                                         idempotent=True,
-                                        options=[['-a', '--all'],],                                        
+                                        argspec=None,
+                                        options=[['-a', '--all'],],                                      
                                         threaded=True)
 
     def execute(self, context, args, options=[]):

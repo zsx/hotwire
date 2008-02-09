@@ -25,27 +25,26 @@ from StringIO import StringIO
 
 from hotwire.fs import FilePath
 
-from hotwire.builtin import Builtin, BuiltinRegistry, InputStreamSchema
+from hotwire.builtin import Builtin, BuiltinRegistry, InputStreamSchema, ArgSpec
 
 class HttpGetBuiltin(Builtin):
     __doc__ = _("""Perform a HTTP GET.""")
     def __init__(self):
         super(HttpGetBuiltin, self).__init__('http-get',
                                              output=HTTPResponse,
-                                             input=None,                                        
+                                             input=None,     
+                                             argspec=(ArgSpec('host'), ArgSpec('path', opt=True)),                                   
                                              threaded=True)
 
-    def execute(self, context, args, options=[]):
-        if len(args) < 1:
-            raise ValueError(_("Too few arguments specified"))        
-        elif len(args) == 1:
+    def execute(self, context, args, options=[]):       
+        if len(args) == 1:
             host = args[0]
             path = '/'
         elif len(args) == 2:
             host = args[0]
             path = args[1]
         else:
-            raise ValueError(_("Too many arguments specified"))            
+            assert False         
         conn = httplib.HTTPConnection(host)
         conn.request('GET', path)
         response = conn.getresponse() 

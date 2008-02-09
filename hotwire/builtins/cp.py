@@ -25,7 +25,7 @@ import hotwire
 import hotwire.fs
 from hotwire.fs import FilePath
 
-from hotwire.builtin import Builtin, BuiltinRegistry  
+from hotwire.builtin import Builtin, BuiltinRegistry, MultiArgSpec
 from hotwire.builtins.fileop import FileOpBuiltin
 
 if '_' not in globals(): globals()['_'] = lambda x: x
@@ -35,11 +35,11 @@ class CpBuiltin(FileOpBuiltin):
     def __init__(self):
         super(CpBuiltin, self).__init__('cp', aliases=['copy'],
                                         hasstatus=True,
+                                        argspec=MultiArgSpec('files', min=2),
                                         threaded=True)
 
     def execute(self, context, args):
-        if not args:
-            raise ValueError(_("Need source and destination"))
+        assert len(args) > 0
         target = FilePath(args[-1], context.cwd)
         try:
             target_is_dir = stat.S_ISDIR(os.stat(target).st_mode)
@@ -49,8 +49,7 @@ class CpBuiltin(FileOpBuiltin):
             target_exists = False
         
         sources = args[:-1]
-        if not sources:
-            raise ValueError(_("Need source and destination"))
+        assert len(sources) > 0
         if (not target_is_dir) and len(sources) > 1:
             raise ValueError(_("Can't copy multiple items to non-directory"))
         sources_total = len(sources)

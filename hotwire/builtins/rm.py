@@ -26,7 +26,7 @@ import hotwire
 from hotwire.fs import FilePath, unix_basename
 from hotwire.sysdep.fs import Filesystem, File
 
-from hotwire.builtin import BuiltinRegistry, InputStreamSchema
+from hotwire.builtin import BuiltinRegistry, InputStreamSchema, MultiArgSpec
 from hotwire.builtins.fileop import FileOpBuiltin
 
 class RmBuiltin(FileOpBuiltin):
@@ -37,6 +37,7 @@ class RmBuiltin(FileOpBuiltin):
                                         undoable=True,
                                         hasstatus=True,
                                         threaded=True,
+                                        argspec=MultiArgSpec('path'),
                                         options=[['-u', '--unlink'],['-r', '--recursive']])
 
     def execute(self, context, args, options=[]):

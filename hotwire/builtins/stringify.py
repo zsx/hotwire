@@ -29,6 +29,7 @@ class StringifyBuiltin(Builtin):
         super(StringifyBuiltin, self).__init__('stringify',
                                                input=InputStreamSchema('any'),
                                                output=str,
+                                               argspec=None,
                                                threaded=True)
 
     def execute(self, context, args, options=[]):
