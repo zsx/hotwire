@@ -142,7 +142,6 @@ class TreeObjectsRenderer(ObjectsRenderer):
         iter = self._model.get_iter_first()
         while iter:
             val = self._model.get_value(iter, 0)
-            print >>sys.stderr, "yielding obj %r" % (val,)
             yield val
             iter = self._model.iter_next(iter)
             

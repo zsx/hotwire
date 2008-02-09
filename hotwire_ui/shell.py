@@ -761,10 +761,8 @@ class Hotwire(gtk.VBox):
             self.__completions.select_prev()
             return True
         elif e.keyval == gtk.gdk.keyval_from_name('Page_Up'):
-            print >>sys.stderr, "page up"
             return self.__completions.page_up()
-        elif e.keyval == gtk.gdk.keyval_from_name('Page_Down'):
-            print >>sys.stderr, "page down"            
+        elif e.keyval == gtk.gdk.keyval_from_name('Page_Down'):           
             return self.__completions.page_down()  
         elif e.keyval == gtk.gdk.keyval_from_name('Escape'):
             self.__completion_async_blocking = False
