@@ -239,17 +239,17 @@ class FilePathRenderer(TreeObjectsRenderer):
                 menuitem.connect('activate', self.__on_file_manager_activated, ['nautilus', fobj.path])
                 items.append(menuitem)
             items.append(gtk.SeparatorMenuItem())
-        
-        prefeditor = EditorRegistry.getInstance().get_preferred()
-        if prefeditor is not None:
-            menuitem = gtk.ImageMenuItem(_('Edit with %s') % (prefeditor.name,))
-            menuitem.connect('activate', self.__on_edit_activated, self.context.get_cwd(), prefeditor, fobj.path)
-            pbcache = PixbufCache.getInstance()
-            pixbuf = pbcache.get(prefeditor.icon, size=16, trystock=True, stocksize=gtk.ICON_SIZE_MENU)
-            if pixbuf:
-                img = gtk.image_new_from_pixbuf(pixbuf)
-                menuitem.set_property('image', img)
-            items.append(menuitem)
+        else:
+            prefeditor = EditorRegistry.getInstance().get_preferred()
+            if prefeditor is not None:
+                menuitem = gtk.ImageMenuItem(_('Edit with %s') % (prefeditor.name,))
+                menuitem.connect('activate', self.__on_edit_activated, self.context.get_cwd(), prefeditor, fobj.path)
+                pbcache = PixbufCache.getInstance()
+                pixbuf = pbcache.get(prefeditor.icon, size=16, trystock=True, stocksize=gtk.ICON_SIZE_MENU)
+                if pixbuf:
+                    img = gtk.image_new_from_pixbuf(pixbuf)
+                    menuitem.set_property('image', img)
+                items.append(menuitem)
         menuitem = gtk.ImageMenuItem(_('Copy Path to Input'))
         menuitem.set_property('image', gtk.image_new_from_stock('gtk-copy', gtk.ICON_SIZE_MENU))
         menuitem.connect("activate", self.__on_copypath_activated, fobj.path)
