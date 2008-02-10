@@ -379,6 +379,26 @@ class UnicodeRenderer(ObjectsRenderer):
     def __on_toggle_wrap(self, menuitem):
         self.__wrap_lines = not self.__wrap_lines
         self.__sync_wrap()
+        
+    def __on_save_output(self, menuitem):
+        dlg = gtk.FileChooserDialog(title=_('Save Output As...'),
+                                    action=gtk.FILE_CHOOSER_ACTION_SAVE,
+                                    buttons=(gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL,
+                                             gtk.STOCK_SAVE, gtk.RESPONSE_ACCEPT))
+        dlg.set_default_response(gtk.RESPONSE_ACCEPT)
+        dlg.set_property('do-overwrite-confirmation', True)
+        resp = dlg.run()
+        try:
+            if resp != gtk.RESPONSE_ACCEPT:
+                return
+            path = dlg.get_filename()
+            f = open(path, 'w')
+            try:
+                f.write(self._buf.get_property('text'))
+            finally:
+                f.close()
+        finally:
+            dlg.destroy()
 
     def __on_populate_popup(self, textview, menu):
         menuitem = gtk.SeparatorMenuItem()
@@ -388,6 +408,11 @@ class UnicodeRenderer(ObjectsRenderer):
         menuitem.set_active(self.__wrap_lines)
         menuitem.connect("activate", self.__on_toggle_wrap)
         menuitem.show_all()
+        menu.prepend(menuitem)        
+        menuitem = gtk.ImageMenuItem(_('Save Output As...'))
+        menuitem.set_property('image', gtk.image_new_from_stock('gtk-save', gtk.ICON_SIZE_MENU))
+        menuitem.connect("activate", self.__on_save_output)
+        menuitem.show_all()      
         menu.prepend(menuitem)                   
         menuitem = self.context.get_ui().get_action('/Menubar/EditMenu/EditMenuAdditions/Input').create_menu_item()
         menuitem.show_all()
