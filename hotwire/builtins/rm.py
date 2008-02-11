@@ -45,8 +45,7 @@ class RmBuiltin(FileOpBuiltin):
             raise ValueError(_("Must specify at least one file"))
         mkfile = lambda arg: FilePath(arg, context.cwd)
         sources = map(mkfile, args)
-        if context.input is not None:
-            sources.extend(imap(lambda f: f.path, context.input)) 
+        sources.extend(imap(lambda f: f.path, context.input)) 
         sources_total = len(sources)
         undo_targets = []
         self._status_notify(context, sources_total, 0)
