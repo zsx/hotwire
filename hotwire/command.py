@@ -695,9 +695,17 @@ class Pipeline(gobject.GObject):
             return True
         if out_spec is in_spec:
             return True
-        for base in out_spec.__bases__:
-            if base is in_spec:
-                return True
+
+        def compatible_types(cls, seen):
+            compat = [cls]
+            for i in cls.__bases__:
+                if i not in seen:
+                    compat.extend(compatible_types(i, seen=compat))
+            return compat
+
+        if in_spec in compatible_types(out_spec):
+            return True
+
         return False
 
     @staticmethod
