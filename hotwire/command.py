@@ -903,7 +903,7 @@ Otherwise, return arg."""
             elif isinstance(argspec, MultiArgSpec):
                 if len(expanded_cmdargs) < argspec.min:
                     raise PipelineParseException(_("Command %s requires %d args, %d given") % (b.name,
-                                                                                               mincount,
+                                                                                               argspec.min,
                                                                                                len(expanded_cmdargs)))  
             elif isinstance(argspec, tuple):
                 mincount = 0
