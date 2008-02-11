@@ -32,7 +32,8 @@ class HttpGetBuiltin(Builtin):
     def __init__(self):
         super(HttpGetBuiltin, self).__init__('http-get',
                                              output=HTTPResponse,
-                                             input=None,     
+                                             input=None,
+                                             singlevalue=True,                                             
                                              argspec=(ArgSpec('host'), ArgSpec('path', opt=True)),                                   
                                              threaded=True)
 
@@ -48,5 +49,5 @@ class HttpGetBuiltin(Builtin):
         conn = httplib.HTTPConnection(host)
         conn.request('GET', path)
         response = conn.getresponse() 
-        yield response
+        return response
 BuiltinRegistry.getInstance().register_hotwire(HttpGetBuiltin())
