@@ -739,7 +739,7 @@ Otherwise, return arg."""
         return (countstream, parser)
 
     @staticmethod
-    def tokenize(text, context=None, assertfn=None, accept_unclosed=False, internal=False):
+    def tokenize(text, context=None, assertfn=None, accept_partial=False, internal=False):
         result = []
         _logger.debug("parsing '%s'", text)
         
@@ -760,7 +760,7 @@ Otherwise, return arg."""
                 # FIXME gross, but...any way to fix?
                 msg = hasattr(e, 'message') and e.message or (e.args[0])
                 was_quotation_error = (e.message == 'No closing quotation' and parser.token[0:1] == "'")
-                if (not accept_unclosed) or (not was_quotation_error):
+                if (not accept_partial) or (not was_quotation_error):
                     _logger.debug("caught lexing exception", exc_info=True)
                     raise PipelineParseException(e)
                 arg = parser.token[1:]
@@ -794,9 +794,10 @@ Otherwise, return arg."""
             curpos = end
         
     @staticmethod
-    def create(context, resolver, *tokens):
+    def create(context, resolver, *tokens, **kwargs):
         if context is None:
             context = HotwireContext()
+        accept_partial = 'accept_partial' in kwargs
         components = []
         undoable = None
         idempotent = True
@@ -902,7 +903,7 @@ Otherwise, return arg."""
                         expanded_cmdargs.append(arg)
                         
             argspec = b.argspec
-            if argspec is False:
+            if argspec is False or accept_partial:
                 # If we don't have an argspec, don't do any checking
                 pass
             elif argspec is None:
@@ -1004,9 +1005,9 @@ Otherwise, return arg."""
         return pipeline 
 
     @staticmethod
-    def parse(text, context=None, resolver=None, accept_unclosed=False):
-        tokens = list(Pipeline.tokenize(text, context, accept_unclosed=accept_unclosed))
-        return Pipeline.create(context, resolver, *tokens)
+    def parse(text, context=None, resolver=None, accept_partial=False):
+        tokens = list(Pipeline.tokenize(text, context, accept_partial=accept_partial))
+        return Pipeline.create(context, resolver, accept_partial=accept_partial, *tokens)
     
     def __iter__(self):
         for component in self.__components:

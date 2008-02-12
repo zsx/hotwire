@@ -940,9 +940,9 @@ class Hotwire(gtk.VBox):
             return True
         text = self.__input.get_property("text")
         try:
-            self.__parsed_pipeline = self.__pipeline_factory.parse(text, accept_unclosed=(not throw), 
-                                                                                          curlang=self.__langtype,
-                                                                                          resolve=resolve)
+            self.__parsed_pipeline = self.__pipeline_factory.parse(text, accept_partial=(not throw), 
+                                                                                        curlang=self.__langtype,
+                                                                                        resolve=resolve)
         except hotwire.command.PipelineParseException, e:
             _logger.debug("parse failed, current syntax=%s", self.__langtype, exc_info=True)
             self.__parsed_pipeline = None
