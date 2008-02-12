@@ -214,6 +214,7 @@ def load():
     import hotwire.builtins.mkdir
     import hotwire.builtins.mv
     import hotwire.builtins.open
+    import hotwire.builtins.path    
     import hotwire.builtins.prop
     import hotwire.builtins.proc
     import hotwire.builtins.pyeval
