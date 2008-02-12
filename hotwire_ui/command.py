@@ -87,6 +87,7 @@ class CommandExecutionHeader(gtk.VBox):
         self.__main_hbox.pack_start(self.__cmdstatus_vbox, expand=True)
         
         self.__titlebox_ebox = gtk.EventBox()
+        self.__titlebox_ebox.set_visible_window(False)
         if overview_mode:
             self.__titlebox_ebox.add_events(gtk.gdk.BUTTON_PRESS_MASK
                                             & gtk.gdk.ENTER_NOTIFY_MASK
