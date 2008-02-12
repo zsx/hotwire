@@ -342,6 +342,8 @@ class CommandExecutionHeader(gtk.VBox):
             for action in ['Cancel', 'Undo']:
                 menu.append(makemenu(action))
             menu.append(gtk.SeparatorMenuItem())
+            menu.append(self.__context.get_ui().get_action('/Menubar/FileMenu/FileDetachAdditions/DetachPipeline').create_menu_item())
+            menu.append(gtk.SeparatorMenuItem())
             for action in ['RemovePipeline', 'UndoRemovePipeline']:
                 menu.append(makemenu(action))
             menu.show_all()            
