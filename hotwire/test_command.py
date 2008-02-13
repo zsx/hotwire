@@ -315,7 +315,18 @@ class PipelineRunTests(PipelineRunTestFramework):
         p = Pipeline.parse('ls testf f3test | rm --unlink', self._context)
         p.execute_sync()
         self.assertEquals(os.access(path_join(self._tmpd, 'testf'), os.R_OK), False)
-        self.assertEquals(os.access(path_join(self._tmpd, 'f3test'), os.R_OK), False)               
+        self.assertEquals(os.access(path_join(self._tmpd, 'f3test'), os.R_OK), False)
+        
+    def testRm9(self):
+        self._setupTree1()
+        t = path_join(self._tmpd, '--frob')
+        f = open(t, 'w')
+        f.write('hi')
+        f.close()
+        self.assertEquals(os.access(t, os.R_OK), True)        
+        p = Pipeline.parse('rm --unlink -- --frob', self._context)
+        p.execute_sync()
+        self.assertEquals(os.access(t, os.R_OK), False)
 
     def testMv(self):
         self._setupTree2()
