@@ -31,6 +31,7 @@ class HotSudoBuiltin(Builtin):
         super(HotSudoBuiltin, self).__init__('sudo', 
                                              nodisplay=True,
                                              argspec=MultiArgSpec('args'),
+                                             options_passthrough=True,
                                              threaded=True)
 
     def execute(self, context, args, options=[]):
