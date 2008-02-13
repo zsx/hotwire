@@ -1,4 +1,7 @@
-You don't need to.  Just run this command:
+It is recommended to install packages for your operating system:
+http://code.google.com/p/hotwire-shell/wiki/HotwireUnixLinux
+
+But if you want to run from source, just run this command:
 
 python ui/hotwire
 
