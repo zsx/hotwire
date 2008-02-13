@@ -1,0 +1,7 @@
+You don't need to.  Just run this command:
+
+python ui/hotwire
+
+See http://code.google.com/p/hotwire-shell/wiki/BuildingFromSubversion
+for more information.  You can easily create a launcher from your
+desktop panel to run Hotwire straight from the source.
