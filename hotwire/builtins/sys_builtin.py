@@ -69,6 +69,7 @@ class SysBuiltin(Builtin):
                                          output=OutputStreamSchema(str, opt_formats=['x-filedescriptor/special', 'bytearray/chunked']),
                                          hasstatus=True,
                                          argspec=MultiArgSpec('args'),
+                                         options_passthrough=True,
                                          threaded=True)
 
     def __on_input(self, input, stream):

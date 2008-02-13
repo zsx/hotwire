@@ -192,6 +192,10 @@ class PipelineInstantiateTests(unittest.TestCase):
 
     def testInvalidArgCount1(self):
         self.assertRaises(hotwire.command.PipelineParseException, lambda: Pipeline.parse('fsearch', self._context))
+        
+    def testInvalidOptions1(self):
+        self.assertRaises(hotwire.command.PipelineParseException, lambda: Pipeline.parse('fsearch --frob', self._context))
+        self.assertRaises(hotwire.command.PipelineParseException, lambda: Pipeline.parse('fsearch -x', self._context))                 
 
 class PipelineRunTestFramework(unittest.TestCase):
     def setUp(self):

@@ -709,22 +709,26 @@ class Pipeline(gobject.GObject):
         return False
 
     @staticmethod
-    def __parse_option_or_arg(opts, arg):
+    def __parse_option_or_arg(opts, arg, raise_on_invalid=True):
         """If argument string is an option, parse it into components and canonicalize it.
 Otherwise, return arg."""
-        if opts is None:
-            return False
-        if arg.startswith('-') and len(arg) >= 2:
+        if arg.startswith('--'):
+            args = [arg[1:]] # we re-add the '-' below
+        elif arg.startswith('-') and len(arg) >= 2:
             args = list(arg[1:])
-        elif arg.startswith('--'):
-            args = [arg[1:]]
         else:
             return False
         results = []
         for arg in args:
-            for aliases in opts:
-                if '-'+arg in aliases:
-                    results.append(aliases[0])
+            found = False
+            if opts is not None:
+                for aliases in opts:
+                    if '-'+arg in aliases:
+                        results.append(aliases[0])
+                        found = True
+                        break
+            if (not found) and raise_on_invalid:                
+                    raise PipelineParseException("Invalid option %s" % (arg,))
         return results
 
     @staticmethod
@@ -797,7 +801,7 @@ Otherwise, return arg."""
     def create(context, resolver, *tokens, **kwargs):
         if context is None:
             context = HotwireContext()
-        accept_partial = 'accept_partial' in kwargs
+        accept_partial = (('accept_partial' in kwargs) and kwargs['accept_partial'])
         components = []
         undoable = None
         idempotent = True
@@ -856,7 +860,7 @@ Otherwise, return arg."""
                 
             # We maintain the set of all tokens we processed in the command so that the completion system can use them.
             alltokens = [builtin_token]
-            cmdargs = map(forcetoken, cmdargs)            
+            cmdargs = map(forcetoken, cmdargs)
             alltokens.extend(cmdargs)
                 
             in_redir = None
@@ -888,7 +892,9 @@ Otherwise, return arg."""
             options = []
             expanded_cmdargs = []
             options_ended = False
-            _logger.debug("valid options %r, argument/option pool: %r", builtin_opts, cmdargs)
+            raise_on_invalid_options = not (b.options_passthrough or accept_partial)
+            _logger.debug("raise: %r valid options %r, argument/option pool: %r", raise_on_invalid_options,
+                          builtin_opts, cmdargs)
             for token in cmdargs:
                 arg = CommandArgument(token.text, quoted=token.quoted)
                 if token.text == u'--':
@@ -896,7 +902,8 @@ Otherwise, return arg."""
                 elif options_ended:
                     expanded_cmdargs.append(arg)
                 else:      
-                    argopts = Pipeline.__parse_option_or_arg(builtin_opts, token.text)
+                    argopts = Pipeline.__parse_option_or_arg(builtin_opts, token.text, 
+                                                             raise_on_invalid=raise_on_invalid_options)
                     if argopts:
                         options.extend(argopts)
                     else:

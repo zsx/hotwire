@@ -70,6 +70,7 @@ class Builtin(object):
     output_typefunc = property(lambda self: self._output and self._output.typefunc or None)
     output_opt_formats = property(lambda self: self._output and self._output.opt_formats or [])
     options = property(lambda self: self._options)
+    options_passthrough = property(lambda self: self._options_passthrough, doc="""Treat all options as arguments.""")
     argspec = property(lambda self: self._argspec)
     aliases = property(lambda self: self._aliases)
     idempotent = property(lambda self: self._idempotent)
@@ -85,6 +86,7 @@ class Builtin(object):
                  input=None,
                  output=None,
                  options=[],
+                 options_passthrough=False,
                  argspec=False,
                  aliases=[],
                  idempotent=False,
@@ -99,6 +101,7 @@ class Builtin(object):
         self._input=input
         self._output = isinstance(output, OutputStreamSchema) and output or OutputStreamSchema(output)
         self._options = options
+        self._options_passthrough = options_passthrough
         if isinstance(argspec, tuple):
             self._argspec = tuple([isinstance(a, ArgSpec) and a or ArgSpec(a) for a in argspec])
         else:

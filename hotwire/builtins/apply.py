@@ -32,6 +32,7 @@ class ApplyBuiltin(Builtin):
         super(ApplyBuiltin, self).__init__('apply',
                                            output='any',
                                            argspec=MultiArgSpec('args'),
+                                           options_passthrough=True,
                                            input=InputStreamSchema('any'),                                         
                                            threaded=True)
 
