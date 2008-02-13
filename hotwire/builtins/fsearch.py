@@ -54,16 +54,17 @@ class FSearchBuiltin(FileOpBuiltin):
         super(FSearchBuiltin, self).__init__('fsearch',
                                              output=FileStringMatch,
                                              argspec=('regexp', ArgSpec('directory', opt=True)),                                             
+                                             options=[['-i', '--ignore-case']],
                                              threaded=True)
 
-    def execute(self, context, args):       
+    def execute(self, context, args, options=[]):       
         regexp = args[0]
         if len(args) == 2:
             path = args[1]
         else:
             path = context.cwd
         regexp = args[0]
-        comp_regexp = re.compile(regexp)
+        comp_regexp = re.compile(regexp, (('-i' in options) and re.IGNORECASE or 0) | re.UNICODE)
         walk_builtin = BuiltinRegistry.getInstance()['walk']
         newctx = HotwireContext(context.cwd)
         for fobj in walk_builtin.execute(newctx, [path]):
