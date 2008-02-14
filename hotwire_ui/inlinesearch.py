@@ -48,20 +48,33 @@ class InlineSearchArea(gtk.HBox):
         self.__input.connect("notify::text", lambda *args: self.__on_input_changed())
         self.__input.connect("key-press-event", lambda i, e: self.__on_input_keypress(e))
         self.pack_start(self.__input, expand=False)
-        self.__next = gtk.Button('_Next', gtk.STOCK_GO_DOWN)
+        self.__prev = gtk.Button('_Prev', gtk.STOCK_GO_BACK)
+        self.__prev.set_focus_on_click(False)
+        self.__prev.set_relief(gtk.RELIEF_NONE)
+        self.__prev.connect("clicked", lambda b: self.__do_prev())
+        self.pack_start(self.__prev, expand=False)        
+        self.__next = gtk.Button('_Next', gtk.STOCK_GO_FORWARD)
         self.__next.set_focus_on_click(False)
+        self.__next.set_relief(gtk.RELIEF_NONE)        
         self.__next.connect("clicked", lambda b: self.__do_next())
         self.pack_start(self.__next, expand=False)
-        self.__prev = gtk.Button('_Prev', gtk.STOCK_GO_UP)
-        self.__prev.set_focus_on_click(False)
-        self.__prev.connect("clicked", lambda b: self.__do_prev())
-        self.pack_start(self.__prev, expand=False)
+
+        self.__find_all = gtk.CheckButton(_('_Highlight all'))
+        self.__find_all.unset_flags(gtk.CAN_FOCUS) # bigger hammer to avoid keyboard accel focus
+        self.__find_all.set_focus_on_click(False)
+        self.__find_all.connect('notify::active', lambda *args: self.__sync_find_all())
+        self.pack_start(self.__find_all, expand=False)
+
         self.__msgbox = gtk.HBox()
         self.__msg_icon = gtk.Image()
         self.__msgbox.pack_start(self.__msg_icon, False)
         self.__msg = gtk.Label()
         self.__msgbox.pack_start(self.__msg, True)
         self.pack_start(self.__msgbox, expand=False)
+
+        self.__search_tag = textview.get_buffer().create_tag("search")
+        self.__sync_search_tag()
+        self.connect('style-set', lambda *args: self.__sync_search_tag())
 
     def __on_input_keypress(self, e):
         if e.keyval == gtk.gdk.keyval_from_name('Escape'):
@@ -85,7 +98,7 @@ class InlineSearchArea(gtk.HBox):
 
     def __idle_do_search(self):
         self.__idle_search_id = 0
-        self.__search()
+        self.__search(highlight_all=True)
         return False
 
     def __do_close(self):
@@ -96,8 +109,21 @@ class InlineSearchArea(gtk.HBox):
 
     def focus(self):
         self.__input.grab_focus()
+        
+    def __get_search_match_colors(self):
+        # TODO - use GtkSourceBuffer always and translate 
+        # gedit/gedit/gedit-document.c:get_search_match_colors here
+        return (None, gtk.gdk.color_parse("#FFFF78"))
+        
+    def __sync_search_tag(self):
+        (fg, bg) = self.__get_search_match_colors()
+        if fg is not None:
+            self.__search_tag.set_property('foreground-gdk', fg)
+        if bg is not None:
+            self.__search_tag.set_property('background-gdk', bg)
 
     def __clear_search_selection(self):
+        self.__remove_highlight()
         buf = self.__textview.get_buffer()
         buf.select_range(buf.get_start_iter(), buf.get_start_iter())
         mark = buf.get_mark("search_start")
@@ -107,12 +133,35 @@ class InlineSearchArea(gtk.HBox):
         if mark:
             buf.delete_mark(mark)
 
+    def __remove_highlight(self):
+        buf = self.__textview.get_buffer()
+        start = buf.get_start_iter()
+        end = buf.get_end_iter()
+        buf.remove_tag(self.__search_tag, start, end)
+
+    def __sync_find_all(self):
+        if not self.__find_all.get_active():        
+            self.__remove_highlight()
+            return
+
+        buf = self.__textview.get_buffer()
+        iter = self.__textview.get_buffer().get_start_iter()
+        text = self.__input.get_text()
+        
+        while True:
+            searchres = iter.forward_search(text, 0)
+            if not searchres:
+                break
+            buf.apply_tag(self.__search_tag, searchres[0], searchres[1])
+            iter = searchres[1]
+
     def reset(self):
         self.__input.set_property('text', '')
+        self.__find_all.set_active(False)
         self.__msg_icon.clear()        
         self.__msg.set_text('')
 
-    def __search(self, start_iter=None, loop=False, forward=True):
+    def __search(self, start_iter=None, loop=False, forward=True, highlight_all=False):
         if start_iter:
             iter = start_iter
         elif forward:
@@ -134,6 +183,8 @@ class InlineSearchArea(gtk.HBox):
         else:
             searchres = iter.backward_search(text, 0)
         if searchres:
+            if highlight_all:
+                self.__sync_find_all()
             (start, end) = searchres
             buf.select_range(start, end)
             start_mark = buf.create_mark("search_start", start, False)
