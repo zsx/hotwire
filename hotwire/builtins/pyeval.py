@@ -37,6 +37,7 @@ expressed as an iterable which yielded a single object.""")
         super(PyEvalBuiltin, self).__init__('py-eval',
                                             threaded=True,
                                             singlevalue=True,
+                                            input=InputStreamSchema('any', optional=True),
                                             output=OutputStreamSchema('any'),
                                             options=[['-f', '--file']])      
 
