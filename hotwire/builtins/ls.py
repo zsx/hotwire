@@ -38,18 +38,19 @@ class LsBuiltin(Builtin):
                                         idempotent=True,
                                         threaded=True,
                                         argspec=MultiArgSpec('paths'),
-                                        options=[['-l', '--long'],['-a', '--all']])
+                                        options=[['-l', '--long'],['-a', '--all'],['-i', '--input']])
 
     def execute(self, context, args, options=[]):
         show_all = '-a' in options
         long_fmt = '-l' in options
+        process_input = '-i' in options
             
         fs = Filesystem.getInstance()
         
-        if context.input is not None:        
+        if process_input and input is not None:
             args = list(args)
-            args.extend(context.input)         
-            
+            args.extend(context.input)        
+        
         if len(args) == 0:
             for x in fs.ls_dir(context.cwd, show_all):
                 yield x
