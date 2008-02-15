@@ -20,6 +20,7 @@
 # THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import os, sys, os.path, stat, logging, locale
+from itertools import imap
 
 from hotwire.builtin import Builtin, BuiltinRegistry, InputStreamSchema, MultiArgSpec
 from hotwire.fs import FilePath
@@ -43,7 +44,11 @@ class LsBuiltin(Builtin):
         show_all = '-a' in options
         long_fmt = '-l' in options
             
-        fs = Filesystem.getInstance()            
+        fs = Filesystem.getInstance()
+        
+        if context.input is not None:        
+            args = list(args)
+            args.extend(context.input)         
             
         if len(args) == 0:
             for x in fs.ls_dir(context.cwd, show_all):
