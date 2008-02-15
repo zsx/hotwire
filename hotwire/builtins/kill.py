@@ -96,8 +96,9 @@ class KillBuiltin(Builtin):
                     break
         for arg in imap(int, args):
             os.kill(arg, signum)
-        for arg in context.input:
-            os.kill(arg.pid, signum)
+        if context.input is not None:
+            for arg in context.input:
+                os.kill(arg.pid, signum)
         return []
         
 BuiltinRegistry.getInstance().register_hotwire(KillBuiltin())
