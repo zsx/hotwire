@@ -30,6 +30,7 @@ class Link(gtk.EventBox):
     
     def __init__(self,**kwargs):
         super(Link, self).__init__(**kwargs)
+        self.set_visible_window(False)
         self.__text = None
         self.__label = gtk.Label()
         self.add(self.__label)
