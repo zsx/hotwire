@@ -122,3 +122,14 @@ def ellipsize(buf, l):
     if len(buf) >= l:
         buf = buf[:l-3] + '...'
     return buf
+
+def class_is_assignable(target, src):
+    """Return whether or not src is a subclass of target."""
+    def compatible_types(cls, seen):
+        compat = [cls]
+        for i in cls.__bases__:
+            if i not in seen:
+                compat.extend(compatible_types(i, seen=compat))
+        return compat
+
+    return target in compatible_types(src, [])

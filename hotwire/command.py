@@ -31,7 +31,7 @@ from hotwire.sysdep.fs import Filesystem, File
 from hotwire.async import IterableQueue, MiniThreadPool
 from hotwire.builtin import BuiltinRegistry, Builtin, ArgSpec, MultiArgSpec
 import hotwire.util
-from hotwire.util import quote_arg, assert_strings_equal
+from hotwire.util import quote_arg, assert_strings_equal, class_is_assignable
 import hotwire.script
 import hotwire.externals.shlex as shlex
 from hotwire.externals.singletonmixin import Singleton
@@ -696,17 +696,7 @@ class Pipeline(gobject.GObject):
         if out_spec is in_spec:
             return True
 
-        def compatible_types(cls, seen):
-            compat = [cls]
-            for i in cls.__bases__:
-                if i not in seen:
-                    compat.extend(compatible_types(i, seen=compat))
-            return compat
-
-        if in_spec in compatible_types(out_spec):
-            return True
-
-        return False
+        return class_is_assignable(in_spec, out_spec)
 
     @staticmethod
     def __parse_option_or_arg(opts, arg, raise_on_invalid=True):

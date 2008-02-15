@@ -20,6 +20,7 @@ import os,sys,re,Queue,logging,inspect,locale
 
 import gtk, gobject, pango
 
+from hotwire.util import class_is_assignable
 from hotwire.command import CommandQueue
 from hotwire_ui.render import ClassRendererMapping, DefaultObjectsRenderer
 from hotwire.logutil import log_except
@@ -250,8 +251,10 @@ class MultiObjectsDisplay(gtk.Notebook):
         self.set_show_tabs(False)
 
         self.__inputqueue = None
-        _logger.debug("input type %s opt: %s", self.__pipeline.get_input_type(), self.__pipeline.get_input_optional())
-        if self.__pipeline.get_input_type() and self.__pipeline.get_input_optional():
+        intype = self.__pipeline.get_input_type()
+        _logger.debug("input type %s opt: %s", intype, self.__pipeline.get_input_optional())
+        # FIXME assume for the moment we can only input strings
+        if intype is not None and class_is_assignable(str, intype) and self.__pipeline.get_input_optional():
             self.__inputqueue = CommandQueue()
             self.__pipeline.set_input_queue(self.__inputqueue)
         self.append_ostream(pipeline.get_output_type(), None, pipeline.get_output(), False)
