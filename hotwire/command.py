@@ -685,7 +685,7 @@ class Pipeline(gobject.GObject):
         return self.__locality
 
     @staticmethod
-    def __streamtype_is_assignable(out_spec, in_spec, in_optional):
+    def streamtype_is_assignable(out_spec, in_spec, in_optional):
         if out_spec is None:
             return in_optional
         if in_spec in ('any', 'identity'):
@@ -695,7 +695,6 @@ class Pipeline(gobject.GObject):
             return True
         if out_spec is in_spec:
             return True
-
         return class_is_assignable(in_spec, out_spec)
 
     @staticmethod
