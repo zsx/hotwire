@@ -338,6 +338,7 @@ class Hotwire(gtk.VBox):
         self.__idle_parse_id = 0
         self.__parse_stale = False
         self.__parse_resolved = None
+        self.__parse_partial = None
         self.__resolver = ShellCommandResolver()
         self.__pipeline_factory = PipelineFactory(self.context, self.__resolver)
         self.__parsed_pipeline = None
@@ -633,7 +634,7 @@ class Hotwire(gtk.VBox):
     def __execute(self):
         self.__completions.hide_all()
         try:
-            self.__do_parse(throw=True, resolve=True)
+            self.__do_parse(partial=False, resolve=True)
         except hotwire.command.PipelineParseException, e:
             self.push_msg(_("Failed to parse pipeline: %s") % (e.args[0],))
             return
@@ -681,7 +682,7 @@ class Hotwire(gtk.VBox):
         _logger.debug("requesting completion")
         if self.__parse_stale:
             try:
-                self.__do_parse(throw=True, resolve=False)
+                self.__do_parse(partial=True, resolve=False)
             except hotwire.command.PipelineParseException, e:
                 self.push_msg('Failed to parse pipeline: %s' % (e.args[0],))
                 return
@@ -935,23 +936,24 @@ class Hotwire(gtk.VBox):
             _logger.debug("no valid completions found")
             self.__completions.invalidate()
 
-    def __do_parse(self, throw=False, resolve=True):
-        if (not self.__parse_stale) and (self.__parse_resolved == resolve):
+    def __do_parse(self, partial=True, resolve=True):
+        if (not self.__parse_stale) and (self.__parse_resolved == resolve) and (self.__parse_partial == partial):
             return True
         text = self.__input.get_property("text")
         try:
-            self.__parsed_pipeline = self.__pipeline_factory.parse(text, accept_partial=(not throw), 
-                                                                                        curlang=self.__langtype,
-                                                                                        resolve=resolve)
+            self.__parsed_pipeline = self.__pipeline_factory.parse(text, accept_partial=partial, 
+                                                                         curlang=self.__langtype,
+                                                                         resolve=resolve)
         except hotwire.command.PipelineParseException, e:
             _logger.debug("parse failed, current syntax=%s", self.__langtype, exc_info=True)
             self.__parsed_pipeline = None
-            if throw:
+            if (not partial):
                 raise e
             return False
         _logger.debug("parse tree: %s", self.__parsed_pipeline)
         self.__parse_stale = False
         self.__parse_resolved = resolve
+        self.__parse_partial = partial
         self.__unqueue_parse()
         return True
 
