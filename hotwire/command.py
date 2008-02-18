@@ -944,7 +944,7 @@ Otherwise, return arg."""
                 raise PipelineParseException(_("Command %s requires input of type %s") % \
                                              (cmd.builtin.name, input_accepts_type))
             if input_accepts_type and prev \
-                   and not Pipeline.__streamtype_is_assignable(pipeline_output_type, input_accepts_type, input_optional):
+                   and not Pipeline.streamtype_is_assignable(pipeline_output_type, input_accepts_type, input_optional):
                 raise PipelineParseException(_("Command %s yields '%s' but %s accepts '%s'") % \
                                              (prev.builtin.name, pipeline_output_type, cmd.builtin.name, input_accepts_type))
             if (not input_optional) and (not input_accepts_type) and pipeline_output_type:
