@@ -360,6 +360,7 @@ class DefaultObjectsRenderer(TreeObjectsRenderer):
     pass
 
 import hotwire_ui.renderers.file
+import hotwire_ui.renderers.dict
 import hotwire_ui.renderers.filestringmatch
 import hotwire_ui.renderers.help
 import hotwire_ui.renderers.ps
