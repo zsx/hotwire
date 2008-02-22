@@ -97,7 +97,17 @@ class Win32File(File):
         self.xaccess = self.xaccess and win_exec_re.search(self.path)
 
     def _do_get_hidden(self):
-        self._hidden = win32api.GetFileAttributes(self.path) & win32con.FILE_ATTRIBUTE_HIDDEN
+        path = self.path.encode(sys.getfilesystemencoding()).rstrip('/')#FindFiles on directories ending with '/' returns []
+        files = win32api.FindFiles(path) #FindFIles might return multiple files,
+                                         #if the path contains a wild character '*' or '?'.
+                                         #However, '*' or '?' is not a valid character for file name on Win32.
+                                         #So, there should be only 0 or 1 file returned here.
+        if len(files) == 0:
+            self._hidden = None
+            return
+        if len(files) > 1:
+            raise Exception("OOPS: More than 1 files matched. A wildcharacter in filename?")
+        self._hidden = bool(files[0][0] & win32con.FILE_ATTRIBUTE_HIDDEN)
 
     def _do_get_stat(self, rethrow=False):
         try:
