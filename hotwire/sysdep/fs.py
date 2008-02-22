@@ -205,26 +205,26 @@ class File(object):
     def test_directory(self, follow_link=True):
         if not self.stat:
             return False
-        if follow_link and stat.S_ISLNK(self.stat.st_mode):
+        if follow_link and stat.S_ISLNK(self.stat[stat.ST_MODE]):
             stbuf = self.target_stat
         else:
             stbuf = self.stat
-        return stbuf and stat.S_ISDIR(stbuf.st_mode)
+        return stbuf and stat.S_ISDIR(stbuf[stat.ST_MODE])
     
     def _is_link(self):
-        return self.stat and stat.S_ISLNK(self.stat.st_mode)
+        return self.stat and stat.S_ISLNK(self.stat[stat.ST_MODE])
     
     def _is_executable(self):
         return self.xaccess
 
     def _get_size(self):
-        if self.stat and stat.S_ISREG(self.stat.st_mode):
-            return self.stat.st_size
+        if self.stat and stat.S_ISREG(self.stat[stat.ST_MODE]):
+            return self.stat[stat.ST_SIZE]
         return None
 
     def _get_mtime(self):
         if self.stat:
-            return self.stat.st_mtime
+            return self.stat[stat.ST_MTIME]
         return None
     
     def _get_file_type_char(self):
@@ -233,7 +233,7 @@ class File(object):
         return '-'
     
     def _get_stat_mode(self):
-        return self.stat.st_mode
+        return self.stat[stat.ST_MODE]
 
     def _get_permissions_string(self):
         if self._permstring:
@@ -290,7 +290,7 @@ class File(object):
     def _do_get_stat(self, rethrow=False):
         try:
             self.stat = hasattr(os, 'lstat') and os.lstat(self.path) or os.stat(self.path)
-            if stat.S_ISLNK(self.stat.st_mode):
+            if stat.S_ISLNK(self.stat[stat.ST_MODE]):
                 try:
                     self.target_stat = os.stat(self.path)
                 except OSError, e:
