@@ -82,7 +82,9 @@ class VteTerminalWidget(gtk.VBox):
             ('Paste', 'gtk-paste', _('_Paste'), '<control><shift>V', _('Paste text'), self.__paste_cb),
         ]
         self.__action_group = gtk.ActionGroup('TerminalActions')
-        self.__action_group.add_actions(self.__actions)        
+        self.__action_group.add_actions(self.__actions)
+        self.__copyaction = self.__action_group.get_action('Copy')
+        self.__pasteaction = self.__action_group.get_action('Paste')         
 
         # Various defaults
         self.__term.set_emulation('xterm')
@@ -175,9 +177,9 @@ class VteTerminalWidget(gtk.VBox):
             return True
         elif event.button == 3:
             menu = gtk.Menu()
-            menuitem = self.__action_group.get_action('Copy').create_menu_item()
+            menuitem = self.__copyaction.create_menu_item()
             menu.append(menuitem)
-            menuitem = self.__action_group.get_action('Paste').create_menu_item()
+            menuitem = self.__pasteaction.create_menu_item()
             menu.append(menuitem)
             if match:
                 (matchstr, mdata) = match
@@ -205,7 +207,7 @@ class VteTerminalWidget(gtk.VBox):
             
     def __on_selection_changed(self, *args):
         have_selection = self.__term.get_has_selection()
-        self.__action_group.get_action('Copy').set_sensitive(have_selection)
+        self.__copyaction.set_sensitive(have_selection)
 
     def __copy_cb(self, a):
         _logger.debug("doing copy")
@@ -225,6 +227,12 @@ class VteTerminalWidget(gtk.VBox):
     
     def get_action_group(self):
         return self.__action_group
+    
+    def set_copy_paste_actions(self, copyaction, pasteaction):
+        """Useful in an environment where there is a global UI
+        rather than a merged approach.""" 
+        self.__copyaction = copyaction
+        self.__pasteaction = pasteaction
     
     def __sync_colors(self):
         if self.__colors_default:

@@ -107,7 +107,7 @@ class VteWindow(gtk.Window):
         else:
             self.set_icon_name(icon_name)
         self.connect("delete-event", lambda w, e: False)
-        self.__tips = gtk.Tooltips()             
+        self.__tips = gtk.Tooltips()
         self.__notebook = gtk.Notebook()
         vbox.pack_start(self.__notebook)
         self.__notebook.connect('switch-page', self.__on_page_switch)
@@ -125,7 +125,8 @@ class VteWindow(gtk.Window):
         
     def append_widget(self, term):
         idx = self.__notebook.append_page(term)
-        term.get_vte().connect('selection-changed', self.__sync_selection_sensitive)        
+        term.get_vte().connect('selection-changed', self.__sync_selection_sensitive)
+        term.get_term().set_copy_paste_actions(self.__ag.get_action('Copy'), self.__ag.get_action('Paste'))        
         if hasattr(self.__notebook, 'set_tab_reorderable'):
             self.__notebook.set_tab_reorderable(term, True)
         label = self.__add_widget_title(term)

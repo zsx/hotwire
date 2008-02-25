@@ -247,6 +247,9 @@ class SshTerminalWidget(gtk.VBox):
     def get_exited(self):
         return self.__cmd_exited        
         
+    def get_term(self):
+        return self.__term
+        
     def get_vte(self):
         return self.__term.get_vte()
         
