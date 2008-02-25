@@ -457,11 +457,12 @@ class BaseCommandResolver(object):
         return (None, None)
     
     def _resolve_verb_completion(self, text, completion):
-        fs = Filesystem.getInstance()        
+        fs = Filesystem.getInstance()
         target = completion.target
-        return isinstance(target, File) and \
-           not target.is_directory and \
-           (unix_basename(text) == unix_basename(target.path) or fs.path_inexact_executable_match(completion.matchbase))
+        if not (isinstance(target, File) and not target.is_directory):
+            return False
+        # Determine whether this input matches an executable file
+        return fs.path_executable_match(text, target.path)
     
     def _expand_verb_completion(self, completion):
         target = completion.target

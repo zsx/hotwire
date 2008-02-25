@@ -119,10 +119,8 @@ class BaseFilesystem(object):
                 return epath
         return False
 
-    def path_inexact_executable_match(self, path):
-        """This function is a hack for Windows; essentially we
-        allow using "python" as an exact match for "python.exe"."""
-        return False
+    def path_executable_match(self, input, file_path):
+        raise NotImplementedError()
 
     def move_to_trash(self, path):
         bn = unix_basename(path)

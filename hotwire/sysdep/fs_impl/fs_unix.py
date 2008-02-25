@@ -22,6 +22,7 @@
 import os,sys,stat
 import pwd,grp
 
+from hotwire.fs import unix_basename
 from hotwire.sysdep.fs import BaseFilesystem, File
 from hotwire.sysdep.unix import getpwuid_cached, getgrgid_cached
 
@@ -39,6 +40,14 @@ class UnixFilesystem(BaseFilesystem):
     def get_path_generator(self):
         for d in os.environ['PATH'].split(u':'):
             yield d
+
+    def path_executable_match(self, input, file_path):
+        """This function is a hack for Windows; essentially we
+        allow using "python" as an exact match for "python.exe".
+        This implementation is suitable for Unix systems
+        where executability is determined by permissions mode
+        and not extension."""        
+        return unix_basename(input) == unix_basename(file_path)
     
     def supports_owner(self):
         return True

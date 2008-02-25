@@ -21,7 +21,7 @@
 
 import os,sys,subprocess,logging, stat
 
-from hotwire.fs import path_normalize
+from hotwire.fs import path_normalize, unix_basename
 from hotwire.sysdep.fs import File, BaseFilesystem,iterd_sorted, FileStatError
 from hotwire.sysdep.win32 import win_exec_re, msvcrt
 import win32api, win32con
@@ -79,8 +79,15 @@ class Win32Filesystem(BaseFilesystem):
         # FIXME - extend this to use Windows systems
         return False        
 
-    def path_inexact_executable_match(self, path):
-        return win_exec_re.search(path)
+    def path_executable_match(self, input, file_path):
+        """On Windows; we want to allow for e.g. using "python" as an exact match 
+        for "python.exe"."""           
+        input_basename = unix_basename(input)
+        file_basename = unix_basename(file_path)
+        if input_basename == file_basename:
+            return True
+        (pfx, ext) = os.path.splitext(file_basename)
+        return input_basename == pfx
 
     def launch_open_file(self, path, cwd=None):
         try:
