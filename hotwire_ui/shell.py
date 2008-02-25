@@ -554,7 +554,7 @@ class Hotwire(gtk.VBox):
                 return url[7:]
             return url
         fpaths = map(fstrip, urls.split('\r\n'))
-        _logger.debug("path is %s, got drop paths: %s", path, quoted_fpaths)
+        _logger.debug("path is %s, got drop paths: %s", path, fpaths)
         fpaths.append(path)
         self.internal_execute('cp', *fpaths)
     
