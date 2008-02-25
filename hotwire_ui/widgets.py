@@ -147,7 +147,7 @@ class TransientPopup(gtk.Window):
         alloc = self.__ref_widget.get_allocation()
         (w, h) = self.size_request()
         (parent_w, parent_h) = self.__ref_widget.get_toplevel().get_size()
-        move_x = x+alloc.x
+        move_x = x
         move_y = y - h
         (cur_x, cur_y) = self.get_position()
         _logger.debug("move: x: %d y: %d ax: %d ay: %d ah: %d pw: %d ph:%d h: %d (target: %d %d current: %d %d)",

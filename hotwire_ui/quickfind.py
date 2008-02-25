@@ -100,12 +100,27 @@ class QuickFindWindow(gtk.Dialog):
         self.__do_search()
         return False
         
-    def _markup_search(self, text, searchq):
-        idx = text.find(searchq)
+    def _markup_search(self, text, searchq, text_lower=None, searchq_lower=None):
+        if text_lower is not None:
+            idx = text_lower.find(searchq_lower)
+        else:
+            idx = text.find(searchq)
         if idx >= 0:
             return markup_for_match(text, idx, idx+len(searchq))
         else:
             return None          
+        
+    def _get_string_data(self):
+        """Generate a list of strings for search data."""
+        raise NotImplementedError()
+    
+    def _do_search(self, text):
+        """Override this to implement a custom search with icons, etc."""
+        strings = self._get_string_data()
+        text = text.lower()
+        for s in strings:
+            if s.lower().find(text) >= 0:
+                yield (s, s, None)
         
     def __do_search(self):
         text = self.__entry.get_property('text')
@@ -176,11 +191,9 @@ class QuickFindWindow(gtk.Dialog):
     def __render_icon(self, col, cell, model, iter):
         icon_name = model.get_value(iter, 2)
         if icon_name:
-            if icon_name.startswith(os.sep):
-                pixbuf = PixbufCache.getInstance().get(icon_name)
-                cell.set_property('pixbuf', pixbuf)
-            else:
-                cell.set_property('icon-name', icon_name)
+            pbcache = PixbufCache.getInstance()
+            pixbuf = pbcache.get(icon_name, size=16, trystock=True, stocksize=gtk.ICON_SIZE_MENU)
+            cell.set_property('pixbuf', pixbuf)
         else:
             cell.set_property('icon-name', None)    
     

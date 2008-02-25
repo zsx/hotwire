@@ -20,7 +20,7 @@
 # THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import os, sys, threading, Queue, logging, string, re, time, traceback
-import posixpath
+import posixpath, locale
 from StringIO import StringIO
 
 import gobject
@@ -1063,6 +1063,17 @@ class PipelineLanguageRegistry(Singleton):
     def __iter__(self):
         for x in self.__langs.itervalues():
             yield x
+            
+    def iter_sorted(self):
+        langs = list(self)
+        # Append Hotwire and Python in order
+        result = [self['62270c40-a94a-44dd-aaa0-689f882acf34'], self['da3343a0-8bce-46ed-a463-2d17ab09d9b4']]
+        for lang in sorted(langs, lambda a,b: locale.strcoll(a.langname, b.langname)):
+            if lang.builtin_eval is not None:
+                continue
+            result.append(lang)
+        for lang in result:
+            yield lang               
 
     def register(self, lang):
         if lang.uuid in self.__langs:

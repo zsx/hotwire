@@ -18,7 +18,7 @@
 
 import os, sys, logging, time, inspect, locale, gettext
 
-import gtk, gobject
+import gtk, gobject, pango
 
 from hotwire.externals.singletonmixin import Singleton
 import hotwire_ui.widgets as hotwidgets
@@ -430,7 +430,14 @@ class CommandExecutionControl(gtk.VBox):
     COMPLETE_CMD_EXPIRATION_SECS = 5 * 60
     __gsignals__ = {
         "new-window" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (gobject.TYPE_PYOBJECT,)),
-    }        
+    }
+    __gproperties__ = { 
+                       'pipeline-count' : (gobject.TYPE_INT, '', '',
+                       0, 4096, 0, gobject.PARAM_READWRITE),
+                       'unseen-pipeline-count' : (gobject.TYPE_INT, '', '',
+                       0, 4096, 0, gobject.PARAM_READWRITE)                       
+    }
+    
     def __init__(self, context):
         super(CommandExecutionControl, self).__init__()
 
@@ -457,6 +464,9 @@ class CommandExecutionControl(gtk.VBox):
       <separator/>      
       <menuitem action='PreviousCommand'/>
       <menuitem action='NextCommand'/>
+      <separator/>
+      <menuitem action='PreviousUnseenCommand'/>
+      <menuitem action='LastCommand'/>
     </menu>
     <placeholder name='WidgetMenuAdditions'>
       <menu action='ControlMenu'>
@@ -489,6 +499,8 @@ class CommandExecutionControl(gtk.VBox):
             ('UndoRemovePipeline', gtk.STOCK_UNDO, _('U_ndo Remove Pipeline'), '<control><shift>J', _('Undo removal of current pipeline view'), self.__undo_remove_pipeline_cb),            
             ('PreviousCommand', gtk.STOCK_GO_UP, _('_Previous'), '<control>Up', _('View previous command'), self.__view_previous_cb),
             ('NextCommand', gtk.STOCK_GO_DOWN, _('_Next'), '<control>Down', _('View next command'), self.__view_next_cb),
+            ('PreviousUnseenCommand', gtk.STOCK_GO_UP, _('Previous _Unseen'), '<control><shift>Up', _('View most recent unseen command'), self.__view_previous_unseen_cb),
+            ('LastCommand', gtk.STOCK_GOTO_BOTTOM, _('Last'), '<control><shift>Down', _('View most recent command'), self.__view_last_cb),            
         ]
         self.__toggle_actions = [
             ('Overview', None, _('_Overview'), '<control><shift>o', _('Toggle overview'), self.__overview_cb),
@@ -587,17 +599,19 @@ class CommandExecutionControl(gtk.VBox):
         cmd.show_all()
         pgnum = self.__cmd_notebook.append_page(cmd)
         self.__cmd_notebook.set_current_page(pgnum)
-        self.__cmd_overview.add_pipeline(pipeline, odisp)     
+        self.__cmd_overview.add_pipeline(pipeline, odisp)
                 
         self.__sync_visible()                
         self.__sync_display(pgnum)
                 
+        self.notify('pipeline-count')                
         # Garbage-collect old commands at this point        
         gobject.idle_add(self.__command_gc)
 
     @log_except(_logger)
     def __command_gc(self):
         curtime = time.time()
+        changed = False
         for cmd in self.__iter_cmds():
             pipeline = cmd.get_pipeline()
             if pipeline in self.__complete_unseen_pipelines:
@@ -607,17 +621,19 @@ class CommandExecutionControl(gtk.VBox):
                 continue
             lastview_time = cmd.get_viewed_time()            
             if curtime - lastview_time > self.COMPLETE_CMD_EXPIRATION_SECS:
+                changed = True
                 self.remove_pipeline(pipeline, destroy=True)
                 
         for cmdview in self.__actively_destroyed_pipeline_box:
             cmdview.destroy()
         self.__actively_destroyed_pipeline_box = []
-        self.__sync_cmd_sensitivity()
+        self.__sync_cmd_sensitivity()      
 
     def __mark_pipeline_unseen(self, pipeline, unseen):
         (cmdview, overview) = self.__get_widgets_for_pipeline(pipeline)
         cmdview.cmd_header.set_unseen(unseen)
         overview.set_unseen(unseen)
+        self.notify('unseen-pipeline-count')        
 
     def __get_widgets_for_pipeline(self, pipeline):
         cmdview, overview = (None, None)
@@ -645,6 +661,7 @@ class CommandExecutionControl(gtk.VBox):
             cmdview.destroy()
             overview.destroy()
             return None
+        self.notify('pipeline-count')        
         return (cmdview, overview)
     
     @log_except(_logger)
@@ -732,6 +749,20 @@ class CommandExecutionControl(gtk.VBox):
         
     def __view_next_cb(self, a):
         self.open_output(False)
+        
+    def __view_previous_unseen_cb(self, a):
+        target = None
+        for cmd in self.__iter_cmdslice(False):
+            pipeline = cmd.odisp.get_pipeline()            
+            if pipeline in self.__complete_unseen_pipelines:
+                target = cmd
+                break
+        if target:
+            pgnum = self.__cmd_notebook.page_num(target)
+            self.__cmd_notebook.set_current_page(pgnum) 
+        
+    def __view_last_cb(self, a):
+        self.__cmd_notebook.set_current_page(self.__cmd_notebook.get_n_pages()-1)
         
     def __view_home_cb(self, a):
         self.__do_scroll(True, True)
@@ -848,14 +879,15 @@ class CommandExecutionControl(gtk.VBox):
             
     def __sync_cmd_sensitivity(self, curpage=None):
         actions = map(self.__action_group.get_action, ['Copy', 'Cancel', 'PreviousCommand', 'NextCommand', 'Undo', 
-                                                       'Input', 'RemovePipeline', 'DetachPipeline', 'UndoRemovePipeline'])
+                                                       'Input', 'RemovePipeline', 'DetachPipeline', 
+                                                       'PreviousUnseenCommand', 'LastCommand', 'UndoRemovePipeline'])
         if self.__history_visible:
             for action in actions:
                 action.set_sensitive(False)
             cmd = None
             return
         else:
-            undoidx = 8
+            undoidx = 10
             actions[undoidx].set_sensitive(len(self.__actively_destroyed_pipeline_box) > 0)             
             cmd = self.get_current_cmd(full=True, curpage=curpage)
             if not cmd:
@@ -873,7 +905,12 @@ class CommandExecutionControl(gtk.VBox):
             actions[6].set_sensitive(pipeline.is_complete())
             actions[7].set_sensitive(True)
         actions[2].set_sensitive(self.__prevcmd_count > 0)
-        actions[3].set_sensitive(self.__nextcmd_count > 0)       
+        actions[3].set_sensitive(self.__nextcmd_count > 0)
+        actions[8].set_sensitive(len(self.__complete_unseen_pipelines) > 0)
+        npages = self.__cmd_notebook.get_n_pages()
+        if curpage is None:
+            curpage = self.__cmd_notebook.get_current_page()
+        actions[9].set_sensitive(npages > 0 and curpage < npages-1)       
         
     def __sync_display(self, nth=None):
         def set_label(container, label, n, label_exec, n_exec, n_done):
@@ -898,7 +935,7 @@ class CommandExecutionControl(gtk.VBox):
             _logger.debug("sync display, current=%s", pipeline)
             if pipeline in self.__complete_unseen_pipelines:
                 self.__complete_unseen_pipelines.remove(pipeline)
-                self.__mark_pipeline_unseen(pipeline, False)
+                self.__mark_pipeline_unseen(pipeline, False)                
             current.update_viewed_time()
         self.__prevcmd_count = 0
         self.__prevcmd_executing_count = 0
@@ -919,8 +956,12 @@ class CommandExecutionControl(gtk.VBox):
             if pipeline.get_state() == 'executing':
                 self.__nextcmd_executing_count += 1
             if pipeline in self.__complete_unseen_pipelines:
-                self.__nextcmd_complete_count += 1                
-        set_label(self.__header, self.__header_label, self.__prevcmd_count, self.__header_exec_label, self.__prevcmd_executing_count, self.__prevcmd_complete_count)
+                self.__nextcmd_complete_count += 1
+        # The idea here is to not take up the vertical space if we're viewing the last command.
+        if self.__nextcmd_count == 0:
+            self.__header.hide()
+        else:                
+            set_label(self.__header, self.__header_label, self.__prevcmd_count, self.__header_exec_label, self.__prevcmd_executing_count, self.__prevcmd_complete_count)
         set_label(self.__footer, self.__footer_label, self.__nextcmd_count, self.__footer_exec_label, self.__nextcmd_executing_count, self.__nextcmd_complete_count)
         self.__sync_cmd_sensitivity(curpage=nth)
         
@@ -969,3 +1010,77 @@ class CommandExecutionControl(gtk.VBox):
         hw = locate_current_shell(self)
         hw.grab_focus()         
         
+    def do_get_property(self, property):
+        if property.name == 'pipeline-count':
+            return self.__cmd_notebook.get_n_pages()
+        elif property.name == 'unseen-pipeline-count':
+            return len(self.__complete_unseen_pipelines)
+        else:
+            raise AttributeError('unknown property %s' % property.name)
+        
+    def create_overview_button(self):
+        return OverviewButton(self, self.__action_group.get_action('Overview'))
+        
+class OverviewButton(gtk.ToggleButton):
+    def __init__(self, outputs, overview_action):
+        super(OverviewButton, self).__init__()
+        self.__outputs = outputs
+        self.__image = gtk.Image()
+        self.__image.set_property('pixbuf', PixbufCache.getInstance().get('throbber-done.gif', size=None))        
+        self.set_property('image', self.__image)
+        self.set_focus_on_click(False)
+        outputs.connect('notify::pipeline-count', self.__on_pipeline_count_changed)
+        self.__cached_unseen_count = 0
+        self.__orig_bg = self.style.bg[gtk.STATE_NORMAL]
+        self.__idle_flash_count = 0
+        self.__idle_flash_id = 0
+        outputs.connect('notify::unseen-pipeline-count', self.__on_pipeline_count_changed)        
+        self.__on_pipeline_count_changed()
+                
+        self.__overview_action = overview_action
+        overview_action.connect('notify::active', self.__on_overview_active_changed)
+        self.connect('notify::active', self.__on_self_active_changed)
+        
+    def __on_pipeline_count_changed(self, *args):
+        count = self.__outputs.get_property('pipeline-count')
+        unseen_count = self.__outputs.get_property('unseen-pipeline-count')
+        if unseen_count == 0:
+            self.set_label('%d' % (count,))
+        else:
+            self.set_label(_('%d (%d complete)') % (count, unseen_count))         
+        if unseen_count > self.__cached_unseen_count:
+            self.__start_idle_flash()
+            self.__cached_unseen_count = unseen_count
+        if unseen_count == 0:
+            if self.__idle_flash_id > 0:
+                gobject.source_remove(self.__idle_flash_id)
+    
+    def __start_idle_flash(self):
+        self.__idle_flash_count = 4
+        if self.__idle_flash_id == 0:
+            self.__idle_flash_id = gobject.timeout_add(250, self.__idle_flash)
+            
+    @log_except(_logger)
+    def __idle_flash(self): 
+        self.__idle_flash_count -= 1
+        
+        if self.__idle_flash_count % 2 == 1:
+            self.style.bg[gtk.STATE_NORMAL] = "yellow"
+        else:
+            self.style.bg[gtk.STATE_NORMAL] = self.__orig_bg
+        
+        if self.__idle_flash_count == 0:
+            self.__idle_flash_id = 0
+            return False
+        else:
+            return True
+          
+    def __on_self_active_changed(self, *args):
+        ostate = self.__overview_action.get_active()
+        selfstate = self.get_property('active')
+        if ostate != selfstate:
+            self.__overview_action.set_active(selfstate)
+          
+    def __on_overview_active_changed(self, *args):
+        self.set_active(self.__overview_action.get_active())
+    

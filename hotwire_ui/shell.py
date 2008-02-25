@@ -41,6 +41,7 @@ from hotwire.state import History, Preferences
 from hotwire_ui.command import CommandExecutionDisplay,CommandExecutionControl
 from hotwire_ui.completion import CompletionStatusDisplay
 from hotwire_ui.aboutdialog import HotwireAboutDialog
+from hotwire_ui.quickfind import QuickFindWindow
 from hotwire_ui.prefs import PrefsWindow
 from hotwire_ui.dirswitch import DirSwitchWindow
 from hotwire.logutil import log_except
@@ -112,70 +113,71 @@ class HotwireClientContext(hotwire.command.HotwireContext):
     def get_ui(self):
         return self.__hotwire.get_global_ui()
     
-class PipelineLanguageComboBox(gtk.ComboBox):
+class LanguageSwitchWindow(QuickFindWindow):
     def __init__(self):
-        super(PipelineLanguageComboBox, self).__init__(model=gtk.ListStore(gobject.TYPE_PYOBJECT))
+        self.__langs = PipelineLanguageRegistry.getInstance()
+        self.__ordered_langs = []
+        self.__reload_languages()
+        dispatcher.connect(self.__reload_languages, sender=self.__langs)        
+        super(LanguageSwitchWindow, self).__init__(_('Switch Input Language'))
+        
+    def __reload_languages(self,):
+        self.__ordered_langs = list(self.__langs.iter_sorted())
+
+    def _do_search(self, text):
+        text_lower = text.lower()
+        for lang in self.__ordered_langs:
+            name = lang.langname
+            name_lower = name.lower()
+            markup = self._markup_search(name, text, name_lower, text_lower)
+            if markup is not None:      
+                yield (lang, markup, lang.icon)              
+        
+class PipelineLanguageButton(gtk.Button):
+    __gproperties__ = { 
+                       'lang' : (gobject.TYPE_PYOBJECT, '', '', gobject.PARAM_READWRITE)
+                      }    
+    def __init__(self):
+        super(PipelineLanguageButton, self).__init__()
+        self.__image = gtk.Image()
+        self.set_property('image', self.__image)
         
         self.set_focus_on_click(False)
-        langs = PipelineLanguageRegistry.getInstance()
-        self.__hotwire_lang = langs['62270c40-a94a-44dd-aaa0-689f882acf34']
-        self.__python_lang = langs['da3343a0-8bce-46ed-a463-2d17ab09d9b4']
-        self.__reload_languages()
-        self.set_row_separator_func(self.__is_row_separator)
-        cell = gtk.CellRendererPixbuf()
-        self.pack_start(cell, expand=False)
-        self.set_cell_data_func(cell, self.__render_lang_icon)
-        cell = hotwidgets.CellRendererText()
-        self.pack_start(cell)
-        self.set_cell_data_func(cell, self.__render_lang_name)
+        langs = PipelineLanguageRegistry.getInstance()        
+        self.__curlang = langs['62270c40-a94a-44dd-aaa0-689f882acf34']
+        self.connect('clicked', self.__on_clicked)
         
-        dispatcher.connect(self.__reload_languages, sender=PipelineLanguageRegistry.getInstance())
+    def __on_clicked(self, *args):
+        win = LanguageSwitchWindow()
+        lang = win.run_get_value()
+        win.destroy()
+        if lang is not None:
+            self.set_lang(lang)
         
-    def __is_row_separator(self, model, iter):
-        v = model.get_value(iter, 0)
-        return v is None
-        
-    def __reload_languages(self, *args, **kwargs):
-        langs = list(PipelineLanguageRegistry.getInstance())
-        model = self.get_model() 
-        model.clear()
-        builtin_langs = [self.__hotwire_lang, self.__python_lang]
-        for lang in builtin_langs:
-            model.append((lang,))
-        model.append((None,))
-        for lang in sorted(langs, lambda a,b: locale.strcoll(a.langname, b.langname)):
-            if lang in builtin_langs:
-                continue
-            model.append((lang,))
-        
-    def __render_lang_icon(self, celllayout, cell, model, iter):
-        lang = model.get_value(iter, 0)
-        if lang is None: return        
+    def __sync_icon(self,):
+        lang = self.__curlang       
         if lang.icon is None:
-            cell.set_property('pixbuf', None)
+            self.__image.set_property('pixbuf', None)
         else:
             pbcache = PixbufCache.getInstance()
             # Right now use 16 since that's favicon size
             pixbuf = pbcache.get(lang.icon, size=16, trystock=True, stocksize=gtk.ICON_SIZE_MENU)
-            cell.set_property('pixbuf', pixbuf)      
+            self.__image.set_property('pixbuf', pixbuf)      
         
-    def __render_lang_name(self, celllayout, cell, model, iter):
-        lang = model.get_value(iter, 0)
-        if lang is None: return        
-        cell.set_property('text', lang.langname)
+    def do_get_property(self, property):
+        if property.name == 'lang':
+            return self.get_lang()
+        else:
+            raise AttributeError('unknown property %s' % property.name)        
         
     def set_lang(self, lang):
         assert lang is not None
-        for row in self.get_model():
-            val = row[0]
-            if val is lang:
-                self.set_active_iter(row.iter)
-                return
-        raise KeyError("Unknown lang %r" % (lang,))
+        self.__curlang = lang
+        self.__sync_icon()
+        self.notify('lang')
             
     def get_lang(self):
-        lang = self.get_model().get_value(self.get_active_iter(), 0)
-        return lang
+        return self.__curlang
 
 class ShellCommandResolver(BaseCommandResolver):
     """Expands Alias objects in addition to File."""
@@ -193,6 +195,108 @@ class ShellCommandResolver(BaseCommandResolver):
             tokens = list(Pipeline.tokenize(completion.target.target, internal=True))                   
             return (BuiltinRegistry.getInstance()[tokens[0].text], tokens[1:])
         return super(ShellCommandResolver, self)._expand_verb_completion(completion)
+        
+class CwdSelectorWindow(gtk.Dialog):
+    def __init__(self, parent, model):
+        super(CwdSelectorWindow, self).__init__(title=_('Switch Recent Directory'),
+                                                parent=parent,
+                                                flags=gtk.DIALOG_DESTROY_WITH_PARENT,
+                                                buttons=(gtk.STOCK_CLOSE, gtk.RESPONSE_ACCEPT))
+        
+        self.connect('response', lambda *args: self.hide())
+        self.connect('delete-event', self.hide_on_delete)
+                
+        self.set_has_separator(False)
+        self.set_border_width(5)
+        
+        self.__vbox = gtk.VBox()
+        self.vbox.add(self.__vbox)   
+        self.vbox.set_spacing(6)      
+        
+        self.set_size_request(640, 480)
+        
+        self.__scroll = gtk.ScrolledWindow()
+        self.__scroll.set_policy(gtk.POLICY_NEVER, gtk.POLICY_AUTOMATIC)
+        self.__results = gtk.TreeView(model)
+        self.__results.connect('row-activated', self.__on_row_activated)
+        self.__scroll.add(self.__results)
+        colidx = self.__results.insert_column_with_data_func(-1, '',
+                                                             gtk.CellRendererPixbuf(),
+                                                             self.__render_icon)
+        colidx = self.__results.insert_column_with_data_func(-1, '',
+                                                             hotwidgets.CellRendererText(ellipsize=True),
+                                                             self.__render_directory)        
+        self.__vbox.pack_start(hotwidgets.Border(self.__scroll), expand=True)
+        self.__selection = self.__results.get_selection()
+        self.__selection.set_mode(gtk.SELECTION_SINGLE)
+        self.__results.set_headers_visible(False)
+        self.__results.grab_focus()
+        
+    def __on_row_activated(self, *args):
+        self.response(gtk.RESPONSE_ACCEPT)
+        
+    def __render_icon(self, col, cell, model, iter):
+        cell.set_property('icon-name', gtk.STOCK_DIRECTORY)
+        
+    def __render_directory(self, col, cell, model, iter):
+        value = model.get_value(iter, 0)   
+        cell.set_property('text', value)
+        
+    def get_selection(self):
+        return self.__selection
+        
+class CwdDisplay(gtk.Button):
+    __gsignals__ = {
+        "changed" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, []),
+    }
+    def __init__(self):
+        super(CwdDisplay, self).__init__()
+        self.set_relief(gtk.RELIEF_NONE)
+        self.set_focus_on_click(False)
+        
+        self.__home = os.path.expanduser('~')  
+                
+        self.__image = gtk.Image()
+        self.__image.set_from_stock(gtk.STOCK_DIRECTORY, gtk.ICON_SIZE_MENU)
+        self.set_property('image', self.__image)
+        self.__model = gtk.ListStore(gobject.TYPE_STRING)
+        self.__selector_window = CwdSelectorWindow(None, self.__model)
+        self.connect('clicked', self.__on_clicked)
+        self.__sync_label()
+        
+    def __sync_label(self): 
+        active = self.get_active_iter()
+        if active is None:
+            return
+        value = self.__model.get_value(active, 0)
+        if value is None:
+            return
+        if value == self.__home:
+            value = '~'
+        else:
+            value = unix_basename(value)                 
+        self.set_label(value)
+        
+    def __on_clicked(self, *args):
+        self.__selector_window.show_all()
+        resp = self.__selector_window.run()
+        self.__sync_label()
+        if resp == gtk.RESPONSE_ACCEPT:
+            self.emit('changed')
+            
+    def set_active(self, idx):
+        self.__selector_window.get_selection().select_path((idx,))
+        self.__sync_label()
+        
+    def set_active_iter(self, iter):
+        self.__selector_window.get_selection().select_iter(iter)
+        self.__sync_label()
+    
+    def get_active_iter(self):
+        return self.__selector_window.get_selection().get_selected()[1]
+    
+    def get_model(self):
+        return self.__model
 
 class Hotwire(gtk.VBox):
     MAX_RECENTDIR_LEN = 10
@@ -272,68 +376,39 @@ class Hotwire(gtk.VBox):
         self.pack_start(self.__paned, expand=True)
 
         self.__outputs = CommandExecutionControl(self.context)
-        self.__outputs.connect("new-window", self.__on_commands_new_window)        
+        self.__outputs.connect("new-window", self.__on_commands_new_window)      
         self.__topbox.pack_start(self.__outputs, expand=True)
 
         self.__bottom = gtk.VBox()
         self.__paned.pack_end(hotwidgets.Align(self.__bottom, xscale=1.0, yalign=1.0), expand=False)
-
-        self.__msgline = gtk.Label('')
-        self.__msgline.set_selectable(True)
-        self.__msgline.set_ellipsize(True)
-        self.__msgline.unset_flags(gtk.CAN_FOCUS)
-        self.__bottom.pack_start(hotwidgets.Align(self.__msgline), expand=False)
-
+        
         self.__emacs_bindings = None
         self.__active_input_completers = []
+        self.__inputline = gtk.HBox()
+        
+        self.__overview_button = self.__outputs.create_overview_button()
+        self.__inputline.pack_start(self.__overview_button, expand=False)
+        
+        self.__lang_button = PipelineLanguageButton()
+        self.__lang_button.set_lang(PipelineLanguageRegistry.getInstance()['62270c40-a94a-44dd-aaa0-689f882acf34'])
+        self.__lang_button.connect('notify::lang', self.__on_lang_button_changed)
+        self.__inputline.pack_start(self.__lang_button, expand=False) 
+        self.__doing_recentdir_sync = False
+        self.__doing_recentdir_navigation = False
+        
+        self.__recentdir_navigation_index = None
+        store = gtk.ListStore(gobject.TYPE_STRING, gobject.TYPE_STRING)
+        self.__recentdirs = CwdDisplay()
+        self.__recentdirs.connect('changed', self.__on_recentdir_selected)
+        self.__inputline.pack_start(hotwidgets.Align(self.__recentdirs), expand=False)           
+        
+        self.__bottom.pack_start(self.__inputline, expand=False)        
         self.__input = gtk.Entry()
         self.__input.connect("notify::scroll-offset", self.__on_scroll_offset)
         self.__input.connect("notify::text", lambda *args: self.__on_input_changed())
         self.__input.connect("key-press-event", lambda i, e: self.__on_input_keypress(e))
         self.__input.connect("focus-out-event", self.__on_entry_focus_lost)
-        self.__bottom.pack_start(self.__input, expand=False)
-
-        self.__statusbox = gtk.VBox()
-        self.__bottom.pack_start(self.__statusbox, expand=False)
-
-        self.__statusline = gtk.HBox()
-        self.__statusbox.pack_start(hotwidgets.Align(self.__statusline), expand=False)
-        self.__lang_combo = PipelineLanguageComboBox()
-        self.__lang_combo.set_lang(PipelineLanguageRegistry.getInstance()['62270c40-a94a-44dd-aaa0-689f882acf34'])
-        self.__lang_combo.connect('changed', self.__on_lang_combo_changed)
-        self.__statusline.pack_start(self.__lang_combo, expand=False)        
-        self.__doing_recentdir_sync = False
-        self.__doing_recentdir_navigation = False
-        self.__recentdir_navigation_index = None
-        self.__recentdirs = gtk.combo_box_new_text()
-        self.__recentdirs.set_focus_on_click(False)
-        self.__recentdirs.connect('changed', self.__on_recentdir_selected)
-        self.__statusline.pack_start(hotwidgets.Align(self.__recentdirs), expand=False)
-        
-        def create_arrow_button(action_name):
-            action = self.__action_group.get_action(action_name)
-            icon = action.create_icon(gtk.ICON_SIZE_MENU)
-            button = gtk.Button(label=action.get_property('label'))
-            button.connect('clicked', lambda *args: action.activate())
-            def on_action_sensitive(a, p):
-                button.set_sensitive(action.get_sensitive())
-            action.connect("notify::sensitive", on_action_sensitive)
-            # There is some bug here causing the GC of on_action_sensitive; avoid it
-            # by attaching a ref to button
-            button.x = on_action_sensitive
-            button.set_property('image', icon)
-            button.set_focus_on_click(False)
-            return button
-        sizegroup = gtk.SizeGroup(gtk.SIZE_GROUP_HORIZONTAL)
-        back = create_arrow_button('Back')
-        sizegroup.add_widget(back)
-        self.__statusline.pack_start(back, expand=False)       
-        fwd = create_arrow_button('Forward')
-        sizegroup.add_widget(fwd)
-        self.__statusline.pack_start(fwd, expand=False)
-        up = create_arrow_button('Up')
-        sizegroup.add_widget(up)
-        self.__statusline.pack_start(up, expand=False)        
+        self.__inputline.pack_start(self.__input, expand=True)
 
         self.__idle_parse_id = 0
         self.__parse_stale = False
@@ -382,14 +457,12 @@ class Hotwire(gtk.VBox):
     def append_tab(self, widget, title):
         self.emit("new-tab-widget", widget, title)
 
-    def push_msg(self, msg, markup=False):
-        if not markup:
-            self.__msgline.set_text(msg)
-        else:
-            self.__msgline.set_markup(msg)
+    def push_msg(self, msg):
+        return
+        self.__statusbar.push(self.__status_hotwire_ctx, msg)
             
-    def __on_lang_combo_changed(self, *args):
-        newlang = self.__lang_combo.get_lang()
+    def __on_lang_button_changed(self, *args):
+        newlang = self.__lang_button.get_lang()
         if newlang == self.__langtype:
             return
         self.__langtype = newlang 
@@ -397,7 +470,7 @@ class Hotwire(gtk.VBox):
         self.__queue_parse()
         
     def __on_switch_language_cb(self, action):
-        self.__lang_combo.popup()  
+        self.__lang_button.clicked()
         
     def get_active_lang(self):
         return self.__langtype
@@ -660,7 +733,7 @@ class Hotwire(gtk.VBox):
             return
         (lang_uuid, histtext) = histitem
         lang = PipelineLanguageRegistry.getInstance()[lang_uuid]
-        self.__lang_combo.set_lang(lang)
+        self.__lang_button.set_lang(lang)
         self.__input.set_text(histtext)
         self.__input.set_position(-1)
 
