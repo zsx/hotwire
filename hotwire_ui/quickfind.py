@@ -59,6 +59,7 @@ class QuickFindWindow(gtk.Dialog):
         self.__scroll = gtk.ScrolledWindow()
         self.__scroll.set_policy(gtk.POLICY_NEVER, gtk.POLICY_AUTOMATIC)
         self.__results = gtk.TreeView()
+        self.__results.connect('row-activated', self.__on_row_activated)
         self.__scroll.add(self.__results)
         colidx = self.__results.insert_column_with_data_func(-1, '',
                                                              gtk.CellRendererPixbuf(),
@@ -175,6 +176,7 @@ class QuickFindWindow(gtk.Dialog):
         self._handle_activation(model.get_value(iter, 0))
         return True        
         
+    @log_except(_logger)
     def __on_row_activated(self, tv, path, vc):
         _logger.debug("row activated: %s", path)
         model = self.__results.get_model()
