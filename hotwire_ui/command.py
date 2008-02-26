@@ -434,6 +434,8 @@ class CommandExecutionControl(gtk.VBox):
     __gproperties__ = { 
                        'pipeline-count' : (gobject.TYPE_INT, '', '',
                        0, 4096, 0, gobject.PARAM_READWRITE),
+                       'executing-pipeline-count' : (gobject.TYPE_INT, '', '',
+                       0, 4096, 0, gobject.PARAM_READWRITE),                       
                        'unseen-pipeline-count' : (gobject.TYPE_INT, '', '',
                        0, 4096, 0, gobject.PARAM_READWRITE)                       
     }
@@ -957,13 +959,14 @@ class CommandExecutionControl(gtk.VBox):
                 self.__nextcmd_executing_count += 1
             if pipeline in self.__complete_unseen_pipelines:
                 self.__nextcmd_complete_count += 1
+        self.notify('executing-pipeline-count')                
         # The idea here is to not take up the vertical space if we're viewing the last command.
         if self.__nextcmd_count == 0:
             self.__header.hide()
         else:                
             set_label(self.__header, self.__header_label, self.__prevcmd_count, self.__header_exec_label, self.__prevcmd_executing_count, self.__prevcmd_complete_count)
         set_label(self.__footer, self.__footer_label, self.__nextcmd_count, self.__footer_exec_label, self.__nextcmd_executing_count, self.__nextcmd_complete_count)
-        self.__sync_cmd_sensitivity(curpage=nth)
+        self.__sync_cmd_sensitivity(curpage=nth)        
         
         if curcmd:
             if self.__odisp_changed_connection is not None:
@@ -1015,6 +1018,8 @@ class CommandExecutionControl(gtk.VBox):
             return self.__cmd_notebook.get_n_pages()
         elif property.name == 'unseen-pipeline-count':
             return len(self.__complete_unseen_pipelines)
+        elif property.name == 'executing-pipeline-count':
+            return self.__prevcmd_executing_count + self.__nextcmd_executing_count         
         else:
             raise AttributeError('unknown property %s' % property.name)
         
@@ -1025,6 +1030,7 @@ class OverviewButton(gtk.ToggleButton):
     def __init__(self, outputs, overview_action):
         super(OverviewButton, self).__init__()
         self.__outputs = outputs
+        self.__tooltips = gtk.Tooltips()        
         self.__image = gtk.Image()
         self.__image.set_property('pixbuf', PixbufCache.getInstance().get('throbber-done.gif', size=None))        
         self.set_property('image', self.__image)
@@ -1034,7 +1040,8 @@ class OverviewButton(gtk.ToggleButton):
         self.__orig_bg = self.style.bg[gtk.STATE_NORMAL]
         self.__idle_flash_count = 0
         self.__idle_flash_id = 0
-        outputs.connect('notify::unseen-pipeline-count', self.__on_pipeline_count_changed)        
+        outputs.connect('notify::unseen-pipeline-count', self.__on_pipeline_count_changed)
+        outputs.connect('notify::executing-pipeline-count', self.__on_pipeline_count_changed)                 
         self.__on_pipeline_count_changed()
                 
         self.__overview_action = overview_action
@@ -1042,12 +1049,13 @@ class OverviewButton(gtk.ToggleButton):
         self.connect('notify::active', self.__on_self_active_changed)
         
     def __on_pipeline_count_changed(self, *args):
-        count = self.__outputs.get_property('pipeline-count')
-        unseen_count = self.__outputs.get_property('unseen-pipeline-count')
+        (count, unseen_count, executing_count) = map(self.__outputs.get_property, 
+                                                     ('pipeline-count', 'unseen-pipeline-count', 'executing-pipeline-count'))
         if unseen_count == 0:
-            self.set_label('%d' % (count,))
+            self.set_label('%d (%d)' % (count,executing_count))
         else:
-            self.set_label(_('%d (%d complete)') % (count, unseen_count))         
+            self.set_label(_('%d (%d, %d complete)') % (count, executing_count, unseen_count))
+        self.__tooltips.set_tip(self, '%d total, %d executing, %d complete' % (count, executing_count, unseen_count))         
         if unseen_count > self.__cached_unseen_count:
             self.__start_idle_flash()
             self.__cached_unseen_count = unseen_count

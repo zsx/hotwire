@@ -139,6 +139,7 @@ class PipelineLanguageButton(gtk.Button):
                       }    
     def __init__(self):
         super(PipelineLanguageButton, self).__init__()
+        self.__tooltips = gtk.Tooltips()
         self.__image = gtk.Image()
         self.set_property('image', self.__image)
         
@@ -162,7 +163,8 @@ class PipelineLanguageButton(gtk.Button):
             pbcache = PixbufCache.getInstance()
             # Right now use 16 since that's favicon size
             pixbuf = pbcache.get(lang.icon, size=16, trystock=True, stocksize=gtk.ICON_SIZE_MENU)
-            self.__image.set_property('pixbuf', pixbuf)      
+            self.__image.set_property('pixbuf', pixbuf)
+        self.__tooltips.set_tip(self, _('Input language: %s') % (lang.langname,))     
         
     def do_get_property(self, property):
         if property.name == 'lang':
@@ -277,7 +279,7 @@ class CwdDisplay(gtk.Button):
         else:
             value = unix_basename(value)                 
         self.set_label(value)
-        self.__tooltips.set_tip(self, origvalue)        
+        self.__tooltips.set_tip(self, _('Current directory: %s') % (origvalue,))        
         
     def __on_clicked(self, *args):
         self.__selector_window.show_all()
