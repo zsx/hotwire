@@ -276,6 +276,8 @@ class CwdDisplay(gtk.Button):
             return
         if value == self.__home:
             value = '~'
+        elif value == '/':
+            pass
         else:
             value = unix_basename(value)                 
         self.set_label(value)
