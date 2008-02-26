@@ -47,7 +47,10 @@ expressed as an iterable which yielded a single object.""")
         locals = {'hot_context': context}
         if context.current_output_metadata and context.current_output_metadata.type is not None:
             if context.current_output_metadata.single:
-                locals['it'] = context.snapshot_current_output()
+                try:
+                    locals['it'] = context.snapshot_current_output()
+                except ValueError, e:
+                    locals['it'] = None
             else:
                 locals['current'] = lambda: context.snapshot_current_output()
                 locals['selected'] = lambda: context.snapshot_current_selected_output(selected=True)                
