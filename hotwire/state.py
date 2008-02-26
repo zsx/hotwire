@@ -141,7 +141,7 @@ class History(Singleton):
         _logger.debug("generated search query: %s", sql)
         return sql
         
-    def search_commands(self,  lang_uuid, searchterm, limit=20, **kwargs):
+    def search_commands(self,  lang_uuid, searchterm, limit=50, **kwargs):
         cursor = self.__conn.cursor()
         if lang_uuid is not None:
             kwargs['filters'] = [(' lang_uuid = ? ', lang_uuid)]
