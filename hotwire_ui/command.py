@@ -230,7 +230,7 @@ class CommandExecutionHeader(gtk.VBox):
             status_str = None
             
         if self.__objects:
-            self.__tooltips.set_tip(self.__titlebox_ebox, (status_str or '') + _(' Output type: ') + str(self.__objects.get_default_output_type()))      
+            self.__tooltips.set_tip(self.__titlebox_ebox, self.__pipeline_str)      
 
         def set_status_action(status_text_left, action_text='', status_markup=False):
             if action_text:
