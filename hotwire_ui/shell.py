@@ -253,6 +253,7 @@ class CwdDisplay(gtk.Button):
         super(CwdDisplay, self).__init__()
         self.set_relief(gtk.RELIEF_NONE)
         self.set_focus_on_click(False)
+        self.__tooltips = gtk.Tooltips()
         
         self.__home = os.path.expanduser('~')  
                 
@@ -268,7 +269,7 @@ class CwdDisplay(gtk.Button):
         active = self.get_active_iter()
         if active is None:
             return
-        value = self.__model.get_value(active, 0)
+        value = origvalue = self.__model.get_value(active, 0)
         if value is None:
             return
         if value == self.__home:
@@ -276,6 +277,7 @@ class CwdDisplay(gtk.Button):
         else:
             value = unix_basename(value)                 
         self.set_label(value)
+        self.__tooltips.set_tip(self, origvalue)        
         
     def __on_clicked(self, *args):
         self.__selector_window.show_all()
