@@ -867,8 +867,9 @@ class CommandExecutionControl(gtk.VBox):
             if self.__inspector_visible:
                 self.__inspector.show()
             else:
-                self.__inspector.hide() 
-            self.__header.show()
+                self.__inspector.hide()
+            if self.__nextcmd_count > 0:                
+                self.__header.show()
             self.__footer.show()
             
     @log_except(_logger)
