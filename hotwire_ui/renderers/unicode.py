@@ -244,6 +244,8 @@ class UnicodeRenderer(ObjectsRenderer):
         return gettext.ngettext('%d character' % (charcount,), '%d characters' % (charcount,), charcount)
 
     def __get_objects_from_iters(self, start, end):
+        if self.__empty:
+            return
         if start == end:
             return
         iter = start
@@ -394,7 +396,8 @@ class UnicodeRenderer(ObjectsRenderer):
             path = dlg.get_filename()
             f = open(path, 'w')
             try:
-                f.write(self._buf.get_property('text'))
+                if not self.__empty:             
+                    f.write(self._buf.get_property('text'))
             finally:
                 f.close()
         finally:
