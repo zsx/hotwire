@@ -38,7 +38,7 @@ class RmBuiltin(FileOpBuiltin):
                                         hasstatus=True,
                                         threaded=True,
                                         argspec=MultiArgSpec('path'),
-                                        options=[['-u', '--unlink'],['-r', '--recursive']])
+                                        options=[['-u', '--unlink'],['-r', '--recursive'],['-f', '--force']])
 
     def execute(self, context, args, options=[]):
         if len(args) == 0 and context.input is None:
@@ -52,18 +52,27 @@ class RmBuiltin(FileOpBuiltin):
         self._status_notify(context, sources_total, 0)
         fs = Filesystem.getInstance()
         recursive = '-r' in options
+        force = '-f' in options
         if '-u' in options:
             for i,arg in enumerate(sources):
                 if recursive:
-                    shutil.rmtree(arg, True)
+                    shutil.rmtree(arg, ignore_errors=force)
                 else:
-                    os.unlink(arg)
+                    try:
+                        os.unlink(arg)
+                    except:
+                        if not force:
+                            raise
                 self._status_notify(context,sources_total,i+1)                
             return []
         else:
             try:
                 for i,arg in enumerate(sources):
-                    fs.move_to_trash(arg)
+                    try:
+                        fs.move_to_trash(arg)
+                    except:
+                        if not force:
+                            raise
                     undo_targets.append(arg)
                     self._status_notify(context,sources_total,i+1)
                     self._note_modified_paths(context, sources)
