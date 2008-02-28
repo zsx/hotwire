@@ -38,6 +38,12 @@ def _get_state_path(name):
     dirname = Filesystem.getInstance().make_conf_subdir('state')
     return os.path.join(dirname, name)
 
+class CommandHistoryEntry(object):
+    __slots__ = ['command', 'exectime']
+    def __init__(self, cmd, exectime):
+        self.command = cmd
+        self.exectime = exectime
+
 class History(Singleton):
     def __init__(self):
         super(History, self).__init__()
