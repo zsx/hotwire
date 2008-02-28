@@ -27,10 +27,15 @@ class TermBuiltin(Builtin):
         super(TermBuiltin, self).__init__('term',
                                           nodisplay=True,
                                           argspec=MultiArgSpec('args'),
-                                          options=[['-w', '--window']])
+                                          options_passthrough=True)
 
-    def execute(self, context, args, options=[]):
-        context.hotwire.open_term(context.cwd, context.pipeline, args, window=('-w' in options))
+    def execute(self, context, args):
+        if len(args) > 0 and args[0] == '-w':
+            autoclose = False
+            args = args[1:]
+        else:
+            autoclose = True
+        context.hotwire.open_term(context.cwd, context.pipeline, args, window=True, autoclose=autoclose)
         return []
         
 BuiltinRegistry.getInstance().register_hotwire(TermBuiltin())
