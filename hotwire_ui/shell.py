@@ -98,13 +98,13 @@ class HotwireClientContext(hotwire.command.HotwireContext):
     def remote_exit(self):
         self.__hotwire.remote_exit()
 
-    def open_term(self, cwd, pipeline, arg, window=False):
-        gobject.idle_add(self.__idle_open_term, cwd, pipeline, arg, window)
+    def open_term(self, cwd, pipeline, arg, window=False, autoclose=False):
+        gobject.idle_add(self.__idle_open_term, cwd, pipeline, arg, window, autoclose)
 
-    def __idle_open_term(self, cwd, pipeline, arg, do_window):
+    def __idle_open_term(self, cwd, pipeline, arg, do_window, autoclose):
         title = str(pipeline)
         window = locate_current_window(self.__hotwire)
-        term = Terminal.getInstance().get_terminal_widget_cmd(cwd, arg, title)
+        term = Terminal.getInstance().get_terminal_widget_cmd(cwd, arg, title, autoclose=autoclose)
         if do_window:
             window.new_win_widget(term, title)
         else:
@@ -1492,10 +1492,6 @@ class HotWindow(gtk.Window):
         if w in self.__closesigs:
             w.disconnect(self.__closesigs[w])
             del self.__closesigs[w]
-        # If a terminal exits and we're the only window, don't automatically
-        # exit the app.
-        if self.__notebook.get_n_pages() == 1:
-            return
         self.__remove_page_widget(w)
 
     def __add_widget_title(self, w):

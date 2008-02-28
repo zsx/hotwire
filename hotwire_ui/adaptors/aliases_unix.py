@@ -23,16 +23,16 @@ import os,sys
 
 from hotwire.cmdalias import AliasRegistry
 
-default_aliases = {'sudo': 'term -w sudo',
-                   'su': 'term -w su',                   
+default_aliases = {'sudo': 'term sudo',
+                   'su': 'term su',                   
                    'vi': 'term vi',
                    'vim': 'term vim',
-                   'gdb': 'term -w gdb',                   
-                   'ssh': 'term -w ssh',
+                   'gdb': 'term gdb',                   
+                   'ssh': 'term ssh',
                    'man': 'term man',
                    'info': 'term info',
                    'less': 'term less',
-                   'more': 'term -w more',
+                   'more': 'term more',
                    'ipython': 'term ipython',                     
                    'top': 'term top',
                    'iotop': 'term iotop',
@@ -40,8 +40,8 @@ default_aliases = {'sudo': 'term -w sudo',
                    'powertop': 'term powertop',                   
                    'nano': 'term nano',
                    'pico': 'term pico',
-                   'irssi': 'term -w irssi',
-                   'mutt': 'term -w mutt',
+                   'irssi': 'term irssi',
+                   'mutt': 'term mutt',
                   }
 aliases = AliasRegistry.getInstance()
 for name,value in default_aliases.iteritems():

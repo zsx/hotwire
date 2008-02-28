@@ -23,6 +23,7 @@ import os,sys,platform,logging
 
 import gtk,gobject,pango
 
+from hotwire.logutil import log_except
 import hotwire_ui.widgets as hotwidgets
 from hotwire.state import Preferences
 from hotvte.vteterm import VteTerminalWidget 
@@ -30,8 +31,8 @@ from hotvte.vteterm import VteTerminalWidget
 _logger = logging.getLogger("hotwire.sysdep.VteTerminal")
 
 class VteTerminalFactory(object):
-    def get_terminal_widget_cmd(self, cwd, cmd, title):
-        return VteTerminal(cwd=cwd, cmd=cmd, title=title)
+    def get_terminal_widget_cmd(self, cwd, cmd, title, autoclose=False):
+        return VteTerminal(cwd=cwd, cmd=cmd, title=title, autoclose=autoclose)
     
     def get_terminal_widget_ptyfd(self, cwd, ptyfd, title, initbuf=None):
         return VteTerminal(cwd=cwd, ptyfd=ptyfd, title=title, initbuf=initbuf)       
@@ -40,7 +41,7 @@ class VteTerminal(gtk.VBox):
     __gsignals__ = {
         "closed" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, ()),
     }
-    def __init__(self, cwd=None, cmd=None, title='', ptyfd=None, initbuf=None):
+    def __init__(self, cwd=None, cmd=None, title='', ptyfd=None, initbuf=None, autoclose=False):
         super(VteTerminal, self).__init__()
         self.__ui_string = """
 <ui>
@@ -62,6 +63,7 @@ class VteTerminal(gtk.VBox):
         self.__msg = gtk.Label('')
         self.__pid = None
         self.__exited = False
+        self.__autoclose = autoclose
         self.__header.pack_start(hotwidgets.Align(self.__msg, xalign=1.0), expand=False)
         self.__msg.set_property('xalign', 1.0)
 
@@ -85,9 +87,19 @@ class VteTerminal(gtk.VBox):
         self.pack_start(self.__term, expand=True)
         self.__term.connect('child-exited', self.__on_child_exited)
         self.__term.connect('fork-child', self.__on_fork_child)
+        self.__term.get_vte().connect('key-press-event', self.__on_keypress)
          
-        self.__sync_prefs()        
+        self.__sync_prefs()
         
+    @log_except(_logger)
+    def __on_keypress(self, t, e):
+        if e.keyval == gtk.gdk.keyval_from_name('Return'):    
+            if self.__exited:
+                _logger.debug("got Return when exited")
+                self.emit('closed')
+                return True        
+        return False
+    
     def get_ui_pairs(self):
         return [(self.__ui_string, self.__action_group)]
         
@@ -122,8 +134,9 @@ class VteTerminal(gtk.VBox):
     def __on_child_exited(self, term):
         _logger.debug("Caught child exited")
         self.__exited = True
-        self.__msg.set_markup('Exited')
-        self.emit('closed')
+        self.__msg.set_markup(_('Command exited (Enter to close)'))
+        if self.__autoclose:
+            self.emit('closed')
         
     def handle_detach(self):
         self.emit('closed')        

@@ -30,11 +30,11 @@ class TermBuiltin(Builtin):
                                           options_passthrough=True)
 
     def execute(self, context, args):
-        if len(args) > 0 and args[0] == '-w':
-            autoclose = False
+        if len(args) > 0 and args[0] == '-e':
+            autoclose = True
             args = args[1:]
         else:
-            autoclose = True
+            autoclose = False
         context.hotwire.open_term(context.cwd, context.pipeline, args, window=True, autoclose=autoclose)
         return []
         
