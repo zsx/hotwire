@@ -141,6 +141,7 @@ class MsgArea(gtk.HBox):
         
     def add_button(self, btext, respid):
         button = gtk.Button(stock=btext)
+        button.set_focus_on_click(False)
         button.set_flags(gtk.CAN_DEFAULT)
         button.show()
         self.add_action_widget(button, respid)
@@ -170,6 +171,7 @@ class MsgArea(gtk.HBox):
         
     def add_stock_button_with_text(self, text, stockid, respid):
         b = gtk.Button(label=text)
+        b.set_focus_on_click(False)
         img = gtk.Image()
         img.set_from_stock(stockid, gtk.ICON_SIZE_BUTTON)
         b.set_image(img)
