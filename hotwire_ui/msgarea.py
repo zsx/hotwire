@@ -182,10 +182,10 @@ class MsgArea(gtk.HBox):
         hbox_content.show()
 
         image = gtk.Image()
-        image.set_from_stock(stockid, gtk.ICON_SIZE_MENU)
+        image.set_from_stock(stockid, gtk.ICON_SIZE_BUTTON)
         image.show()
         hbox_content.pack_start(image, False, False, 0)
-        image.set_alignment(0.5, 0)
+        image.set_alignment(0.5, 0.5)
     
         vbox = gtk.VBox(False, 6)
         vbox.show()
@@ -206,7 +206,7 @@ class MsgArea(gtk.HBox):
             secondary_label = gtk.Label(secondary_markup)
             secondary_label.show()
             vbox.pack_start(secondary_label, True, True, 0)
-            secondary_label.set_flags(GTK_CAN_FOCUS)
+            secondary_label.set_flags(gtk.CAN_FOCUS)
             secondary_label.set_use_markup(True)
             secondary_label.set_line_wrap(True)
             secondary_label.set_selectable(True)

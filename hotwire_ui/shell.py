@@ -74,6 +74,9 @@ class HotwireClientContext(hotwire.command.HotwireContext):
     def get_gtk_event_time(self):
         return gtk.get_current_event_time()
 
+    def push_error(self, text, **kwargs):
+        self.__hotwire.push_error(text, **kwargs)
+
     def push_msg(self, text, **kwargs):
         self.__hotwire.push_msg(text, **kwargs)
 
@@ -474,11 +477,15 @@ class Hotwire(gtk.VBox):
     def __clear_msg(self):
         self.__msgarea_control.clear()
 
-    def push_msg(self, msg, stockid=gtk.STOCK_INFO):
+    def push_error(self, msg, secondary=None):
+        self.push_msg(msg, secondary=secondary, stockid=gtk.STOCK_DIALOG_ERROR)
+
+    def push_msg(self, msg, secondary=None, stockid=gtk.STOCK_DIALOG_INFO):
         self.__clear_msg()
         if msg is None or msg == '':
             return
-        msgarea = self.__msgarea_control.new_from_text_and_icon(stockid, msg, buttons=[(_('Close'), gtk.RESPONSE_CLOSE)])
+        msgarea = self.__msgarea_control.new_from_text_and_icon(stockid, msg, secondary=secondary,
+                                                                buttons=[(gtk.STOCK_CLOSE, gtk.RESPONSE_CLOSE)])
         msgarea.connect('response', self.__on_msgarea_response)
         msgarea.show_all()
         
@@ -733,7 +740,7 @@ class Hotwire(gtk.VBox):
         try:
             self.__do_parse(partial=False, resolve=True)
         except hotwire.command.PipelineParseException, e:
-            self.push_msg(_("Failed to parse pipeline: %s") % (e.args[0],))
+            self.push_error(_("Failed to parse pipeline"), secondary=e.args[0])
             return
                 
         text = self.__input.get_property("text")
@@ -781,7 +788,7 @@ class Hotwire(gtk.VBox):
             try:
                 self.__do_parse(partial=True, resolve=False)
             except hotwire.command.PipelineParseException, e:
-                self.push_msg('Failed to parse pipeline: %s' % (e.args[0],))
+                self.push_error(_('Failed to parse pipeline'), secondary=e.args[0])
                 return
             self.__do_complete()
         self.__insert_completion()
