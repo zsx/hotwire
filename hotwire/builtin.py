@@ -199,6 +199,7 @@ def load():
     import hotwire.builtins.cd
     import hotwire.builtins.cp
     import hotwire.builtins.current
+    import hotwire.builtins.exit
     import hotwire.builtins.filter
     import hotwire.builtins.fsearch
     import hotwire.builtins.help
