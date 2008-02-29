@@ -253,6 +253,7 @@ class CwdDisplay(gtk.Button):
     }
     def __init__(self):
         super(CwdDisplay, self).__init__()
+        self.set_use_underline(False)
         self.set_relief(gtk.RELIEF_NONE)
         self.set_focus_on_click(False)
         self.__tooltips = gtk.Tooltips()
@@ -279,8 +280,10 @@ class CwdDisplay(gtk.Button):
         elif value == '/':
             pass
         else:
-            value = unix_basename(value)                 
-        self.set_label(value)
+            value = unix_basename(value)
+        # workaround http://bugzilla.gnome.org/show_bug.cgi?id=519429
+        value = value.replace('_', '__')
+        self.set_label(value)      
         self.__tooltips.set_tip(self, _('Current directory: %s') % (origvalue,))        
         
     def __on_clicked(self, *args):
