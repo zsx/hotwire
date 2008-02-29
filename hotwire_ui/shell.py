@@ -41,6 +41,7 @@ from hotwire.state import History, Preferences
 from hotwire_ui.command import CommandExecutionDisplay,CommandExecutionControl
 from hotwire_ui.completion import CompletionStatusDisplay
 from hotwire_ui.aboutdialog import HotwireAboutDialog
+from hotwire_ui.msgarea import MsgArea
 from hotwire_ui.quickfind import QuickFindWindow
 from hotwire_ui.prefs import PrefsWindow
 from hotwire_ui.dirswitch import DirSwitchWindow
@@ -393,6 +394,11 @@ class Hotwire(gtk.VBox):
         
         self.__emacs_bindings = None
         self.__active_input_completers = []
+        
+        self.__msgarea = None
+        self.__msgarea_box = gtk.HBox()
+        self.__bottom.pack_start(self.__msgarea_box, expand=False)
+        
         self.__inputline = gtk.HBox()
         
         self.__overview_button = self.__outputs.create_overview_button()
@@ -466,10 +472,25 @@ class Hotwire(gtk.VBox):
     def append_tab(self, widget, title):
         self.emit("new-tab-widget", widget, title)
 
-    def push_msg(self, msg):
-        return
-        self.__statusbar.push(self.__status_hotwire_ctx, msg)
-            
+    def __clear_msg(self):
+        if self.__msgarea is not None:
+            self.__msgarea_box.foreach(self.__msgarea_box.remove)            
+            self.__msgarea.destroy()
+            self.__msgarea = None        
+
+    def push_msg(self, msg, stockid=gtk.STOCK_INFO):
+        self.__clear_msg()
+        if msg is None or msg == '':
+            return
+        msgarea = self.__msgarea = MsgArea([(_('Close'), gtk.RESPONSE_CLOSE)])
+        msgarea.set_text_and_icon(stockid, msg)
+        msgarea.connect('response', self.__on_msgarea_response)
+        msgarea.show_all()
+        self.__msgarea_box.pack_start(msgarea)
+        
+    def __on_msgarea_response(self, msgarea, respid):
+        self.__clear_msg()
+
     def __on_lang_button_changed(self, *args):
         newlang = self.__lang_button.get_lang()
         if newlang == self.__langtype:
@@ -848,6 +869,7 @@ class Hotwire(gtk.VBox):
         elif e.keyval == gtk.gdk.keyval_from_name('Page_Down'):           
             return self.__completions.page_down()  
         elif e.keyval == gtk.gdk.keyval_from_name('Escape'):
+            self.__clear_msg()
             self.__completion_async_blocking = False
             self.__completions.hide_all()
             return True
