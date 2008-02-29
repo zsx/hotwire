@@ -364,7 +364,7 @@ class Command(gobject.GObject):
         except Exception, e:
             _logger.debug("Caught exception from command: %s", e, exc_info=True)
             if self.__executing_sync:
-                raise e
+                raise
             else:
                 self.emit("exception", e)
         self.output.put(self.map_fn(None))
