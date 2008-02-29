@@ -213,3 +213,22 @@ class MsgArea(gtk.HBox):
             secondary_label.set_alignment(0, 0.5)
     
         self.set_contents(hbox_content)
+
+class MsgAreaController(gtk.HBox):
+    def __init__(self):
+        super(MsgAreaController, self).__init__()
+        
+        self.__msgarea = None
+        
+    def clear(self):
+        if self.__msgarea is not None:
+            self.remove(self.__msgarea)
+            self.__msgarea.destroy()
+            self.__msgarea = None
+        
+    def new_from_text_and_icon(self, stockid, primary, secondary=None, buttons=[]):
+        self.clear()
+        msgarea = self.__msgarea = MsgArea(buttons)
+        msgarea.set_text_and_icon(stockid, primary, secondary)
+        self.pack_start(msgarea, expand=True)
+        return msgarea

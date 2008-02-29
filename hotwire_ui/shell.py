@@ -41,7 +41,7 @@ from hotwire.state import History, Preferences
 from hotwire_ui.command import CommandExecutionDisplay,CommandExecutionControl
 from hotwire_ui.completion import CompletionStatusDisplay
 from hotwire_ui.aboutdialog import HotwireAboutDialog
-from hotwire_ui.msgarea import MsgArea
+from hotwire_ui.msgarea import MsgArea,MsgAreaController
 from hotwire_ui.quickfind import QuickFindWindow
 from hotwire_ui.prefs import PrefsWindow
 from hotwire_ui.dirswitch import DirSwitchWindow
@@ -395,9 +395,8 @@ class Hotwire(gtk.VBox):
         self.__emacs_bindings = None
         self.__active_input_completers = []
         
-        self.__msgarea = None
-        self.__msgarea_box = gtk.HBox()
-        self.__bottom.pack_start(self.__msgarea_box, expand=False)
+        self.__msgarea_control = MsgAreaController()
+        self.__bottom.pack_start(self.__msgarea_control, expand=False)
         
         self.__inputline = gtk.HBox()
         
@@ -473,20 +472,15 @@ class Hotwire(gtk.VBox):
         self.emit("new-tab-widget", widget, title)
 
     def __clear_msg(self):
-        if self.__msgarea is not None:
-            self.__msgarea_box.foreach(self.__msgarea_box.remove)            
-            self.__msgarea.destroy()
-            self.__msgarea = None        
+        self.__msgarea_control.clear()
 
     def push_msg(self, msg, stockid=gtk.STOCK_INFO):
         self.__clear_msg()
         if msg is None or msg == '':
             return
-        msgarea = self.__msgarea = MsgArea([(_('Close'), gtk.RESPONSE_CLOSE)])
-        msgarea.set_text_and_icon(stockid, msg)
+        msgarea = self.__msgarea_control.new_from_text_and_icon(stockid, msg, buttons=[(_('Close'), gtk.RESPONSE_CLOSE)])
         msgarea.connect('response', self.__on_msgarea_response)
         msgarea.show_all()
-        self.__msgarea_box.pack_start(msgarea)
         
     def __on_msgarea_response(self, msgarea, respid):
         self.__clear_msg()
