@@ -287,7 +287,10 @@ class CwdDisplay(gtk.Button):
             value = unix_basename(value)
         # workaround http://bugzilla.gnome.org/show_bug.cgi?id=519429
         value = value.replace('_', '__')
-        self.set_label(value)      
+        self.set_label(value)
+        label = self.get_child().get_child().get_children()[-1]
+        label.set_max_width_chars(50)
+        label.set_ellipsize(pango.ELLIPSIZE_END)
         self.__tooltips.set_tip(self, _('Current directory: %s') % (origvalue,))        
         
     def __on_clicked(self, *args):
