@@ -121,7 +121,10 @@ class EditorRegistry(Singleton):
         
     def __on_editor_changed(self, *args, **kwargs):     
         self.__sync_pref()
-        os.environ['EDITOR'] = ' '.join(map(quote_arg, self[self.__pref_editor_uuid].build_default_arguments()))
+        editor = ' '.join(map(quote_arg, self[self.__pref_editor_uuid].build_default_arguments()))
+        if isinstance(editor, unicode):
+            editor = editor.encode(sys.stdin.encoding)
+        os.environ['EDITOR'] = editor
         
     def __sync_environ(self):
         'hotwire-runeditor ' + ' '.join()        
