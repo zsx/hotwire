@@ -122,7 +122,7 @@ class EditorRegistry(Singleton):
     def __on_editor_changed(self, *args, **kwargs):     
         self.__sync_pref()
         editor = ' '.join(map(quote_arg, self[self.__pref_editor_uuid].build_default_arguments()))
-        if isinstance(editor, unicode):
+        if isinstance(editor, unicode) and sys.stdin.encoding is not None:
             editor = editor.encode(sys.stdin.encoding)
         os.environ['EDITOR'] = editor
         
