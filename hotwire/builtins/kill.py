@@ -65,35 +65,38 @@ class ProcessCompleter(Completer):
 class KillBuiltin(Builtin):
     __doc__ = _("""Send a signal to a process.""")
     def __init__(self):
-        options = []
-        for num in sorted(_sigvalue_to_sym):
-            options.append(['-' + str(num)])
-            options.append(['-' + _sigvalue_to_sym[num][3:]])
         super(KillBuiltin, self).__init__('kill',
                                           nodisplay=True,
                                           input=InputStreamSchema(Process, optional=True),
-                                          options=options,
+                                          options_passthrough=True,
                                           argspec=MultiArgSpec('pid', min=1),                                 
                                           threaded=True)
         
     def get_completer(self, context, args, i):
         return ProcessCompleter()        
 
-    def execute(self, context, args, options=[]):
+    def execute(self, context, args):
         signum = signal.SIGTERM
-        for opt in options:
-            optval = opt[1:]
+        sigidx = -1
+        for i,arg in enumerate(args):
+            if not arg.startswith('-'):
+                continue
+            optval = arg[1:]
             if optval in _sigsym_to_value:
                 signum = _sigsym_to_value['SIG' + optval]
+                sigidx = i
                 break
             else:
                 try:
-                    optnum = int(opt[1:])
+                    optnum = int(optval)
                 except ValueError, e:
                     continue
                 if optnum in _sigvalue_to_sym:
                     signum = optnum
+                    sigidx = i
                     break
+        if sigidx >= 0:
+            del args[sigidx]
         for arg in imap(int, args):
             os.kill(arg, signum)
         if context.input is not None:
