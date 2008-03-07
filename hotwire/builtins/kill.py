@@ -37,7 +37,7 @@ for sym in dir(signal):
 _sigsym_to_value = {}
 _sigvalue_to_sym = {}
 for sym,num in _signals:
-    _sigsym_to_value[sym] = num
+    _sigsym_to_value[sym[3:]] = num
     _sigvalue_to_sym[num] = sym
 
 class ProcessCompleter(Completer):
@@ -83,18 +83,17 @@ class KillBuiltin(Builtin):
                 continue
             optval = arg[1:]
             if optval in _sigsym_to_value:
-                signum = _sigsym_to_value['SIG' + optval]
+                signum = _sigsym_to_value[optval]
                 sigidx = i
                 break
             else:
-                try:
-                    optnum = int(optval)
-                except ValueError, e:
-                    continue
+                optnum = int(optval)
                 if optnum in _sigvalue_to_sym:
                     signum = optnum
                     sigidx = i
                     break
+                else:
+                    raise ValueError("Invalid signal number: %d", optnum)
         if sigidx >= 0:
             del args[sigidx]
         for arg in imap(int, args):
