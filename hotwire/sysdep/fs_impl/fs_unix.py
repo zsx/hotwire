@@ -73,7 +73,7 @@ class UnixFile(File):
         return self.stat and self.stat.st_gid
     
     def _get_file_type_char(self):
-        stmode = self.get_mode()
+        stmode = self.stat_mode
         if stat.S_ISREG(stmode): return '-'
         elif stat.S_ISDIR(stmode): return 'd'
         elif stat.S_ISLNK(stmode): return 'l'
