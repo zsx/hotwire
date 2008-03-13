@@ -19,17 +19,14 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR 
 # THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import os,sys,pickle
-
 from hotwire.fs import FilePath, open_text_file
-from hotwire.builtin import builtin_hotwire, MultiArgSpec
+from hotwire.builtin import builtin_hotwire
 
 @builtin_hotwire(output=str,
-                 idempotent=True,
-                 argspec=MultiArgSpec('files'))
-def cat(context, args, options=[]):
+                 idempotent=True)
+def cat(context, *files):
     _("""Yield content lines from file path arguments.""")    
-    for f in args:
+    for f in files:
         fpath = FilePath(f, context.cwd)
         for line in open_text_file(fpath):
             yield line

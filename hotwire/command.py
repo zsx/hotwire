@@ -122,6 +122,7 @@ class CommandContext(object):
         self.__metadata_handler = None
         # Private attributes to be used by the builtin
         self.attribs = {}
+        self.options = []
         self.cancelled = False
         
     def snapshot_current_output(self, selected=False):
@@ -237,7 +238,7 @@ class Command(gobject.GObject):
         self.output = CommandQueue()
         self.map_fn = lambda x: x
         self.args = args
-        self.options = options
+        self.context.options = options
         self.in_redir = in_redir and FilePath(os.path.expanduser(in_redir), self.context.cwd)
         self.out_redir = out_redir and FilePath(os.path.expanduser(out_redir), self.context.cwd)
         self.out_append = out_append
@@ -306,7 +307,6 @@ class Command(gobject.GObject):
             self.output.put(self.map_fn(None))
             return
         try:
-            options = self.options
             matched_files = []
             oldlen = 0
             for globarg_in in self.args:
@@ -321,12 +321,12 @@ class Command(gobject.GObject):
                 if oldlen == newlen:
                     matched_files.append(globarg)
                     newlen += 1
-                oldlen = newlen    
+                oldlen = newlen
             target_args = [matched_files]
-            _logger.info("Execute '%s' args: %s options: %s", self.builtin, target_args, options)
+            _logger.info("Execute '%s' args: %s options: %s", self.builtin, target_args, self.context.options)
             kwargs = {}
-            if options:
-                kwargs['options'] = options
+            if self.context.options and not self.builtin.flattened_args:
+                kwargs['options'] = self.context.options
             if self.output.opt_type and not self.out_redir:
                 kwargs['out_opt_format'] = self.output.opt_type
             if self.in_redir:
@@ -338,10 +338,9 @@ class Command(gobject.GObject):
             else:
                 outfile = None
             try:
-                if hasattr(self.builtin, 'execute'):
-                    exectarget = self.builtin.execute
-                else:
-                    exectarget = self.builtin
+                exectarget = self.builtin.execfunc
+                if self.builtin.flattened_args:
+                    target_args = target_args[0]
                 if self.builtin.singlevalue:
                     result = exectarget(self.context, *target_args, **kwargs)
                     if outfile:
@@ -381,7 +380,7 @@ class Command(gobject.GObject):
         def unijoin(args):
             return ' '.join(map(unicode, args))
         args = [self.builtin.name]
-        args.extend(self.options)
+        args.extend(self.context.options)
         for cmdarg in self.args:
             if isinstance(cmdarg, CommandArgument) and cmdarg.isquoted:
                 args.append(quote_arg(cmdarg))                

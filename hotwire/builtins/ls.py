@@ -35,11 +35,11 @@ _logger = logging.getLogger("hotwire.builtins.ls")
                  idempotent=True,
                  argspec=MultiArgSpec('paths'),
                  options=[['-l', '--long'],['-a', '--all'],['-i', '--input']])
-def ls(context, args, options=[]):
+def ls(context, *args):
     _("""List contents of a directory.""")
-    show_all = '-a' in options
-    long_fmt = '-l' in options
-    process_input = '-i' in options
+    show_all = '-a' in context.options
+    long_fmt = '-l' in context.options
+    process_input = '-i' in context.options
     fs = Filesystem.getInstance()
         
     if process_input and input is not None:

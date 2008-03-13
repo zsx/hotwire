@@ -80,6 +80,8 @@ class Builtin(object):
     api_version = property(lambda self: self._api_version)
     singlevalue = property(lambda self: self._singlevalue)
     doc = property(lambda self: self._doc)
+    execfunc = property(lambda self: self._execfunc)
+    flattened_args = property(lambda self: self._flattened_args)
     def __init__(self, name, 
                  input=None,
                  output=None,
@@ -120,6 +122,12 @@ class Builtin(object):
             self._doc = doc
         else:
             self._doc = inspect.getdoc(self)
+        if hasattr(self, 'execute'):
+            self._execfunc = self.execute
+            self._flattened_args = False
+        else:
+            self._execfunc = self # Assume we implement __call_
+            self._flattened_args = True
 
     def get_completer(self, *args, **kwargs):
         return None
@@ -206,20 +214,10 @@ class PyFuncBuiltin(Builtin):
             kwargs['singlevalue'] = True
         kwargs['output'] = 'any'
         kwargs['doc'] = inspect.getdoc(func)
-        def execute(context, args, **kwargs):
-            if len(self.__func_args[0]) == 0:
-                result = self.__func()
-            else:
-                result = self.__func(context, args, **kwargs)                
-            return result
-        if self.__func_is_generator:
-            def generator_execute(context, args, **kwargs):              
-                for value in execute(context, args, **kwargs):
-                    yield value
-            self.execute = generator_execute
-        else:
-            self.execute = execute
+        if self.__func_args[1] is not None:
+            kwargs['argspec'] = MultiArgSpec(self.__func_args[1])
         super(PyFuncBuiltin, self).__init__(name, **kwargs)
+        self._execfunc = self.__func
     
 def _builtin(registerfunc, **kwargs):
     def builtin_wrapper(f):
