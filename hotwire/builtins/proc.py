@@ -31,8 +31,7 @@ class PsBuiltin(Builtin):
                                         output=Process,
                                         idempotent=True,
                                         argspec=None,
-                                        options=[['-a', '--all'],],                                      
-                                        threaded=True)
+                                        options=[['-a', '--all'],])
 
     def execute(self, context, args, options=[]):
         myself_only = '-a' not in options        

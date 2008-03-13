@@ -37,8 +37,7 @@ class WalkBuiltin(FileOpBuiltin):
         super(WalkBuiltin, self).__init__('walk',
                                           output=File,
                                           argspec=(ArgSpec('directory', opt=True),),
-                                          options=[['-a', '--all']],                                          
-                                          threaded=True)
+                                          options=[['-a', '--all']])
 
     def execute(self, context, args, options=[]):
         fs = Filesystem.getInstance()

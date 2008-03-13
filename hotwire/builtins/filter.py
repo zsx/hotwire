@@ -38,8 +38,7 @@ class FilterBuiltin(Builtin):
                                             input=InputStreamSchema('any'),
                                             output='identity',
                                             options=[['-s', '--stringify'], ['-i', '--ignore-case'],],
-                                            argspec=('regexp', ArgSpec('property', opt=True)),
-                                            threaded=True)
+                                            argspec=('regexp', ArgSpec('property', opt=True)))
 
     def execute(self, context, args, options=[]):     
         if len(args) == 2:

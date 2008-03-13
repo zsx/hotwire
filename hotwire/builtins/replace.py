@@ -30,8 +30,7 @@ class ReplaceBuiltin(Builtin):
         super(ReplaceBuiltin, self).__init__('replace',
                                             input=InputStreamSchema('any'),
                                             output='identity',
-                                            argspec=(ArgSpec('regexp'), ArgSpec('replacement')),                                            
-                                            threaded=True)
+                                            argspec=(ArgSpec('regexp'), ArgSpec('replacement')))
 
     def execute(self, context, args, options=[]):
         regexp = args[0]

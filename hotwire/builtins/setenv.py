@@ -27,8 +27,7 @@ class SetenvBuiltin(Builtin):
     __doc__ = _("""Set environment variables.""")
     def __init__(self):
         super(SetenvBuiltin, self).__init__('setenv',    
-                                            argspec=MultiArgSpec('keyvalue'),                                  
-                                            threaded=True)
+                                            argspec=MultiArgSpec('keyvalue'))
 
     def execute(self, context, args, options=[]):
         for arg in args:

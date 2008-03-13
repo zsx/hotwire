@@ -36,7 +36,6 @@ class RmBuiltin(FileOpBuiltin):
                                         input=InputStreamSchema(File, optional=True),
                                         undoable=True,
                                         hasstatus=True,
-                                        threaded=True,
                                         argspec=MultiArgSpec('path'),
                                         options=[['-u', '--unlink'],['-r', '--recursive'],['-f', '--force']])
 

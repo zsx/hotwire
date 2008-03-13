@@ -30,7 +30,8 @@ class OpenBuiltin(Builtin):
         super(OpenBuiltin, self).__init__('open', 
                                           idempotent=True,
                                           argspec=MultiArgSpec('paths', min=1),
-                                          nodisplay=True)
+                                          nodisplay=True,
+                                          threaded=False)
 
     def execute(self, context, args):
         fs = Filesystem.getInstance()

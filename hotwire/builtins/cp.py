@@ -35,8 +35,7 @@ class CpBuiltin(FileOpBuiltin):
     def __init__(self):
         super(CpBuiltin, self).__init__('cp', aliases=['copy'],
                                         hasstatus=True,
-                                        argspec=MultiArgSpec('files', min=2),
-                                        threaded=True)
+                                        argspec=MultiArgSpec('files', min=2))
 
     def execute(self, context, args):
         assert len(args) > 0

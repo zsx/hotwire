@@ -514,11 +514,13 @@ class Pipeline(gobject.GObject):
         for cmd in self.__components:
             cmd.disconnect()
     
-    def __execute_internal(self, force_sync, opt_formats=[]):
+    def __execute_internal(self, force_sync, opt_formats=[], assert_all_threaded=False):
         _logger.debug("Executing %s", self)
         self.__set_state('executing')
         meta_idx = 0          
         for i,cmd in enumerate(self.__components):
+            if assert_all_threaded and not cmd.builtin.threaded:
+                raise ValueError("assert_all_threaded is enabled but trying to execute non-threaded builtin %s" % (cmd.builtin,))
             cmd.connect("complete", self.__on_cmd_complete)
             cmd.connect("exception", self.__on_cmd_exception)            
             # Here we record which commands include metadata, and

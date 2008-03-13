@@ -32,8 +32,7 @@ class MvBuiltin(FileOpBuiltin):
     def __init__(self):
         super(MvBuiltin, self).__init__('mv', aliases=['move'],
                                         hasstatus=True,
-                                        argspec=MultiArgSpec('paths', min=2),
-                                        threaded=True)
+                                        argspec=MultiArgSpec('paths', min=2))
 
     def execute(self, context, args):
         target = FilePath(args[-1], context.cwd)

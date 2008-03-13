@@ -33,8 +33,7 @@ class ApplyBuiltin(Builtin):
                                            output='any',
                                            argspec=MultiArgSpec('args'),
                                            options_passthrough=True,
-                                           input=InputStreamSchema('any'),                                         
-                                           threaded=True)
+                                           input=InputStreamSchema('any'))
 
     def execute(self, context, args, options=[]):
         newargs = list(args)
@@ -47,7 +46,7 @@ class ApplyBuiltin(Builtin):
         # TODO - pull in resolver from shell.py?  Should this function expand
         # aliases?        
         pipeline = Pipeline.create(new_context, None, *newargs)
-        pipeline.execute_sync()
+        pipeline.execute_sync(assert_all_threaded=True)
         for result in pipeline.get_output():
             yield result
 

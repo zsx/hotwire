@@ -94,7 +94,7 @@ class Builtin(object):
                  hasstatus=False,
                  hasmeta=False,
                  nodisplay=False,
-                 threaded=False,
+                 threaded=True,
                  locality='local',
                  api_version=0,
                  singlevalue=False):

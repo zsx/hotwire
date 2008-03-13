@@ -33,8 +33,7 @@ class SecHashBuiltin(Builtin):
                                              input=InputStreamSchema('any', optional=True),
                                              output=str,
                                              argspec=MultiArgSpec('paths'),                      
-                                             options=[['-5', '--md5'],],
-                                             threaded=True)
+                                             options=[['-5', '--md5'],])
 
     def execute(self, context, args, options=[]):
         alg = ('-5' in options) and md5 or sha  

@@ -28,6 +28,7 @@ Single integer argument selects object at that index.""")
         super(SelectionBuiltin, self).__init__('selection', 
                                                aliases=['sel'],
                                                argspec=(ArgSpec('index', opt=True),),
+                                               threaded=False,
                                                output=OutputStreamSchema('any', 
                                                                          typefunc=lambda hotwire: hotwire.get_current_output_type()))
 

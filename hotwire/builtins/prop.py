@@ -32,7 +32,8 @@ class PropBuiltin(Builtin):
                                           output='any',
                                           idempotent=True,
                                           argspec=(ArgSpec('name'),),
-                                          options=[['-t', '--tuple']])
+                                          options=[['-t', '--tuple']],
+                                          threaded=True)
 
     def execute(self, context, args, options=[]):
         prop = args[0]            

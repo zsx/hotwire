@@ -47,8 +47,7 @@ class JsonBuiltin(Builtin):
                                           output=str, # 'any'
                                           input=InputStreamSchema('any'),
                                           idempotent=True,
-                                          argspec=None,                            
-                                          threaded=True)
+                                          argspec=None)
 
     def execute(self, context, args, options=[]):
         out = StringIO()

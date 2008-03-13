@@ -32,8 +32,7 @@ class HelpBuiltin(Builtin):
     def __init__(self):
         super(HelpBuiltin, self).__init__('help',
                                           output=HelpItem,
-                                          argspec=(ArgSpec('builtin', opt=True),),
-                                          idempotent=True)
+                                          argspec=(ArgSpec('builtin', opt=True),))
 
     def get_completer(self, context, args, i):
         return BuiltinCompleter()

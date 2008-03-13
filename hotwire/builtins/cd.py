@@ -44,8 +44,7 @@ class CdBuiltin(Builtin):
         super(CdBuiltin, self).__init__('cd',
                                         output=File,
                                         idempotent=True,
-                                        argspec=(ArgSpec('directory', opt=True),),
-                                        threaded=True)
+                                        argspec=(ArgSpec('directory', opt=True),))
 
     def get_completer(self, context, args, i):
         return CdCompleter()

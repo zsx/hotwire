@@ -33,8 +33,7 @@ class MkdirBuiltin(FileOpBuiltin):
     def __init__(self):
         super(MkdirBuiltin, self).__init__('mkdir',
                                            hasstatus=True,
-                                           argspec=MultiArgSpec('paths', min=1),
-                                           threaded=True)
+                                           argspec=MultiArgSpec('paths', min=1))
 
     def execute(self, context, args):
         sources_total = len(args)

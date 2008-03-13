@@ -30,7 +30,8 @@ class PathBuiltin(Builtin):
         super(PathBuiltin, self).__init__('path',
                                           output=str,
                                           argspec=(ArgSpec('path', opt=True),),
-                                          options=[['-a', '--prefix'], ['-s', '--suffix'], ['-d', '--del']])
+                                          options=[['-a', '--prefix'], ['-s', '--suffix'], ['-d', '--del']],
+                                          threaded=False)
 
     def execute(self, context, args, options=[]):
         curval = os.environ['PATH']

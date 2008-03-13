@@ -43,8 +43,7 @@ class HotSshBuiltin(Builtin):
         super(HotSshBuiltin, self).__init__('ssh', 
                                             nodisplay=True,
                                             argspec=MultiArgSpec('args', min=1),
-                                            options_passthrough=True,                                            
-                                            threaded=True)
+                                            options_passthrough=True)
 
     def get_completer(self, context, args, i):
         return OpenSshKnownHostCompleter()

@@ -29,7 +29,8 @@ class CurrentBuiltin(Builtin):
         super(CurrentBuiltin, self).__init__('current', aliases=['cur'],
                                              idempotent=True,
                                              argspec=None,
-                                             output=OutputStreamSchema('any'))
+                                             output=OutputStreamSchema('any'),
+                                             threaded=False)
 
     def execute(self, context, args):
         meta = context.current_output_metadata

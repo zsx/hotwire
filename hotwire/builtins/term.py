@@ -27,7 +27,8 @@ class TermBuiltin(Builtin):
         super(TermBuiltin, self).__init__('term',
                                           nodisplay=True,
                                           argspec=MultiArgSpec('args'),
-                                          options_passthrough=True)
+                                          options_passthrough=True,
+                                          threaded=False)
 
     def execute(self, context, args):
         if len(args) > 0 and args[0] == '-e':

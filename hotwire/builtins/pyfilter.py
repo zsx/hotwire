@@ -37,7 +37,6 @@ def execute(context, input):
       yield it''' 
     def __init__(self):
         super(PyFilterBuiltin, self).__init__('py-filter',
-                                              threaded=True,
                                               argspec=(ArgSpec('expression'),),
                                               input=InputStreamSchema('any'),
                                               output='identity')

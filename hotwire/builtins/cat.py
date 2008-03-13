@@ -32,9 +32,7 @@ class CatBuiltin(Builtin):
         super(CatBuiltin, self).__init__('cat',
                                          output=str, # 'any'
                                          idempotent=True,
-                                         argspec=MultiArgSpec('files'),
-                                         #options=[['-p', '--pickle'],],                                          
-                                         threaded=True)
+                                         argspec=MultiArgSpec('files'))
 
     def execute(self, context, args, options=[]):
         do_unpickle = '-p' in options

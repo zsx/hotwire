@@ -29,8 +29,7 @@ class NewlineBuiltin(Builtin):
         super(NewlineBuiltin, self).__init__('newline',
                                              input=InputStreamSchema('any'),
                                              output=str,
-                                             argspec=None,
-                                             threaded=True)
+                                             argspec=None)
 
     def execute(self, context, args, options=[]):
         for arg in context.input:

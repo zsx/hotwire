@@ -54,8 +54,7 @@ class FSearchBuiltin(FileOpBuiltin):
         super(FSearchBuiltin, self).__init__('fsearch',
                                              output=FileStringMatch,
                                              argspec=('regexp', ArgSpec('directory', opt=True)),                                             
-                                             options=[['-i', '--ignore-case']],
-                                             threaded=True)
+                                             options=[['-i', '--ignore-case']])
 
     def execute(self, context, args, options=[]):       
         regexp = args[0]

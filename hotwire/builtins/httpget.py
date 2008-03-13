@@ -34,8 +34,7 @@ class HttpGetBuiltin(Builtin):
                                              output=HTTPResponse,
                                              input=None,
                                              singlevalue=True,                                             
-                                             argspec=(ArgSpec('host'), ArgSpec('path', opt=True)),                                   
-                                             threaded=True)
+                                             argspec=(ArgSpec('host'), ArgSpec('path', opt=True)))
 
     def execute(self, context, args, options=[]):       
         if len(args) == 1:

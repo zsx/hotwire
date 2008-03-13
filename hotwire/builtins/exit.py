@@ -24,7 +24,9 @@ from hotwire.builtin import Builtin, BuiltinRegistry
 class ExitBuiltin(Builtin):
     __doc__ = _("""Close the current tab.""")
     def __init__(self):
-        super(ExitBuiltin, self).__init__('exit', argspec=None)
+        super(ExitBuiltin, self).__init__('exit', 
+                                          argspec=None, 
+                                          threaded=False)
 
     def execute(self, context, args):
         context.hotwire.get_ui().get_action('/Menubar/FileMenu/Close').activate()

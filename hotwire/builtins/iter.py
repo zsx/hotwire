@@ -30,7 +30,8 @@ class IterBuiltin(Builtin):
                                           input=InputStreamSchema('any'),
                                           output='any',
                                           argspec=None,
-                                          idempotent=True)
+                                          idempotent=True,
+                                          threaded=False)
 
     def execute(self, context, args, options=[]):
         for item in context.input:

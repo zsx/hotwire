@@ -36,7 +36,6 @@ def execute(context, input):
     yield %s''' 
     def __init__(self):
         super(PyMapBuiltin, self).__init__('py-map',
-                                           threaded=True,
                                            argspec=(ArgSpec('expression'),),
                                            input=InputStreamSchema('any', optional=True),
                                            output=OutputStreamSchema('any'))

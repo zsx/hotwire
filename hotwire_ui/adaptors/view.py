@@ -32,7 +32,8 @@ class ViewBuiltin(Builtin):
         super(ViewBuiltin, self).__init__('view',
                                           nodisplay=True,
                                           argspec=MultiArgSpec('paths', min=1),
-                                          idempotent=True)
+                                          idempotent=True,
+                                          threaded=False)
  
     def execute(self, context, args):
         from hotwire_ui.adaptors.editors import EditorRegistry

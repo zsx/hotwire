@@ -35,7 +35,8 @@ class EditBuiltin(Builtin):
                                           aliases=['ed'],
                                           argspec=MultiArgSpec('paths', min=1),
                                           nodisplay=True,
-                                          idempotent=True)
+                                          idempotent=True,
+                                          threaded=False)
  
     def execute(self, context, args):
         from hotwire_ui.adaptors.editors import EditorRegistry

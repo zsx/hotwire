@@ -31,8 +31,7 @@ class HotSudoBuiltin(Builtin):
         super(HotSudoBuiltin, self).__init__('sudo', 
                                              nodisplay=True,
                                              argspec=MultiArgSpec('args'),
-                                             options_passthrough=True,
-                                             threaded=True)
+                                             options_passthrough=True)
 
     def execute(self, context, args, options=[]):
         subproc_args = {}

@@ -69,8 +69,7 @@ class KillBuiltin(Builtin):
                                           nodisplay=True,
                                           input=InputStreamSchema(Process, optional=True),
                                           options_passthrough=True,
-                                          argspec=MultiArgSpec('pid', min=1),                                 
-                                          threaded=True)
+                                          argspec=MultiArgSpec('pid', min=1))
         
     def get_completer(self, context, args, i):
         return ProcessCompleter()        

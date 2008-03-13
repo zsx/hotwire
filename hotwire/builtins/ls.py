@@ -36,7 +36,6 @@ class LsBuiltin(Builtin):
                                         input=InputStreamSchema(str, optional=True),
                                         output=File,
                                         idempotent=True,
-                                        threaded=True,
                                         argspec=MultiArgSpec('paths'),
                                         options=[['-l', '--long'],['-a', '--all'],['-i', '--input']])
 

@@ -33,8 +33,7 @@ class WriteBuiltin(Builtin):
                                            input=InputStreamSchema('any', optional=False),
                                            argspec=MultiArgSpec('paths', min=1),
                                            options=[['-a', '--append'],['-p', '--pickle'],
-                                                    ['-n', '--newline']],                                           
-                                           threaded=True)
+                                                    ['-n', '--newline']])
 
     def execute(self, context, args, options=[]):
         open_mode = ('-a' in options) and 'a+' or 'w'
