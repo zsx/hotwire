@@ -47,6 +47,7 @@ class PyFuncBuiltin(Builtin):
         if not self.__func_is_generator:
             kwargs['singlevalue'] = True
         kwargs['output'] = 'any'
+        kwargs['doc'] = inspect.getdoc(func)
         def execute(context, args, **kwargs):
             if len(self.__func_args[0]) == 0:
                 result = self.__func()

@@ -82,6 +82,7 @@ class Builtin(object):
     locality = property(lambda self: self._locality)
     api_version = property(lambda self: self._api_version)
     singlevalue = property(lambda self: self._singlevalue)
+    doc = property(lambda self: self._doc)
     def __init__(self, name, 
                  input=None,
                  output=None,
@@ -96,6 +97,7 @@ class Builtin(object):
                  nodisplay=False,
                  threaded=True,
                  locality='local',
+                 doc=None,
                  api_version=0,
                  singlevalue=False):
         self._input=input
@@ -117,6 +119,11 @@ class Builtin(object):
         self._locality = locality
         self._api_version = api_version
         self._singlevalue = singlevalue
+        if doc:
+            self._doc = doc
+        else:
+            import inspect
+            self._doc = inspect.getdoc(self)
 
     def get_completer(self, *args, **kwargs):
         return None
@@ -124,9 +131,6 @@ class Builtin(object):
     def cancel(self, context):
         pass
 
-    def execute(self, context, *args):
-        raise NotImplementedError()
-    
     def cleanup(self, context):
         pass
 
