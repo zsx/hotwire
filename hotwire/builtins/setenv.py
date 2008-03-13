@@ -19,13 +19,13 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR 
 # THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import os,sys
+import os
 
-from hotwire.builtin import builtin_hotwire, MultiArgSpec
+from hotwire.builtin import builtin_hotwire
 
-@builtin_hotwire(argspec=MultiArgSpec('keyvalue'))
-def setenv(context, args, options=[]):
+@builtin_hotwire()
+def setenv(context, *keyvalues):
     _("""Set environment variables.""")    
-    for arg in args:
+    for arg in keyvalues:
         k,v = arg.split('=', 1)
         os.environ[k] = v
