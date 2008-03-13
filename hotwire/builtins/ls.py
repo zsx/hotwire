@@ -22,49 +22,44 @@
 import os, sys, os.path, stat, logging, locale
 from itertools import imap
 
-from hotwire.builtin import Builtin, BuiltinRegistry, InputStreamSchema, MultiArgSpec
+from hotwire.builtin import builtin_hotwire, InputStreamSchema, MultiArgSpec
 from hotwire.fs import FilePath
 from hotwire.sysdep.fs import Filesystem,File
 from hotwire.util import xmap
 
 _logger = logging.getLogger("hotwire.builtins.ls")
 
-class LsBuiltin(Builtin):
-    __doc__ = _("""List contents of a directory.""")
-    def __init__(self):
-        super(LsBuiltin, self).__init__('ls', aliases=['dir'],
-                                        input=InputStreamSchema(str, optional=True),
-                                        output=File,
-                                        idempotent=True,
-                                        argspec=MultiArgSpec('paths'),
-                                        options=[['-l', '--long'],['-a', '--all'],['-i', '--input']])
-
-    def __call__(self, context, args, options=[]):
-        show_all = '-a' in options
-        long_fmt = '-l' in options
-        process_input = '-i' in options
-            
-        fs = Filesystem.getInstance()
+@builtin_hotwire(aliases=['dir'],
+                 input=InputStreamSchema(str, optional=True),
+                 output=File,
+                 idempotent=True,
+                 argspec=MultiArgSpec('paths'),
+                 options=[['-l', '--long'],['-a', '--all'],['-i', '--input']])
+def ls(context, args, options=[]):
+    _("""List contents of a directory.""")
+    show_all = '-a' in options
+    long_fmt = '-l' in options
+    process_input = '-i' in options
+    fs = Filesystem.getInstance()
         
-        if process_input and input is not None:
-            args = list(args)
-            args.extend(context.input)        
+    if process_input and input is not None:
+        args = list(args)
+        args.extend(context.input)        
         
-        if len(args) == 0:
-            for x in fs.ls_dir(context.cwd, show_all):
+    if len(args) == 0:
+        for x in fs.ls_dir(context.cwd, show_all):
+            yield x
+    elif len(args) == 1:
+        path = FilePath(args[0], context.cwd)
+        fobj = fs.get_file_sync(path)
+        if fobj.is_directory:
+            for x in fs.ls_dir(path, show_all):
                 yield x
-        elif len(args) == 1:
-            path = FilePath(args[0], context.cwd)
-            fobj = fs.get_file_sync(path)
-            if fobj.is_directory:
-                for x in fs.ls_dir(path, show_all):
-                    yield x
-            else:
-                yield fobj
-                return      
         else:
-            # Generate list of sorted File objects from arguments 
-            for x in sorted(xmap(lambda arg: fs.get_file_sync(FilePath(arg, context.cwd)), args), 
-                            lambda a,b: locale.strcoll(a.path, b.path)):
-                yield x
-BuiltinRegistry.getInstance().register_hotwire(LsBuiltin())
+            yield fobj
+            return      
+    else:
+        # Generate list of sorted File objects from arguments 
+        for x in sorted(xmap(lambda arg: fs.get_file_sync(FilePath(arg, context.cwd)), args), 
+                        lambda a,b: locale.strcoll(a.path, b.path)):
+            yield x

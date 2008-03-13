@@ -19,7 +19,7 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR 
 # THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import os,sys,imp,logging
+import os,sys,imp,logging,inspect
 
 import hotwire
 from hotwire.externals.singletonmixin import Singleton
@@ -122,7 +122,6 @@ class Builtin(object):
         if doc:
             self._doc = doc
         else:
-            import inspect
             self._doc = inspect.getdoc(self)
 
     def get_completer(self, *args, **kwargs):
@@ -196,6 +195,47 @@ Currently there are 3 possible categories of builtin:
         
     def register_user(self, builtin):
         self.__register(self.__user_builtins, builtin)                     
+
+class PyFuncBuiltin(Builtin):
+    def __init__(self, func, **kwargs):
+        name = func.func_name
+        if not name:
+            raise ValueError("Couldn't determine name of function: %s" % (f,))
+        self.__func = func
+        self.__func_args = inspect.getargspec(func)
+        # 0x20 appears to signify the function is a generator according to the CPython sources
+        self.__func_is_generator = func.func_code.co_flags & 0x20
+        if not self.__func_is_generator:
+            kwargs['singlevalue'] = True
+        kwargs['output'] = 'any'
+        kwargs['doc'] = inspect.getdoc(func)
+        def execute(context, args, **kwargs):
+            if len(self.__func_args[0]) == 0:
+                result = self.__func()
+            else:
+                result = self.__func(context, args, **kwargs)                
+            return result
+        if self.__func_is_generator:
+            def generator_execute(context, args, **kwargs):              
+                for value in execute(context, args, **kwargs):
+                    yield value
+            self.execute = generator_execute
+        else:
+            self.execute = execute
+        super(PyFuncBuiltin, self).__init__(name, **kwargs)
+    
+def _builtin(registerfunc, **kwargs):
+    def builtin_wrapper(f):
+        builtin = PyFuncBuiltin(f, **kwargs)
+        registerfunc(builtin)
+        return f
+    return builtin_wrapper
+
+def builtin_user(**kwargs):
+    return _builtin(BuiltinRegistry.getInstance().register_user, **kwargs)
+
+def builtin_hotwire(**kwargs):   
+    return _builtin(BuiltinRegistry.getInstance().register_hotwire, **kwargs)
 
 def load():
     import hotwire.builtins.apply    
