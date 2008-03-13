@@ -253,8 +253,9 @@ class MultiObjectsDisplay(gtk.Notebook):
         self.__inputqueue = None
         intype = self.__pipeline.get_input_type()
         _logger.debug("input type %s opt: %s", intype, self.__pipeline.get_input_optional())
-        # FIXME assume for the moment we can only input strings
-        if intype is not None and Pipeline.streamtype_is_assignable(intype, str, False) and self.__pipeline.get_input_optional():
+        # FIXME assume for the moment we can only input strings; also explicitly avoid allowing input for 'any'
+        # Long term we might consider only allowing input for SysBuiltin.
+        if intype not in (None, 'any') and Pipeline.streamtype_is_assignable(intype, str, False) and self.__pipeline.get_input_optional():
             self.__inputqueue = CommandQueue()
             self.__pipeline.set_input_queue(self.__inputqueue)
         self.append_ostream(pipeline.get_output_type(), None, pipeline.get_output(), False)
