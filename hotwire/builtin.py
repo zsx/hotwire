@@ -220,6 +220,8 @@ class PyFuncBuiltin(Builtin):
         kwargs['doc'] = inspect.getdoc(func)
         if self.__func_args[1] is not None:
             kwargs['argspec'] = MultiArgSpec(self.__func_args[1])
+        else:
+            kwargs['argspec'] = tuple(self.__func_args[0][1:])
         super(PyFuncBuiltin, self).__init__(name, **kwargs)
         self._execfunc = self.__func
     
