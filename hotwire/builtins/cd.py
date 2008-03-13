@@ -21,6 +21,7 @@
 
 import os, sys, stat
 
+from hotwire.script import script
 from hotwire.builtin import Builtin, BuiltinRegistry, ArgSpec
 from hotwire.fs import FilePath
 from hotwire.sysdep.fs import File
@@ -55,6 +56,8 @@ class CdBuiltin(Builtin):
         else:
             target_dir = args[0]
         new_dir = context.hotwire.chdir(target_dir)
-        for result in BuiltinRegistry.getInstance()['ls'].execute(context, [new_dir]):
+        pipeline = script('ls', new_dir)
+        pipeline.execute_sync()
+        for result in pipeline.get_output():
             yield result
 BuiltinRegistry.getInstance().register_hotwire(CdBuiltin())
