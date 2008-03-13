@@ -126,8 +126,8 @@ class HelpItemRenderer(UnicodeRenderer):
         self._buf.insert_markup('\n')
 
     def __append_builtin_doc(self, builtin):
-        if builtin.__doc__:
-            for line in StringIO.StringIO(builtin.__doc__):
+        if builtin.doc:
+            for line in StringIO.StringIO(builtin.doc):
                 self._buf.insert_markup('    ' + gobject.markup_escape_text(line))
             self._buf.insert_markup('\n')        
                 
