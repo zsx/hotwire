@@ -247,6 +247,7 @@ def load():
     import hotwire.builtins.exit
     import hotwire.builtins.filter
     import hotwire.builtins.fsearch
+    import hotwire.builtins.head    
     import hotwire.builtins.help
     import hotwire.builtins.history
     try:
