@@ -527,7 +527,7 @@ class PipelineRunTests(PipelineRunTestFramework):
         f= open(outpath, 'w')
         f.write('hello world\n')       
         f.close()
-        p = Pipeline.parse("cat < cattest.txt", self._context)
+        p = Pipeline.parse("cat cattest.txt", self._context)
         p.execute_sync()
         results = list(p.get_output())
         self.assertEquals(len(results), 1)
