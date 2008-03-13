@@ -521,6 +521,18 @@ class PipelineRunTests(PipelineRunTestFramework):
         self.assertEquals(results[0], '22596363b3de40b06f981fb85d82312e8c0ed511')
         self.assertEquals(results[1], '84b5d4093c8ffaf2eca0feaf014a53b9f41d28ed')
         
+    def testCat1(self):
+        self._setupTree2()
+        outpath = path_join(self._tmpd, 'cattest.txt')
+        f= open(outpath, 'w')
+        f.write('hello world\n')       
+        f.close()
+        p = Pipeline.parse("cat < cattest.txt", self._context)
+        p.execute_sync()
+        results = list(p.get_output())
+        self.assertEquals(len(results), 1)
+        self.assertEquals(results[0], 'hello world\n')    
+        
     def testWrite1(self):
         self._setupTree1()
         p = Pipeline.parse("ls | py-map 'it.path+\"\\n\"' | write outtest.txt", self._context)
