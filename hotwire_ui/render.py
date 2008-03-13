@@ -363,6 +363,7 @@ import hotwire_ui.renderers.file
 import hotwire_ui.renderers.dict
 import hotwire_ui.renderers.filestringmatch
 import hotwire_ui.renderers.help
+import hotwire_ui.renderers.list
 import hotwire_ui.renderers.ps
 import hotwire_ui.renderers.unicode
 #moddir = hotwire.ModuleDir(os.path.join(os.path.dirname(hotwire.__file__), 'renderers'))
