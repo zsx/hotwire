@@ -56,9 +56,6 @@ class MultiArgSpec(object):
         self.name = name
         self.min = min
 
-def _attr_or_none(o, a):
-    return hasattr(o, a) and getattr(o, a) or None
-
 class Builtin(object):
     name = property(lambda self: self._name)
     input = property(lambda self: self._input)
