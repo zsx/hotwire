@@ -21,17 +21,11 @@
 
 import os,sys
 
-from hotwire.builtin import Builtin, BuiltinRegistry, MultiArgSpec
+from hotwire.builtin import builtin_hotwire, MultiArgSpec
 
-class SetenvBuiltin(Builtin):
-    __doc__ = _("""Set environment variables.""")
-    def __init__(self):
-        super(SetenvBuiltin, self).__init__('setenv',    
-                                            argspec=MultiArgSpec('keyvalue'))
-
-    def execute(self, context, args, options=[]):
-        for arg in args:
-            k,v = arg.split('=', 1)
-            os.environ[k] = v
-        return []
-BuiltinRegistry.getInstance().register_hotwire(SetenvBuiltin())
+@builtin_hotwire(argspec=MultiArgSpec('keyvalue'))
+def setenv(context, args, options=[]):
+    _("""Set environment variables.""")    
+    for arg in args:
+        k,v = arg.split('=', 1)
+        os.environ[k] = v

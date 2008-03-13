@@ -20,23 +20,16 @@
 # THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import hotwire
-from hotwire.builtin import Builtin, BuiltinRegistry, MultiArgSpec
+from hotwire.builtin import builtin_hotwire, MultiArgSpec
 from hotwire.fs import FilePath
 from hotwire.sysdep.fs import Filesystem
 
-class OpenBuiltin(Builtin):
-    __doc__ = _("""Open a file using default program.""")
-    def __init__(self):
-        super(OpenBuiltin, self).__init__('open', 
-                                          idempotent=True,
-                                          argspec=MultiArgSpec('paths', min=1),
-                                          nodisplay=True,
-                                          threaded=False)
-
-    def execute(self, context, args):
-        fs = Filesystem.getInstance()
-        for arg in args:
-            fs.launch_open_file(FilePath(arg, context.cwd), context.cwd)
-        return [] 
-
-BuiltinRegistry.getInstance().register_hotwire(OpenBuiltin())
+@builtin_hotwire(idempotent=True,
+                 argspec=MultiArgSpec('paths', min=1),
+                 nodisplay=True,
+                 threaded=False)
+def open(context, args):
+    _("""Open a file using default program.""")    
+    fs = Filesystem.getInstance()
+    for arg in args:
+        fs.launch_open_file(FilePath(arg, context.cwd), context.cwd)
