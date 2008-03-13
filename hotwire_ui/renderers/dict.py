@@ -42,7 +42,6 @@ class DictRenderer(TreeObjectsRenderer):
         tup = model.get_value(iter, 0)
         v = tup[idx]
         valrepr = unicode(repr(v))
-        print >>sys.stderr, "render: %r" % (valrepr,)
         cell.set_property('text', valrepr)
         
     def get_objects(self):
