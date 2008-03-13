@@ -383,7 +383,7 @@ class MultiObjectsDisplay(gtk.Notebook):
                         self.__do_autoswitch = False
                     active_odisp = True
                 else:
-                    _logger.warn("Unexpected item %s from queue %s", name, item)
+                    _logger.warn("Unexpected item %s from queue %s", item, name)
         except Queue.Empty:
             pass
         if empty:
