@@ -338,14 +338,18 @@ class Command(gobject.GObject):
             else:
                 outfile = None
             try:
+                if hasattr(self.builtin, 'execute'):
+                    exectarget = self.builtin.execute
+                else:
+                    exectarget = self.builtin
                 if self.builtin.singlevalue:
-                    result = self.builtin.execute(self.context, *target_args, **kwargs)
+                    result = exectarget(self.context, *target_args, **kwargs)
                     if outfile:
                         outfile.write(unicode(result))
                     else:
                         self.output.put(result)
                 else:
-                    for result in self.builtin.execute(self.context, *target_args, **kwargs):
+                    for result in exectarget(self.context, *target_args, **kwargs):
                         # if it has status, let it do its own cleanup
                         if self._cancelled and not self.builtin.hasstatus:
                             _logger.debug("%s cancelled, returning", self)
