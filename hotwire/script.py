@@ -72,3 +72,7 @@ def _builtin(registerfunc, **kwargs):
 def builtin_user(**kwargs):
     from hotwire.builtin import BuiltinRegistry    
     return _builtin(BuiltinRegistry.getInstance().register_user, **kwargs)
+
+def builtin_hotwire(**kwargs):
+    from hotwire.builtin import BuiltinRegistry    
+    return _builtin(BuiltinRegistry.getInstance().register_hotwire, **kwargs)
