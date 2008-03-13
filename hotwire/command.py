@@ -341,14 +341,14 @@ class Command(gobject.GObject):
                 exectarget = self.builtin.execfunc
                 if self.builtin.flattened_args:
                     target_args = target_args[0]
+                execresult = exectarget(self.context, *target_args, **kwargs)                
                 if self.builtin.singlevalue:
-                    result = exectarget(self.context, *target_args, **kwargs)
                     if outfile:
-                        outfile.write(unicode(result))
+                        outfile.write(unicode(execresult))
                     else:
-                        self.output.put(result)
+                        self.output.put(execresult)
                 else:
-                    for result in exectarget(self.context, *target_args, **kwargs):
+                    for result in execresult:
                         # if it has status, let it do its own cleanup
                         if self._cancelled and not self.builtin.hasstatus:
                             _logger.debug("%s cancelled, returning", self)
