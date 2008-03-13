@@ -201,11 +201,15 @@ Currently there are 3 possible categories of builtin:
     def register_user(self, builtin):
         self.__register(self.__user_builtins, builtin)                     
 
+def _default_funcname_transform(name):
+    return name.replace('_', '-')
+
 class PyFuncBuiltin(Builtin):
-    def __init__(self, func, **kwargs):
+    def __init__(self, func, name=None, **kwargs):
         name = func.func_name
         if not name:
             raise ValueError("Couldn't determine name of function: %s" % (f,))
+        name = _default_funcname_transform(name)
         self.__func = func
         self.__func_args = inspect.getargspec(func)
         # 0x20 appears to signify the function is a generator according to the CPython sources

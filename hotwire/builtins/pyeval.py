@@ -22,70 +22,63 @@
 import os,sys,re,subprocess,sha,tempfile
 import symbol,parser,code,threading
 
-from hotwire.builtin import Builtin, BuiltinRegistry, InputStreamSchema, OutputStreamSchema
+from hotwire.builtin import builtin_hotwire, InputStreamSchema, OutputStreamSchema
 
 from hotwire.fs import path_join
 from hotwire.sysdep.fs import Filesystem
 from hotwire.externals.rewrite import rewrite_and_compile
 
-class PyEvalBuiltin(Builtin):
-    __doc__ = _("""Compile and execute Python expression.
+@builtin_hotwire(singlevalue=True,
+                 input=InputStreamSchema('any', optional=True),
+                 output=OutputStreamSchema('any'),
+                 options=[['-f', '--file']])
+def py_eval(context, *args):
+    _("""Compile and execute Python expression.
 Iterable return values (define __iter__) are expanded.  Other values are
 expressed as an iterable which yielded a single object.""")
- 
-    def __init__(self):
-        super(PyEvalBuiltin, self).__init__('py-eval',
-                                            singlevalue=True,
-                                            input=InputStreamSchema('any', optional=True),
-                                            output=OutputStreamSchema('any'),
-                                            options=[['-f', '--file']])      
-
-    def execute(self, context, args, options=[]):
-        if len(args) < 1:
-            raise ValueError(_("Too few arguments specified"))
-        locals = {'hot_context': context}
-        if context.current_output_metadata and context.current_output_metadata.type is not None:
-            if context.current_output_metadata.single:
-                try:
-                    locals['it'] = context.snapshot_current_output()
-                except ValueError, e:
-                    locals['it'] = None
-            else:
-                locals['current'] = lambda: context.snapshot_current_output()
-                locals['selected'] = lambda: context.snapshot_current_selected_output(selected=True)                
-        last_value = None
-        if '-f' in options:
-            fpath = path_join(context.cwd, args[0])
-            # Do we assume locale encoding or UTF-8 here?
-            # We probably need to scan for a -*- coding -*-
-            f = open(fpath)
-            compiled = compile(f.read(), fpath, 'exec')
-            f.close()
-            exec compiled in locals
+    if len(args) < 1:
+        raise ValueError(_("Too few arguments specified"))
+    locals = {'hot_context': context}
+    if context.current_output_metadata and context.current_output_metadata.type is not None:
+        if context.current_output_metadata.single:
             try:
-                mainfunc = locals['main']
-            except KeyError, e:
-                return None
-            if not hasattr(mainfunc, '__call__'):
-                return None
-            return mainfunc(*(args[1:]))
+                locals['it'] = context.snapshot_current_output()
+            except ValueError, e:
+                locals['it'] = None
         else:
-            if len(args) > 1:
-                raise ValueError(_("Too many arguments specified"))            
-        # We want to actually get the object that results from a user typing
-        # input such as "20" or "import os; os".  The CPython interpreter
-        # has some deep hackery inside which transforms "single" input styles
-        # into "print <input>".  That's not suitable for us, because we don't
-        # want to spew objects onto stdout; we want to actually get the object
-        # itself.  Thus we use some code from Reinteract to rewrite the 
-        # Python AST to call custom functions.
-        # Yes, it's lame.
-            def handle_output(myself, *args):
-                myself['result'] = args[-1]
-            locals['_hotwire_handle_output'] = handle_output
-            locals['_hotwire_handle_output_self'] = {'result': None}
-            (compiled, mutated) = rewrite_and_compile(args[0], output_func_name='_hotwire_handle_output', output_func_self='_hotwire_handle_output_self')
-            exec compiled in locals
-            return locals['_hotwire_handle_output_self']['result']
-
-BuiltinRegistry.getInstance().register_hotwire(PyEvalBuiltin())
+            locals['current'] = lambda: context.snapshot_current_output()
+            locals['selected'] = lambda: context.snapshot_current_selected_output(selected=True)                
+    last_value = None
+    if '-f' in context.options:
+        fpath = path_join(context.cwd, args[0])
+        # Do we assume locale encoding or UTF-8 here?
+        # We probably need to scan for a -*- coding -*-
+        f = open(fpath)
+        compiled = compile(f.read(), fpath, 'exec')
+        f.close()
+        exec compiled in locals
+        try:
+            mainfunc = locals['main']
+        except KeyError, e:
+            return None
+        if not hasattr(mainfunc, '__call__'):
+            return None
+        return mainfunc(*(args[1:]))
+    else:
+        if len(args) > 1:
+            raise ValueError(_("Too many arguments specified"))            
+    # We want to actually get the object that results from a user typing
+    # input such as "20" or "import os; os".  The CPython interpreter
+    # has some deep hackery inside which transforms "single" input styles
+    # into "print <input>".  That's not suitable for us, because we don't
+    # want to spew objects onto stdout; we want to actually get the object
+    # itself.  Thus we use some code from Reinteract to rewrite the 
+    # Python AST to call custom functions.
+    # Yes, it's lame.
+        def handle_output(myself, *args):
+            myself['result'] = args[-1]
+        locals['_hotwire_handle_output'] = handle_output
+        locals['_hotwire_handle_output_self'] = {'result': None}
+        (compiled, mutated) = rewrite_and_compile(args[0], output_func_name='_hotwire_handle_output', output_func_self='_hotwire_handle_output_self')
+        exec compiled in locals
+        return locals['_hotwire_handle_output_self']['result']
