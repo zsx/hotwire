@@ -135,9 +135,14 @@ class CommandExecutionHeader(gtk.VBox):
         self.__objects.connect("primary-complete", self.__on_primary_complete)        
         self.__objects.connect("changed", lambda o: self.__update_titlebox())
 
-        self.__exception_text = gtk.Label()
+        self.__exception_box = gtk.HBox()
+        self.__exception_text = gtk.Label(_('Caught '))
         self.__exception_text.set_alignment(0.0, 0.5) 
-        self.__cmdstatus_vbox.pack_start(self.__exception_text, expand=False)
+        self.__exception_box.pack_start(self.__exception_text, expand=False)
+        self.__exception_link = hotwidgets.Link()
+        self.__exception_link.connect('clicked', self.__on_exception_clicked)
+        self.__exception_box.pack_start(self.__exception_link, expand=False)        
+        self.__cmdstatus_vbox.pack_start(self.__exception_box, expand=False)
         if overview_mode:
             self.__cmdstatus_vbox.pack_start(gtk.HSeparator(), expand=False)
             self.__otype_expander = None
@@ -149,7 +154,19 @@ class CommandExecutionHeader(gtk.VBox):
             self.__main_hbox.pack_start(self.__otype_expander, expand=False)
         
     def __on_otype_expander_toggled(self, *args):
-        self.emit('expand-inspector', self.__otype_expander.get_property('expanded'))        
+        self.emit('expand-inspector', self.__otype_expander.get_property('expanded'))      
+        
+    def __on_exception_clicked(self, link):
+        w = gtk.Dialog(_('Exception - Hotwire'), parent=link.get_toplevel(),
+                       flags=0, buttons=(gtk.STOCK_OK, gtk.RESPONSE_ACCEPT))
+        w.set_has_separator(False)
+        w.set_border_width(5)        
+        view = gtk.TextView()
+        w.vbox.pack_start(hotwidgets.Border(view), expand=True)
+        view.get_buffer().set_property('text', self.__pipeline.get_exception_info()[3])
+        w.show_all()
+        w.run()
+        w.destroy()
 
     def set_inspector_expander_active(self, active):
         self.__otype_expander.set_property('expanded', active)
@@ -312,7 +329,7 @@ class CommandExecutionHeader(gtk.VBox):
         isexecuting = self.__isexecuting()
         self.__update_titlebox()
         if state != 'exception':
-            self.__exception_text.hide()                
+            self.__exception_box.hide()                
         if isexecuting:
             self.__state_image.set_from_animation(self.__throbber_pixbuf_ani)
         elif state == 'complete':
@@ -323,9 +340,9 @@ class CommandExecutionHeader(gtk.VBox):
             self.__state_image.set_from_stock('gtk-dialog-warning', gtk.ICON_SIZE_MENU)
         elif state == 'exception':
             self.__state_image.set_from_stock('gtk-dialog-error', gtk.ICON_SIZE_MENU)            
-            self.__exception_text.show()
+            self.__exception_box.show()
             excinfo = self.__pipeline.get_exception_info()
-            self.__exception_text.set_text(" Caught %s: %s" % (excinfo[0], excinfo[1]))
+            self.__exception_link.set_text("%s: %s" % (excinfo[0], excinfo[1]))
         else:
             raise Exception("Unknown state %s" % (state,))
         self.emit("complete")
