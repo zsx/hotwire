@@ -39,7 +39,7 @@ class LsBuiltin(Builtin):
                                         argspec=MultiArgSpec('paths'),
                                         options=[['-l', '--long'],['-a', '--all'],['-i', '--input']])
 
-    def execute(self, context, args, options=[]):
+    def __call__(self, context, args, options=[]):
         show_all = '-a' in options
         long_fmt = '-l' in options
         process_input = '-i' in options
