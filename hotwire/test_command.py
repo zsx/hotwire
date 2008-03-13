@@ -634,6 +634,14 @@ class PipelineRunTests(PipelineRunTestFramework):
         p = Pipeline.parse("py-eval '42'", self._context)
         self.assertTrue(p.is_singlevalue)
         
+    def testSetEnv1(self):
+        self._setupTree1()
+        self.assertTrue('HOTWIRETESTVALUE42' not in os.environ)
+        p = Pipeline.parse("setenv HOTWIRETESTVALUE42=blah", self._context)
+        p.execute_sync()
+        self.assertTrue('HOTWIRETESTVALUE42' in os.environ)
+        del os.environ['HOTWIRETESTVALUE42']        
+        
 def suite():
     loader = unittest.TestLoader()
     loader.loadTestsFromTestCase(PipelineParserTests)
