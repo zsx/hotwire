@@ -22,26 +22,14 @@
 import os,sys,pickle
 
 from hotwire.fs import FilePath, open_text_file
-from hotwire.builtin import Builtin, BuiltinRegistry, MultiArgSpec
+from hotwire.builtin import builtin_hotwire, MultiArgSpec
 
-if '_' not in globals(): globals()['_'] = lambda x: x
-
-class CatBuiltin(Builtin):
-    __doc__ = _("""Yield content lines from file path arguments.""")
-    def __init__(self):
-        super(CatBuiltin, self).__init__('cat',
-                                         output=str, # 'any'
-                                         idempotent=True,
-                                         argspec=MultiArgSpec('files'))
-
-    def execute(self, context, args, options=[]):
-        do_unpickle = '-p' in options
-        for f in args:
-            fpath = FilePath(f, context.cwd)
-            if do_unpickle:
-                for v in pickle.load(open(fpath, 'rb')): 
-                    yield v
-            else:
-                for line in open_text_file(fpath):
-                    yield line
-BuiltinRegistry.getInstance().register_hotwire(CatBuiltin())
+@builtin_hotwire(output=str,
+                 idempotent=True,
+                 argspec=MultiArgSpec('files'))
+def cat(context, args, options=[]):
+    _("""Yield content lines from file path arguments.""")    
+    for f in args:
+        fpath = FilePath(f, context.cwd)
+        for line in open_text_file(fpath):
+            yield line
