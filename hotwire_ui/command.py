@@ -136,14 +136,12 @@ class CommandExecutionHeader(gtk.VBox):
         self.__objects.connect("changed", lambda o: self.__update_titlebox())
 
         self.__exception_box = gtk.HBox()
-        self.__exception_text = gtk.Label(_('Caught '))
-        self.__exception_text.set_alignment(0.0, 0.5) 
-        self.__exception_box.pack_start(self.__exception_text, expand=False)
         self.__exception_link = hotwidgets.Link()
+        self.__exception_link.set_alignment(0.0, 0.5)
         self.__exception_link.set_ellipsize(True)
         self.__exception_link.connect('clicked', self.__on_exception_clicked)
         self.__exception_box.pack_start(self.__exception_link, expand=True)        
-        self.__cmdstatus_vbox.pack_start(self.__exception_box, expand=False)
+        self.__cmdstatus_vbox.pack_start(hotwidgets.Align(self.__exception_box, padding_left=4), expand=False)
         if overview_mode:
             self.__cmdstatus_vbox.pack_start(gtk.HSeparator(), expand=False)
             self.__otype_expander = None
@@ -162,7 +160,9 @@ class CommandExecutionHeader(gtk.VBox):
                        flags=0, buttons=(gtk.STOCK_OK, gtk.RESPONSE_ACCEPT))
         w.set_has_separator(False)
         w.set_border_width(5)
-        scroll = gtk.ScrolledWindow() 
+        w.set_size_request(640, 480)
+        scroll = gtk.ScrolledWindow()
+        scroll.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_ALWAYS)
         view = gtk.TextView()
         view.set_wrap_mode(True)
         scroll.add(view)
