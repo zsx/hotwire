@@ -21,33 +21,24 @@
 
 import os,sys,locale
 
-from hotwire.builtin import Builtin, BuiltinRegistry, InputStreamSchema, MultiArgSpec
+from hotwire.builtin import builtin_hotwire, InputStreamSchema, MultiArgSpec
 from hotwire.command import Pipeline,HotwireContext
 
-if '_' not in globals(): globals()['_'] = lambda x: x 
+@builtin_hotwire(options_passthrough=True,
+                 input=InputStreamSchema('any'))
+def apply(context, *args):
+    _("""Like Unix xargs - take input and convert to arguments.""")
 
-class ApplyBuiltin(Builtin):
-    __doc__ = _("""Like Unix xargs - take input and convert to arguments.""")
-    def __init__(self):
-        super(ApplyBuiltin, self).__init__('apply',
-                                           output='any',
-                                           argspec=MultiArgSpec('args'),
-                                           options_passthrough=True,
-                                           input=InputStreamSchema('any'))
-
-    def execute(self, context, args, options=[]):
-        newargs = list(args)
-        for argument in context.input:
-            if not isinstance(argument, basestring):
-                argument = unicode(argument)
-            newargs.append(argument)
-            
-        new_context = HotwireContext(initcwd=context.cwd)
-        # TODO - pull in resolver from shell.py?  Should this function expand
-        # aliases?        
-        pipeline = Pipeline.create(new_context, None, *newargs)
-        pipeline.execute_sync(assert_all_threaded=True)
-        for result in pipeline.get_output():
-            yield result
-
-BuiltinRegistry.getInstance().register_hotwire(ApplyBuiltin())
+    newargs = list(args)
+    for argument in context.input:
+        if not isinstance(argument, basestring):
+            argument = unicode(argument)
+        newargs.append(argument)
+        
+    new_context = HotwireContext(initcwd=context.cwd)
+    # TODO - pull in resolver from shell.py?  Should this function expand
+    # aliases?        
+    pipeline = Pipeline.create(new_context, None, *newargs)
+    pipeline.execute_sync(assert_all_threaded=True)
+    for result in pipeline.get_output():
+        yield result
