@@ -91,7 +91,7 @@ class Win32Filesystem(BaseFilesystem):
 
     def launch_open_file(self, path, cwd=None):
         try:
-            win32api.ShellExecute(0, "open", path, None, None, 1)
+            win32api.ShellExecute(0, "open", path.encode(sys.getfilesystemencoding()), None, None, 1)
         except:
             raise NotImplementedError()
     
