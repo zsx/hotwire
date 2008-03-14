@@ -209,7 +209,11 @@ class VteWindow(gtk.Window):
         
     def _merge_ui(self, actions, uistr):
         self.__ag.add_actions(actions)
-        self.__ui_merge_id = self.__ui.add_ui_from_string(uistr)         
+        self.__ui_merge_id = self.__ui.add_ui_from_string(uistr)
+        return self.__ag      
+    
+    def _get_ui(self):
+        return self.__ui   
 
     def __add_widget_title(self, w):
         hbox = gtk.HBox()

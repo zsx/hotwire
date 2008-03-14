@@ -30,6 +30,7 @@ from hotvte.vtewindow import VteApp
 from hotwire.logutil import log_except
 from hotwire.externals.dispatch import dispatcher
 from hotwire_ui.quickfind import QuickFindWindow
+from hotwire_ui.msgarea import MsgAreaController
 from hotwire.sshutil import OpenSSHKnownHosts
 
 _logger = logging.getLogger("hotssh.SshWindow")
@@ -164,7 +165,7 @@ class HostConnectionMonitor(gobject.GObject):
 _hostmonitor = HostConnectionMonitor()
 
 class SshTerminalWidget(gtk.VBox):
-    def __init__(self, args, cwd):
+    def __init__(self, args, cwd, actions=None):
         super(SshTerminalWidget, self).__init__()
         self.__init_state()
         self.__sshcmd = list(get_sshcmd())
@@ -172,17 +173,20 @@ class SshTerminalWidget(gtk.VBox):
         self.__cwd = cwd
         self.__host = None
         self.__sshopts = []
+        self.__actions = actions
         for arg in args:
             if not arg.startswith('-'):
                 if self.__host is None:                 
                     self.__host = arg
             else:
                 self.__sshopts.append(arg)
-                
-        header = gtk.HBox()
+        
+        header = gtk.VBox()
         self.__msg = gtk.Label()
         self.__msg.set_alignment(0.0, 0.5)
+        self.__msgarea_mgr = MsgAreaController()
         header.pack_start(self.__msg)
+        header.pack_start(self.__msgarea_mgr)
         self.pack_start(header, expand=False)
         self.connect()
         
@@ -212,11 +216,12 @@ class SshTerminalWidget(gtk.VBox):
         elif self.__connected is True:
             text = _('Connected (%.2fs latency)') % (self.__latency)
         elif self.__connected is False:
-            text = '<span foreground="red">%s</span>' % (_('Disconnected'))
+            text = '<span foreground="red">%s</span>' % (_('Connection timeout'))
         elif self.__connected is None:
             text = _('Checking connection')
         if len(self.__sshopts) > 1:
             text += _('; Options: ') + (' '.join(map(gobject.markup_escape_text, self.__sshopts)))
+        self.__msg.show()
         self.__msg.set_markup(text)
         
     def connect(self):
@@ -228,6 +233,7 @@ class SshTerminalWidget(gtk.VBox):
         # For some reason, VTE doesn't have the CAN_FOCUS flag set, so we can't call
         # grab_focus.  Do it manually then:
         term.emit('focus', True)
+        self.__msgarea_mgr.clear()
         self.__sync_msg()
         
     def reconnect(self):
@@ -242,7 +248,20 @@ class SshTerminalWidget(gtk.VBox):
     def __on_child_exited(self, term):
         _logger.debug("disconnected")
         self.__cmd_exited = True
-        self.__msg.set_text(_('Connection terminated (Enter to close)'))
+        self.__msg.hide()
+        msgarea = self.__msgarea_mgr.new_from_text_and_icon(gtk.STOCK_INFO, _('Connection closed'), 
+                                                            buttons=[(gtk.STOCK_CLOSE, gtk.RESPONSE_CLOSE)])
+        reconnect = self.__actions.get_action('Reconnect')
+        msgarea.add_stock_button_with_text(reconnect.get_property('label'), 
+                                           reconnect.get_property('stock-id'), gtk.RESPONSE_ACCEPT)
+        msgarea.connect('response', self.__on_msgarea_response)
+        msgarea.show_all()
+        
+    def __on_msgarea_response(self, msgarea, respid):
+        if respid == gtk.RESPONSE_ACCEPT:
+            self.reconnect()
+        else:
+            self.destroy()
         
     def get_exited(self):
         return self.__cmd_exited        
@@ -300,7 +319,7 @@ class SshWindow(VteWindow):
         self.__merge_ssh_ui()
         
     def new_tab(self, args, cwd):
-        term = SshTerminalWidget(args=args, cwd=cwd)
+        term = SshTerminalWidget(args=args, cwd=cwd, actions=self.__action_group)
         self.append_widget(term)
         
     def __on_nm_state_change(self, *args):
@@ -376,9 +395,9 @@ class SshWindow(VteWindow):
             ('OpenSFTP', gtk.STOCK_NEW, _('Open SFTP'), '<control><shift>S',
              _('Open a SFTP connection'), self.__open_sftp_cb),            
             ('ConnectionMenu', None, _('Connection')),
-            ('Reconnect', None, _('_Reconnect'), '<control><shift>R', _('Reset connection to server'), self.__reconnect_cb),
+            ('Reconnect', gtk.STOCK_CONNECT, _('_Reconnect'), '<control><shift>R', _('Reset connection to server'), self.__reconnect_cb),
             ]
-        self._merge_ui(self.__actions, self.__ui_string)
+        self.__action_group = self._merge_ui(self.__actions, self.__ui_string)
         
     @log_except(_logger)        
     def __copy_connection_cb(self, action):
