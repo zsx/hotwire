@@ -408,6 +408,8 @@ class Hotwire(gtk.VBox):
         
         self.__overview_button = self.__outputs.create_overview_button()
         self.__inputline.pack_start(self.__overview_button, expand=False)
+        self.__unseen_button = self.__outputs.create_unseen_button()
+        self.__inputline.pack_start(self.__unseen_button, expand=False)
         
         self.__lang_button = PipelineLanguageButton()
         self.__lang_button.set_lang(PipelineLanguageRegistry.getInstance()['62270c40-a94a-44dd-aaa0-689f882acf34'])

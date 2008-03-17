@@ -1047,6 +1047,9 @@ class CommandExecutionControl(gtk.VBox):
         
     def create_overview_button(self):
         return OverviewButton(self, self.__action_group.get_action('Overview'))
+    
+    def create_unseen_button(self):
+        return UnseenNotifyButton(self, self.__action_group.get_action('PreviousUnseenCommand'))
         
 class OverviewButton(gtk.ToggleButton):
     def __init__(self, outputs, overview_action):
@@ -1062,10 +1065,9 @@ class OverviewButton(gtk.ToggleButton):
         self.__orig_bg = self.style.bg[gtk.STATE_NORMAL]
         self.__idle_flash_count = 0
         self.__idle_flash_id = 0
-        outputs.connect('notify::unseen-pipeline-count', self.__on_pipeline_count_changed)
         outputs.connect('notify::executing-pipeline-count', self.__on_pipeline_count_changed)                 
         self.__on_pipeline_count_changed()
-                
+        
         self.__overview_action = overview_action
         overview_action.connect('notify::active', self.__on_overview_active_changed)
         self.connect('notify::active', self.__on_self_active_changed)
@@ -1073,17 +1075,8 @@ class OverviewButton(gtk.ToggleButton):
     def __on_pipeline_count_changed(self, *args):
         (count, unseen_count, executing_count) = map(self.__outputs.get_property, 
                                                      ('pipeline-count', 'unseen-pipeline-count', 'executing-pipeline-count'))
-        if unseen_count == 0:
-            self.set_label('%d (%d)' % (count,executing_count))
-        else:
-            self.set_label(_('%d (%d, %d complete)') % (count, executing_count, unseen_count))
-        self.__tooltips.set_tip(self, '%d total, %d executing, %d complete' % (count, executing_count, unseen_count))         
-        if unseen_count > self.__cached_unseen_count:
-            self.__start_idle_flash()
-            self.__cached_unseen_count = unseen_count
-        if unseen_count == 0:
-            if self.__idle_flash_id > 0:
-                gobject.source_remove(self.__idle_flash_id)
+        self.set_label(_('%d (%d)') % (count, executing_count))
+        self.__tooltips.set_tip(self, _('%d total, %d executing, %d complete') % (count, executing_count, unseen_count))         
     
     def __start_idle_flash(self):
         self.__idle_flash_count = 4
@@ -1114,3 +1107,29 @@ class OverviewButton(gtk.ToggleButton):
     def __on_overview_active_changed(self, *args):
         self.set_active(self.__overview_action.get_active())
     
+class UnseenNotifyButton(gtk.Button):
+    def __init__(self, outputs, prevunseen_action):
+        super(UnseenNotifyButton, self).__init__()
+        self.__tooltips = gtk.Tooltips()        
+        self.__image = gtk.Image()
+        self.__image.set_from_stock(gtk.STOCK_GO_UP, gtk.ICON_SIZE_MENU)
+        self.set_property('image', self.__image)
+        self.set_focus_on_click(False)
+        self.__outputs = outputs
+        outputs.connect('notify::pipeline-count', self.__on_pipeline_count_changed)
+        self.__prev_unseen_action = prevunseen_action
+        outputs.connect('notify::unseen-pipeline-count', self.__on_pipeline_count_changed)
+        self.connect('clicked', self.__on_clicked)
+
+    def __on_pipeline_count_changed(self, *args):
+        unseen_count = self.__outputs.get_property('unseen-pipeline-count')
+        self.set_label(_('%d complete') % (unseen_count,))              
+        if unseen_count > 0:
+            self.show()
+        else:
+            self.hide()
+        
+    def __on_clicked(self, self2):
+        self.__prev_unseen_action.activate()
+        self.hide()
+        
