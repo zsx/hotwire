@@ -165,6 +165,9 @@ class HostConnectionMonitor(gobject.GObject):
 _hostmonitor = HostConnectionMonitor()
 
 class SshTerminalWidget(gtk.VBox):
+    __gsignals__ = {
+        "close" : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, []),
+    }       
     def __init__(self, args, cwd, actions=None):
         super(SshTerminalWidget, self).__init__()
         self.__init_state()
@@ -188,7 +191,7 @@ class SshTerminalWidget(gtk.VBox):
         header.pack_start(self.__msg)
         header.pack_start(self.__msgarea_mgr)
         self.pack_start(header, expand=False)
-        self.connect()
+        self.ssh_connect()
         
     def __init_state(self):
         self.__connecting_state = False
@@ -224,7 +227,7 @@ class SshTerminalWidget(gtk.VBox):
         self.__msg.show()
         self.__msg.set_markup(text)
         
-    def connect(self):
+    def ssh_connect(self):
         self.__connecting_state = True        
         self.__term = term = VteTerminalWidget(cwd=self.__cwd, cmd=self.__sshcmd)
         term.connect('child-exited', self.__on_child_exited)
@@ -236,14 +239,14 @@ class SshTerminalWidget(gtk.VBox):
         self.__msgarea_mgr.clear()
         self.__sync_msg()
         
-    def reconnect(self):
+    def ssh_reconnect(self):
         # TODO - do this in a better way
         if not self.__term.exited:
             os.kill(self.__term.pid, signal.SIGTERM)
         self.remove(self.__term)
         self.__term.destroy()
         self.__init_state()
-        self.connect()    
+        self.ssh_connect()    
         
     def __on_child_exited(self, term):
         _logger.debug("disconnected")
@@ -259,9 +262,12 @@ class SshTerminalWidget(gtk.VBox):
         
     def __on_msgarea_response(self, msgarea, respid):
         if respid == gtk.RESPONSE_ACCEPT:
-            self.reconnect()
+            self.ssh_reconnect()
         else:
-            self.destroy()
+            self.emit('close')
+        
+    def has_close(self):
+        return True
         
     def get_exited(self):
         return self.__cmd_exited        
@@ -428,7 +434,7 @@ class SshWindow(VteWindow):
     def __reconnect_cb(self, a):
         notebook = self._get_notebook()        
         widget = notebook.get_nth_page(notebook.get_current_page())
-        widget.reconnect()
+        widget.ssh_reconnect()
 
 class SshApp(VteApp):
     def __init__(self):

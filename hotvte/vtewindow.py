@@ -126,7 +126,13 @@ class VteWindow(gtk.Window):
     def append_widget(self, term):
         idx = self.__notebook.append_page(term)
         term.get_vte().connect('selection-changed', self.__sync_selection_sensitive)
-        term.get_term().set_copy_paste_actions(self.__ag.get_action('Copy'), self.__ag.get_action('Paste'))        
+        term.get_term().set_copy_paste_actions(self.__ag.get_action('Copy'), self.__ag.get_action('Paste'))
+        if hasattr(term, 'has_close'):
+            has_close = term.has_close()
+        else:
+            has_close = False
+        if has_close:
+            term.connect('close', self.__on_widget_close)
         if hasattr(self.__notebook, 'set_tab_reorderable'):
             self.__notebook.set_tab_reorderable(term, True)
         label = self.__add_widget_title(term)
@@ -246,6 +252,9 @@ class VteWindow(gtk.Window):
         
     def __close_cb(self, action):
         self.__remove_page_widget(self.__notebook.get_nth_page(self.__notebook.get_current_page()))
+        
+    def __on_widget_close(self, widget):
+        self.__remove_page_widget(widget)
 
     def __help_about_cb(self, action):
         dialog = HotwireAboutDialog()
