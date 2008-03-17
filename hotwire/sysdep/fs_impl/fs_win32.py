@@ -27,6 +27,20 @@ from hotwire.sysdep.win32 import win_exec_re, msvcrt
 import win32api, win32con
 import os.path
 
+from win32com.shell import shell,shellcon
+import gtk
+try:
+    import ctypes
+    from ctypes import CDLL
+    from ctypes.util import find_library
+    cgtk= CDLL(find_library("libgtk-win32-2.0-0.dll"))
+    cgdk = CDLL(find_library("libgdk-win32-2.0-0.dll"))
+    cgdk_pixbuf = CDLL(find_library("libgdk_pixbuf-2.0-0.dll"))
+except:
+    cgtk = None
+    cgdk = None
+    cgdk_pixbuf = None
+    
 _logger = logging.getLogger("hotwire.sysdep.Win32Filesystem")
 
 if msvcrt != None:
@@ -131,6 +145,7 @@ class Win32File(File):
             else:
                 if rethrow:
                     raise
+
     def _get_mime(self):
         if self.is_directory:
             return 'x-directory/normal'
@@ -140,6 +155,36 @@ class Win32File(File):
             return win32api.RegQueryValueEx(hkey, 'Content Type')[0]
         except:
             return None
+                
+    def _do_get_icon(self):
+        sys_encoded_path = self.path.encode(sys.getfilesystemencoding())
+        sys_encoded_path = sys_encoded_path.replace('/', '\\') #SHGetFileInfo doesn't work with Unix style paths
+        ret, info = shell.SHGetFileInfo(sys_encoded_path, 0, shellcon.SHGFI_ICONLOCATION, 0)
+        if ret:
+            icon = 'gtk-win32-shell-icon;%s;%d' %(info[3], info[1])
+        else:
+            icon = 'gtk-win32-shell-icon;%s' % sys_encoded_path
+        icon_theme = gtk.icon_theme_get_default()
+        if not icon_theme.has_icon(icon) and not self.__create_builtin_icon(icon, sys_encoded_path):
+            super(Win32File, self)._do_get_icon()
+        else:
+            self._icon = icon
+        
+    def __create_builtin_icon(self, icon_name, filepath):
+        if not cgtk or not cgdk or not cgdk_pixbuf:
+            return False
+        icon_flags = [shellcon.SHGFI_LARGEICON, shellcon.SHGFI_SMALLICON]
+        try:
+            for flag in icon_flags:
+                ret, info = shell.SHGetFileInfo(filepath, 0, shellcon.SHGFI_ICON|flag, 0)
+                if ret:
+                    pixbuf = cgdk.gdk_win32_icon_to_pixbuf_libgtk_only(info[0])#a private function in gdk
+                    if pixbuf:
+                        cgtk.gtk_icon_theme_add_builtin_icon(icon_name, cgdk_pixbuf.gdk_pixbuf_get_height(pixbuf), pixbuf)
+                        return True
+        except:
+            return False
+        return False
     
 def getInstance():
     return Win32Filesystem()
