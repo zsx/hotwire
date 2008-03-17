@@ -25,6 +25,7 @@ from hotwire.fs import path_normalize, unix_basename
 from hotwire.sysdep.fs import File, BaseFilesystem,iterd_sorted, FileStatError
 from hotwire.sysdep.win32 import win_exec_re, msvcrt
 import win32api, win32con
+import os.path
 
 _logger = logging.getLogger("hotwire.sysdep.Win32Filesystem")
 
@@ -130,6 +131,15 @@ class Win32File(File):
             else:
                 if rethrow:
                     raise
-
+    def _get_mime(self):
+        if self.is_directory:
+            return 'x-directory/normal'
+        try:
+            extname = os.path.splitext(self.path)[-1]
+            hkey = win32api.RegOpenKeyEx(win32con.HKEY_CLASSES_ROOT, extname, 0, win32con.KEY_READ)
+            return win32api.RegQueryValueEx(hkey, 'Content Type')[0]
+        except:
+            return None
+    
 def getInstance():
     return Win32Filesystem()
