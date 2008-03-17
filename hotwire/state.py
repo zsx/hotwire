@@ -109,9 +109,9 @@ class History(Singleton):
             conn.close()
 
     def __run_async(self, func, *args, **kwargs):
-        self.__thread = threading.Thread(target=self.__do_run_async, args=(func, args, kwargs))
-        self.__thread.setDaemon(True)
-        self.__thread.start()
+        from hotwire.async import MiniThreadPool
+        tp = MiniThreadPool.getInstance()
+        tp.run(self.__do_run_async, args=(func, args, kwargs))
         
     def __do_append_command(self, conn, lang_uuid, cmd, cwd):
         cursor = conn.cursor()
@@ -125,7 +125,7 @@ class History(Singleton):
     def append_command(self, lang_uuid, cmd, cwd):
         if self.__no_save:
             return
-        self.__run_async(self.__do_append_command, lang_uuid, cmd, cwd)
+        gobject.timeout_add(250, lambda: self.__run_async(self.__do_append_command, lang_uuid, cmd, cwd))
         
     def __search_limit_query(self, tablename, column, orderval, searchterm, limit, countmin=0, filters=[], distinct=False):
         queryclauses = []
