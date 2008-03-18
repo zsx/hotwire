@@ -48,6 +48,9 @@ class HelpItemRenderer(UnicodeRenderer):
         self._buf.insert_markup(_('Documentation on the web: '))
         self._buf.insert_markup(' ')
         self.append_link(_('Tutorial'), 'http://code.google.com/p/hotwire-shell/wiki/GettingStarted0700')
+        self._buf.insert_markup(' ')
+        external_pixbuf = pbcache.get('external.png', size=10)
+        self._buf.insert_pixbuf(self._buf.get_end_iter(), external_pixbuf)         
         self._buf.insert_markup('\n\n')
 
         registry = BuiltinRegistry.getInstance()
