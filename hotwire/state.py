@@ -125,6 +125,8 @@ class History(Singleton):
     def append_command(self, lang_uuid, cmd, cwd):
         if self.__no_save:
             return
+        # Run this in a timeout, because for some reason we seem to stutter while executing it;
+        # This might be because sqlite is holding the Python lock so we can't do any processing.
         gobject.timeout_add(250, lambda: self.__run_async(self.__do_append_command, lang_uuid, cmd, cwd))
         
     def __search_limit_query(self, tablename, column, orderval, searchterm, limit, countmin=0, filters=[], distinct=False):
