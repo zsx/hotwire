@@ -510,7 +510,7 @@ class PipelineRunTests(PipelineRunTestFramework):
     def testRedir2(self):
         self._setupTree2()
         outpath = path_join(self._tmpd, 'sectest.txt')
-        f= open(outpath, 'w')
+        f= open(outpath, 'wb')
         f.write('hello world\n')
         f.write('sha test\n')        
         f.close()
