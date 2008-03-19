@@ -105,15 +105,15 @@ class PipelineParserTests(unittest.TestCase):
         self.assertEquals(len(pt), 3)   
         
     def testUtf1(self):
-        pt = list(Pipeline.tokenize('sys echo Ω', self._context))
+        pt = list(Pipeline.tokenize('sys echo 惟', self._context))
         self.assertEquals(len(pt), 3)
-        self.assertEquals(pt[2].text, 'Ω')
+        self.assertEquals(pt[2].text, '惟')
         self.assertEquals(pt[2].quoted, False)
         
     def testUtf2(self):
-        pt = list(Pipeline.tokenize('sys echo "Ω"', self._context))
+        pt = list(Pipeline.tokenize('sys echo "惟"', self._context))
         self.assertEquals(len(pt), 3)
-        self.assertEquals(pt[2].text, 'Ω')
+        self.assertEquals(pt[2].text, '惟')
         self.assertEquals(pt[2].quoted, True)
         
     def testBracket1(self):
@@ -576,20 +576,20 @@ class PipelineRunTests(PipelineRunTestFramework):
         
     def testUtf1(self):
         self._setupTree1()
-        opath = os.path.join(self._tmpd, 'the ɒ and Ω ends')
+        opath = os.path.join(self._tmpd, u'the 蓲 and 惟 ends'.encode(sys.getfilesystemencoding()))
         f=open(opath, 'w')
         f.write('hi')
         f.close()        
-        opath = os.path.join(self._tmpd, 'ending with Ω back to the ɒ')        
+        opath = os.path.join(self._tmpd, u'ending with 惟 back to the 蓲'.encode(sys.getfilesystemencoding()))        
         f=open(opath, 'w')
         f.write('hi')
         f.close()
-        p = Pipeline.parse('ls *Ω*', self._context)
+        p = Pipeline.parse('ls *惟*', self._context)
         p.execute_sync()
         results = list(p.get_output())
         self.assertEquals(len(results), 2)
-        self.assertEquals(results[0].basename, 'ending with Ω back to the ɒ')
-        self.assertEquals(results[1].basename, 'the ɒ and Ω ends')
+        self.assertEquals(results[0].basename, 'ending with 惟 back to the 蓲')
+        self.assertEquals(results[1].basename, 'the 蓲 and 惟 ends')
         
     def testStringify1(self):
         self._setupTree1()
