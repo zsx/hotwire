@@ -524,7 +524,7 @@ class PipelineRunTests(PipelineRunTestFramework):
     def testCat1(self):
         self._setupTree2()
         outpath = path_join(self._tmpd, 'cattest.txt')
-        f= open(outpath, 'w')
+        f= open(outpath, 'wb')
         f.write('hello world\n')       
         f.close()
         p = Pipeline.parse("cat cattest.txt", self._context)
