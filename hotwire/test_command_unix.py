@@ -104,6 +104,34 @@ class PipelineRunTestsUnix(PipelineRunTestFramework):
         results.sort()
         self.assertEquals(len(results), 1)
         self.assertEquals(results[0], '0\n')
+
+    def testLs1(self):
+        self._setupTree1()
+        hidden = path_join(self._tmpd, '.nosee')
+        open(hidden, 'w').close()
+        p = Pipeline.parse("ls", self._context)
+        p.execute_sync()
+        results = list(p.get_output())
+        self.assertEquals(len(results), 3)
+
+    def testLs2(self):
+        self._setupTree1()
+        hidden = path_join(self._tmpd, '.nosee')
+        open(hidden, 'w').close()
+        p = Pipeline.parse("ls -a", self._context)
+        p.execute_sync()
+        results = list(p.get_output())
+        self.assertEquals(len(results), 4)
         
-        
+    def testLs3(self):
+        self._setupTree2()
+        bglobpath = path_join(self._tmpd, 'testdir2', 'b*') 
+        f = open(bglobpath, 'w')
+        f.write('hi')
+        f.close()
+        p = Pipeline.parse("ls 'testdir2/b*'", self._context)
+        p.execute_sync()
+        results = list(p.get_output())
+        self.assertEquals(len(results), 1)
+        self.assertEquals(results[0].path, bglobpath)
         
