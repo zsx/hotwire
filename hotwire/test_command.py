@@ -206,7 +206,7 @@ class PipelineRunTestFramework(unittest.TestCase):
 
     def tearDown(self):
         self._context = None
-        shutil.rmtree(self._tmpd)
+        shutil.rmtree(unicode(self._tmpd))
 
     def _setupTree1(self):
         os.mkdir(path_join(self._tmpd, 'testdir'))
@@ -546,11 +546,11 @@ class PipelineRunTests(PipelineRunTestFramework):
         
     def testUtf1(self):
         self._setupTree1()
-        opath = os.path.join(self._tmpd, 'the ɒ and Ω ends')
+        opath = os.path.join(self._tmpd, u'the ɒ and Ω ends')
         f=open(opath, 'w')
         f.write('hi')
         f.close()        
-        opath = os.path.join(self._tmpd, 'ending with Ω back to the ɒ')        
+        opath = os.path.join(self._tmpd, u'ending with Ω back to the ɒ')        
         f=open(opath, 'w')
         f.write('hi')
         f.close()
