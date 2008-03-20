@@ -295,7 +295,7 @@ class CommandExecutionHeader(gtk.VBox):
         elif state == 'undone':
             set_status_action(_markupif('b', _color(_('Undone'), "red"), self.__complete_unseen), '', status_markup=True)
         elif state == 'exception':
-            set_status_action(_markupif('b', _color(_('Exception'), "red"), self.__complete_unseen), '', status_markup=True) 
+            set_status_action(_markupif('b', _('Exception'), self.__complete_unseen), '', status_markup=True) 
         elif state == 'executing':
             set_status_action(_('Executing'), None)
         elif state == 'complete':
