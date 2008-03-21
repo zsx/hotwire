@@ -684,8 +684,7 @@ class Hotwire(gtk.VBox):
         self.emit("title", self.get_title())
 
     def get_title(self):
-        cwd = self.context.get_cwd()
-        return unix_basename(cwd)
+        return self.context.get_cwd()
 
     def append_text(self, text):
         curtext = self.__input.get_property('text')
