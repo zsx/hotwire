@@ -160,7 +160,7 @@ class Win32File(File):
         sys_encoded_path = self.path.encode(sys.getfilesystemencoding())
         sys_encoded_path = sys_encoded_path.replace('/', '\\') #SHGetFileInfo doesn't work with Unix style paths
         ret, info = shell.SHGetFileInfo(sys_encoded_path, 0, shellcon.SHGFI_ICONLOCATION, 0)
-        if ret:
+        if ret and (info[1] or info[3]):
             icon = 'gtk-win32-shell-icon;%s;%d' %(info[3], info[1])
         else:
             icon = 'gtk-win32-shell-icon;%s' % sys_encoded_path
@@ -173,17 +173,17 @@ class Win32File(File):
     def __create_builtin_icon(self, icon_name, filepath):
         if not cgtk or not cgdk or not cgdk_pixbuf:
             return False
-        icon_flags = [shellcon.SHGFI_LARGEICON, shellcon.SHGFI_SMALLICON]
-        try:
-            for flag in icon_flags:
+        icon_flags = [shellcon.SHGFI_SMALLICON, shellcon.SHGFI_LARGEICON]
+        for flag in icon_flags:
+            try:
                 ret, info = shell.SHGetFileInfo(filepath, 0, shellcon.SHGFI_ICON|flag, 0)
                 if ret:
                     pixbuf = cgdk.gdk_win32_icon_to_pixbuf_libgtk_only(info[0])#a private function in gdk
                     if pixbuf:
                         cgtk.gtk_icon_theme_add_builtin_icon(icon_name, cgdk_pixbuf.gdk_pixbuf_get_height(pixbuf), pixbuf)
                         return True
-        except:
-            return False
+            except:
+                continue
         return False
     
 def getInstance():
