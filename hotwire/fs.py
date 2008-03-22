@@ -62,14 +62,17 @@ path_join = posixpath.join
 path_abs = os.path.abspath
 path_dirname = posixpath.dirname
 def win32_normpath(path):
-  return win32_fast_normpath(os.path.normpath(path))
+  ret = win32_fast_normpath(os.path.normpath(path))
+  if path.endswith('/') and not ret.endswith('/'): #normpath might eat the ending '/'
+      ret += '/'
+  return ret
 def win32_fast_normpath(path):
   path = path.replace('\\', '/')
   if path[1:3] == ':\\':
     path = path[0] + ':/' + path[2:]
   return path
 def win32_expanduser(path):
-  return win32_normpath(os.path.expanduser(path))
+  return win32_fast_normpath(os.path.expanduser(path))
 def win32_pathjoin(*args):
   return path_fastnormalize(os.path.join(*args))
 def win32_abspath(path):
