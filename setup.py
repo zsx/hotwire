@@ -89,7 +89,8 @@ else:
                          # FIXME   #('share/icons/hicolor/22x22/apps', ['images/hotwire-22.png']),
                             ('share/hotwire/images', ['images/throbber.gif', 'images/throbber-done.gif',
                                                       'images/dfeet-method.png', 'images/dfeet-property.png', 'images/dfeet-object.png',
-                                                      'images/perl.ico', 'images/python.ico', 'images/ruby.ico', 'images/unix.ico'])]
+                                                      'images/perl.ico', 'images/python.ico', 'images/ruby.ico', 'images/unix.ico',
+                                                      'images/external.png'])]
     from DistUtilsExtra.command import *
     kwargs['cmdclass'] = { "build_extra" : build_extra.build_extra,
                            "build_i18n" :  build_i18n.build_i18n,
