@@ -19,7 +19,7 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR 
 # THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import os,sys,subprocess,logging
+import os,sys,subprocess,logging,re
 
 import gtk
 
@@ -112,14 +112,20 @@ class EditorRegistry(Singleton):
         self.__editors = {} # uuid->editor
         prefs = Preferences.getInstance()
         self.__default_editor_uuid = 'c5851b9c-2618-4078-8905-13bf76f0a94f'
+        self.__custom_editor_uuid = '5f8d7da1-fa4f-4753-8541-be58485af722'
+        self.__custom_editor_set = 'EDITOR' in os.environ        
         self.__sync_pref()
         prefs.monitor_prefs('system.editor', self.__on_editor_changed)
         
     def __sync_pref(self):
-        prefs = Preferences.getInstance()        
-        self.__pref_editor_uuid = prefs.get_pref('system.editor', default=self.__default_editor_uuid)        
+        prefs = Preferences.getInstance()
+        if self.__custom_editor_set:
+            self.__pref_editor_uuid = self.__custom_editor_uuid
+        else:
+            self.__pref_editor_uuid = prefs.get_pref('system.editor', default=self.__default_editor_uuid)        
         
-    def __on_editor_changed(self, *args, **kwargs):     
+    def __on_editor_changed(self, *args, **kwargs):
+        self.__custom_editor_set = False             
         self.__sync_pref()
         editor = ' '.join(map(quote_arg, self[self.__pref_editor_uuid].build_default_arguments()))
         if isinstance(editor, unicode) and sys.stdin.encoding is not None:
@@ -149,7 +155,7 @@ class EditorRegistry(Singleton):
         if editor.uuid in self.__editors:
             raise ValueError("Editor uuid %s already registered", editor.uuid)
         self.__editors[editor.uuid] = editor
-        if editor.uuid == self.__pref_editor_uuid:
+        if editor.uuid == self.__pref_editor_uuid and not self.__custom_editor_set:
             self.__on_editor_changed()
         dispatcher.send(sender=self)
 
@@ -177,3 +183,15 @@ class GEditEditor(Editor):
         super(GEditEditor, self).__init__('781e8969-730e-42f7-bd1d-a50bed17e869', 'GEdit', 'accessories-text-editor', 
                                           'hotwire-gedit-blocking')
 EditorRegistry.getInstance().register(GEditEditor())
+
+class CustomEditor(Editor):
+    def __init__(self):
+        super(CustomEditor, self).__init__('5f8d7da1-fa4f-4753-8541-be58485af722', 'Custom Editor', None, None)
+        
+    def run_many(self, cwd, *files):
+        # FIXME do real shell parsing
+        ws_re = re.compile('\s+')
+        args = ws_re.split(os.environ['EDITOR'])
+        args.extend(files)
+        subprocess.Popen(args, env=self._get_startup_env(), cwd=cwd)        
+EditorRegistry.getInstance().register(CustomEditor())
