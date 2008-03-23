@@ -1298,7 +1298,7 @@ class HotWindow(gtk.Window):
         self.new_tab_hotwire(initcwd=self.__get_curtab_cwd(), initcmd='ls')
 
     def __new_term_tab_cb(self, action):
-        self.new_tab_term(None)
+        self.new_tab_term(None, autoclose=True)
         
     def __detach_tab_cb(self, action):
         widget = self.__notebook.get_nth_page(self.__notebook.get_current_page())
@@ -1490,9 +1490,9 @@ class HotWindow(gtk.Window):
         self.__notebook.set_current_page(idx)
         self.set_focus(hw.get_entry())
         
-    def new_tab_term(self, cmd, cwd=None):
+    def new_tab_term(self, cmd, cwd=None, autoclose=False):
         target_cwd = cwd or self.__get_curtab_cwd()
-        term = Terminal.getInstance().get_terminal_widget_cmd(target_cwd, cmd, '')
+        term = Terminal.getInstance().get_terminal_widget_cmd(target_cwd, cmd, '', autoclose=autoclose)
         self.new_tab_widget(term, 'term')        
 
     def __sync_tabs_visible(self):
