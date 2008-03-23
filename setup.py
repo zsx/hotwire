@@ -16,8 +16,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-import os,sys
+import os,sys,subprocess
 from distutils.core import setup
+from distutils.command.install import install
 
 if __name__ == '__main__' and hasattr(sys.modules['__main__'], '__file__'):
     basedir = os.path.dirname(os.path.abspath(__file__))
@@ -93,14 +94,23 @@ else:
     kwargs['cmdclass'] = { "build_extra" : build_extra.build_extra,
                            "build_i18n" :  build_i18n.build_i18n,
                            "build_help" :  build_help.build_help,
-                           "build_icons" :  build_icons.build_icons }    
+                           "build_icons" :  build_icons.build_icons }
+    
+class HotInstall(install):
+    def run(self):
+        install.run(self)
+        if os.name == 'posix':                       
+            if self.root is None:
+                print "Running gtk-update-icon-cache"
+                subprocess.call(['gtk-update-icon-cache', os.path.join(self.install_data, 'icons')])
+kwargs['cmdclass']['install'] = HotInstall                    
 
 setup(name='hotwire',
       version=__version__,
       description='Hotwire Shell',
       author='Colin Walters',
       author_email='walters@verbum.org',
-      url='http://hotwire-shell.org',
+      url='http://hotwire-shell.org',   
       packages=['hotwire', 'hotwire_ui', 'hotwire_ui.renderers', 'hotwire_ui.adaptors', 
                 'hotwire.builtins',
                 'hotwire.externals', 'hotwire.externals', 'hotwire.externals.dispatch', 
