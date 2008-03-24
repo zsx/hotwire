@@ -23,13 +23,12 @@ import  gtk, pango
 _logger = logging.getLogger("hotwire_ui.AddressBar")
 
 class BreadButton(gtk.ToggleButton):
-    def __init__(self, context, address_bar, path, max_width_nchars = 25, label=None, **kwargs):
-        self.__dir_name = escape(label)
-        super(BreadButton, self).__init__(label = self.__dir_name, **kwargs)
+    def __init__(self, context, address_bar, path, label=None, **kwargs):
+        self.__escaped_dir_name = escape(label)
+        super(BreadButton, self).__init__(label = self.__escaped_dir_name, **kwargs)
         self.__context = context
         self.__address_bar = address_bar
         self.__label = self.get_child()
-        self.__label.set_max_width_chars(max_width_nchars)
         self.__label.set_ellipsize(pango.ELLIPSIZE_END)
         self.__label.set_use_underline(False)
         self.__label.set_use_markup(True)
@@ -39,11 +38,14 @@ class BreadButton(gtk.ToggleButton):
         self.__label.connect('size-request', self.__lable_size_request)
         
     def __lable_size_request(self, label, requision):
-        layout = self.__label.create_pango_layout(self.__dir_name)
+        layout = label.create_pango_layout(self.__escaped_dir_name)
+        layout.set_markup(self.__escaped_dir_name) #this is needed, otherwiser, the width for '&test' is not accurate
         width, height = layout.get_pixel_size()
-        layout.set_markup("<b>%s</b>" % self.__dir_name)
+        
+        layout.set_markup("<b>%s</b>" % self.__escaped_dir_name)
         bold_width, bold_height = layout.get_pixel_size()
-        requision.width = max(bold_width, width)
+        
+        requision.width = min(150, max(bold_width, width))
         requision.height = max(bold_height, height)
         
     def get_label(self):
@@ -55,14 +57,14 @@ class BreadButton(gtk.ToggleButton):
     def down(self):
         _logger.debug("Down button %s" % self)
         self.__ignore_changes = True
-        self.__set_markup("<b>%s</b>" % self.__dir_name)
+        self.__set_markup("<b>%s</b>" % self.__escaped_dir_name)
         self.set_active(True)
         self.__ignore_changes = False
         
     def up(self):
         _logger.debug("Up button %s" % self)
         self.__ignore_changes = True
-        self.__set_markup(self.__dir_name)
+        self.__set_markup(self.__escaped_dir_name)
         self.set_active(False)
         self.__ignore_changes = False
         

@@ -47,6 +47,7 @@ from hotwire_ui.prefs import PrefsWindow
 from hotwire_ui.dirswitch import DirSwitchWindow
 from hotwire.logutil import log_except
 from hotwire.externals.dispatch import dispatcher
+from hotwire_ui.addressbar import AddressBar
 
 _logger = logging.getLogger("hotwire.ui.Shell")
 
@@ -391,6 +392,8 @@ class Hotwire(gtk.VBox):
         self.__paned.pack_start(self.__welcome_align, expand=True)
         self.pack_start(self.__paned, expand=True)
 
+        self.__address_bar = AddressBar(self.context)
+        self.__topbox.pack_start(self.__address_bar, expand = False)
         self.__outputs = CommandExecutionControl(self.context)
         self.__outputs.connect("new-window", self.__on_commands_new_window)      
         self.__topbox.pack_start(self.__outputs, expand=True)
@@ -566,6 +569,7 @@ class Hotwire(gtk.VBox):
             _logger.debug("reset recentdir index")                   
             self.__recentdir_navigation_index = None
         self.__sync_recentdir_navigation_sensitivity()
+        self.__address_bar.refresh()
         
     def __sync_recentdir_navigation_sensitivity(self):
         idx = self.__recentdir_navigation_index        
