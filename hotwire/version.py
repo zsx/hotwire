@@ -19,7 +19,7 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR 
 # THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-__version__ = '0.721'
+__version__ = '0.723'
 
 def svn_version_str():
     if not svn_version_info:
