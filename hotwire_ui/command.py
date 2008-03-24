@@ -592,7 +592,7 @@ class CommandExecutionControl(gtk.VBox):
         self.__sync_cmd_sensitivity()
         
     def get_ui(self):
-        return (self.__ui_string, self.__action_group)
+        return (self.__ui_string, self.__action_group, None)
     
     def __get_complete_commands(self):
         for child in self.__iter_cmds():

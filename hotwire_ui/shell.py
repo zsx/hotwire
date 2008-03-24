@@ -37,7 +37,7 @@ from hotwire.util import markup_for_match, quote_arg
 from hotwire.fs import path_unexpanduser, path_expanduser, unix_basename, path_fromurl
 from hotwire.sysdep import is_unix
 from hotwire.sysdep.fs import File, Filesystem
-from hotwire.state import History, Preferences
+from hotwire.state import History, Preferences, ViewState
 from hotwire_ui.command import CommandExecutionDisplay,CommandExecutionControl
 from hotwire_ui.completion import CompletionStatusDisplay
 from hotwire_ui.aboutdialog import HotwireAboutDialog
@@ -406,7 +406,19 @@ class Hotwire(gtk.VBox):
         # Visibility is synced by __sync_navbar_display
         self.__address_bar.show_all()
         self.__address_bar.set_no_show_all(True)
-        self.__address_bar.hide()
+        view_state = ViewState.getInstance()
+        address_bar_show = view_state.get_state('NavigationBar')
+        _logger.debug('Show address bar? %s' % address_bar_show)
+        if address_bar_show == None:
+            _logger.debug("No NavigationBar record")
+            self.__address_bar.hide()
+            view_state.set_state('NavigationBar', 0)
+        elif not address_bar_show:
+            _logger.debug("Hide NavigationBar")
+            self.__address_bar.hide()
+        else:
+            _logger.debug("Show NavigationBar")
+            self.__address_bar.show()
         
         self.__topbox.pack_start(self.__address_bar, expand = False)
         self.__outputs = CommandExecutionControl(self.context)
@@ -476,7 +488,7 @@ class Hotwire(gtk.VBox):
         self.__history_search_active = False
 
         self.__sync_cwd()
-        self.__sync_navbar_display()
+#        self.__sync_navbar_display()
         self.__update_status()
 
         prefs = Preferences.getInstance()
@@ -493,8 +505,20 @@ class Hotwire(gtk.VBox):
         return self.__ui
 
     def get_ui_pairs(self):
-        return [self.__outputs.get_ui(), (self.__ui_string, self.__action_group)]
+        return [self.__outputs.get_ui(), (self.__ui_string, self.__action_group, self.__init_ui)]
 
+    def __init_ui(self, ui_manager):
+        bar = self.__action_group.get_action('NavigationBar')
+        view_state = ViewState.getInstance()
+        address_bar_show = view_state.get_state('NavigationBar')
+        #bar = ui_manager.get_widget('/Menubar/ViewMenu/NavigationBar')
+        if address_bar_show:
+            _logger.debug("Activate NavigationBar")
+            bar.set_active(True)
+        else:
+            _logger.debug("Deactivate NavigationBar")
+            bar.set_active(False)
+    
     def append_tab(self, widget, title):
         self.emit("new-tab-widget", widget, title)
 
@@ -602,13 +626,16 @@ class Hotwire(gtk.VBox):
     @log_except(_logger)
     def __navbar_cb(self, action):
         self.__sync_navbar_display()
-        
+    
     def __sync_navbar_display(self):
         active = self.__action_group.get_action('NavigationBar').get_active()
+        view_state = ViewState.getInstance()
         bar = self.__address_bar
         if active:
+            view_state.set_state('NavigationBar', 1)
             bar.show()
         else:
+            view_state.set_state('NavigationBar', 0)
             bar.hide()
         
     @log_except(_logger)
@@ -1455,9 +1482,11 @@ class HotWindow(gtk.Window):
             self.__ui_merge_page_id = pn
             self.__tab_ui_merge_ids = []                
             if hasattr(widget, 'get_ui_pairs'):
-                for uistr,actiongroup in widget.get_ui_pairs():
+                for uistr,actiongroup,init in widget.get_ui_pairs():
                     mergeid = self.__ui.add_ui_from_string(uistr)
                     self.__ui.insert_action_group(actiongroup, -1)
+                    if init != None:
+                        init(self.__ui)
                     self.__tab_ui_merge_ids.append((mergeid, actiongroup))
                 self.__sync_action_acceleration()
 

@@ -101,7 +101,7 @@ class VteTerminal(gtk.VBox):
         return False
     
     def get_ui_pairs(self):
-        return [(self.__ui_string, self.__action_group)]
+        return [(self.__ui_string, self.__action_group, None)]
         
     def __on_pref_changed(self, prefs, key, value):
         self.__sync_prefs()    
