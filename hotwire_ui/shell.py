@@ -47,7 +47,7 @@ from hotwire_ui.prefs import PrefsWindow
 from hotwire_ui.dirswitch import DirSwitchWindow
 from hotwire.logutil import log_except
 from hotwire.externals.dispatch import dispatcher
-from hotwire_ui.addressbar import AddressBar
+from hotwire_ui.navigationbar import NavigationBar
 
 _logger = logging.getLogger("hotwire.ui.Shell")
 
@@ -402,25 +402,25 @@ class Hotwire(gtk.VBox):
         self.__paned.pack_start(self.__welcome_align, expand=True)
         self.pack_start(self.__paned, expand=True)
 
-        self.__address_bar = AddressBar(self.context)
+        self.__navigation_bar = NavigationBar(self.context)
         # Visibility is synced by __sync_navbar_display
-        self.__address_bar.show_all()
-        self.__address_bar.set_no_show_all(True)
+        self.__navigation_bar.show_all()
+        self.__navigation_bar.set_no_show_all(True)
         view_state = ViewState.getInstance()
-        address_bar_show = view_state.get_state('NavigationBar')
-        _logger.debug('Show address bar? %s' % address_bar_show)
-        if address_bar_show == None:
+        navigation_bar_show = view_state.get_state('NavigationBar')
+        _logger.debug('Show address bar? %s' % navigation_bar_show)
+        if navigation_bar_show == None:
             _logger.debug("No NavigationBar record")
-            self.__address_bar.hide()
+            self.__navigation_bar.hide()
             view_state.set_state('NavigationBar', 0)
-        elif not address_bar_show:
+        elif not navigation_bar_show:
             _logger.debug("Hide NavigationBar")
-            self.__address_bar.hide()
+            self.__navigation_bar.hide()
         else:
             _logger.debug("Show NavigationBar")
-            self.__address_bar.show()
+            self.__navigation_bar.show()
         
-        self.__topbox.pack_start(self.__address_bar, expand = False)
+        self.__topbox.pack_start(self.__navigation_bar, expand = False)
         self.__outputs = CommandExecutionControl(self.context)
         self.__outputs.connect("new-window", self.__on_commands_new_window)      
         self.__topbox.pack_start(self.__outputs, expand=True)
@@ -510,9 +510,9 @@ class Hotwire(gtk.VBox):
     def __init_ui(self, ui_manager):
         bar = self.__action_group.get_action('NavigationBar')
         view_state = ViewState.getInstance()
-        address_bar_show = view_state.get_state('NavigationBar')
+        navigation_bar_show = view_state.get_state('NavigationBar')
         #bar = ui_manager.get_widget('/Menubar/ViewMenu/NavigationBar')
-        if address_bar_show:
+        if navigation_bar_show:
             _logger.debug("Activate NavigationBar")
             bar.set_active(True)
         else:
@@ -609,7 +609,7 @@ class Hotwire(gtk.VBox):
             _logger.debug("reset recentdir index")                   
             self.__recentdir_navigation_index = None
         self.__sync_recentdir_navigation_sensitivity()
-        self.__address_bar.refresh()
+        self.__navigation_bar.refresh()
         
     def __sync_recentdir_navigation_sensitivity(self):
         idx = self.__recentdir_navigation_index        
@@ -630,7 +630,7 @@ class Hotwire(gtk.VBox):
     def __sync_navbar_display(self):
         active = self.__action_group.get_action('NavigationBar').get_active()
         view_state = ViewState.getInstance()
-        bar = self.__address_bar
+        bar = self.__navigation_bar
         if active:
             view_state.set_state('NavigationBar', 1)
             bar.show()

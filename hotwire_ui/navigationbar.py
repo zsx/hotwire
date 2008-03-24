@@ -79,9 +79,9 @@ class BreadButton(gtk.ToggleButton):
                 self.down()
         self.__context.do_cd(path)
         
-class AddressBar(gtk.HBox):
+class NavigationBar(gtk.HBox):
     def __init__(self, context, **kwargs):
-        super(AddressBar, self).__init__(**kwargs)
+        super(NavigationBar, self).__init__(**kwargs)
         self.__context = context
         self.__tool_tips = gtk.Tooltips()
         self.__split_cwd()
