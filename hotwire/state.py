@@ -248,5 +248,51 @@ class Preferences(gobject.GObject):
         if _prefinstance is None:
             _prefinstance = Preferences()
         return _prefinstance
+
+_viewstateinstance = None
+class ViewState(gobject.GObject):
+    def __init__(self):
+        super(ViewState, self).__init__()
+        path = _get_state_path('viewstate.sqlite')
+        _logger.debug("opening connection to viewstate db: %s", path)
+        self.__conn = sqlite3.connect(path, isolation_level=None)
+        self.__monitors = []
+        
+        cursor = self.__conn.cursor()
+        cursor.execute('''CREATE TABLE IF NOT EXISTS ViewState (dbid INTEGER PRIMARY KEY AUTOINCREMENT, keyName TEXT UNIQUE, keyValue INTEGER, modtime DATETIME)''')
+ 
+    def get_state(self, key, default=None):
+        cursor = self.__conn.cursor()
+        result = cursor.execute('''SELECT keyValue from ViewState where keyName = ?''', (key,)).fetchone()
+        if result is None:
+            return default
+        return result[0]
+ 
+    def set_state(self, key, value):
+        _logger.debug("Set %s => %s" % (key, value))
+        cursor = self.__conn.cursor()
+        cursor.execute('''BEGIN TRANSACTION''')
+        cursor.execute('''INSERT OR REPLACE INTO ViewState VALUES (NULL, ?, ?, ?)''', [key, value, datetime.datetime.now()])
+        cursor.execute('''COMMIT''')
+        self.__notify(key, value)
+        
+    def __notify(self, key, value):
+        _logger.debug("doing notify for key %s new value: %s", key, value)
+        for prefix, handler, args in self.__monitors:
+            if key.startswith(prefix):
+                try:
+                    handler(self, key, value, *args)
+                except:
+                    _logger.error('Failed to invoke handler for preference %s', key, exc_info=True)
     
-__all__ = ['History','Preferences']      
+    def monitor_view_state(self, prefix, handler, *args):
+        self.__monitors.append((prefix, handler, args))
+    
+    @staticmethod
+    def getInstance():
+        global _viewstateinstance
+        if _viewstateinstance is None:
+            _viewstateinstance = ViewState()
+        return _viewstateinstance
+
+__all__ = ['History','Preferences', 'ViewState']      
