@@ -484,7 +484,8 @@ class CommandExecutionControl(gtk.VBox):
       <menuitem action='Overview'/>
       <separator/>
       <menuitem action='Inspector'/>
-      <separator/>      
+      <separator/>
+      <placeholder name='ViewMenuAdditions'/>
       <menuitem action='PreviousCommand'/>
       <menuitem action='NextCommand'/>
       <separator/>
@@ -1132,4 +1133,3 @@ class UnseenNotifyButton(gtk.Button):
     def __on_clicked(self, self2):
         self.__prev_unseen_action.activate()
         self.hide()
-        

@@ -339,13 +339,19 @@ class Hotwire(gtk.VBox):
         <menuitem action='SwitchLanguage'/>
         <separator/>
       </placeholder>
-    </menu>  
+    </menu>
+    <menu action='ViewMenu'>
+      <placeholder name='ViewMenuAdditions'>
+        <menuitem action='NavigationBar'/>
+        <separator/>
+      </placeholder>
+    </menu>
     <placeholder name='WidgetMenuAdditions'>  
       <menu action='GoMenu'>
         <menuitem action='Up'/>
         <menuitem action='Back'/>
         <menuitem action='Forward'/>
-        <separator/>              
+        <separator/>
         <menuitem action='DirSwitch'/>
         <separator/>
         <menuitem action='AddBookmark'/>
@@ -365,8 +371,12 @@ class Hotwire(gtk.VBox):
             ('Home', 'gtk-home', _('_Home'), '<alt>Home', _('Go to home directory'), self.__home_cb),
             ('DirSwitch', 'gtk-find', _('Quick Switch'), '<alt>Down', _('Search for a directory'), self.__dirswitch_cb)
         ]
+        self.__toggle_actions = [
+            ('NavigationBar', None, _('_Navigation Bar'), None, _('Toggle display of navigation bar'), self.__navbar_cb)
+        ]
         self.__action_group = gtk.ActionGroup('HotwireActions')
         self.__action_group.add_actions(self.__actions)
+        self.__action_group.add_toggle_actions(self.__toggle_actions)
 
         self.context = HotwireClientContext(self, initcwd=initcwd)
         self.context.history = History.getInstance()
@@ -393,6 +403,11 @@ class Hotwire(gtk.VBox):
         self.pack_start(self.__paned, expand=True)
 
         self.__address_bar = AddressBar(self.context)
+        # Visibility is synced by __sync_navbar_display
+        self.__address_bar.show_all()
+        self.__address_bar.set_no_show_all(True)
+        self.__address_bar.hide()
+        
         self.__topbox.pack_start(self.__address_bar, expand = False)
         self.__outputs = CommandExecutionControl(self.context)
         self.__outputs.connect("new-window", self.__on_commands_new_window)      
@@ -461,6 +476,7 @@ class Hotwire(gtk.VBox):
         self.__history_search_active = False
 
         self.__sync_cwd()
+        self.__sync_navbar_display()
         self.__update_status()
 
         prefs = Preferences.getInstance()
@@ -582,6 +598,18 @@ class Hotwire(gtk.VBox):
     def __up_cb(self, action):
         _logger.debug("up")
         self.internal_execute('cd', '..')
+        
+    @log_except(_logger)
+    def __navbar_cb(self, action):
+        self.__sync_navbar_display()
+        
+    def __sync_navbar_display(self):
+        active = self.__action_group.get_action('NavigationBar').get_active()
+        bar = self.__address_bar
+        if active:
+            bar.show()
+        else:
+            bar.hide()
         
     @log_except(_logger)
     def __dirswitch_cb(self, action):
