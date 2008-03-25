@@ -37,7 +37,7 @@ class FilterBuiltin(Builtin):
         super(FilterBuiltin, self).__init__('filter',
                                             input=InputStreamSchema('any'),
                                             output='identity',
-                                            options=[['-s', '--stringify'], ['-i', '--ignore-case'],],
+                                            options=[['-s', '--stringify'], ['-i', '--ignore-case'],['-v', '--invert-match']],
                                             argspec=('regexp', ArgSpec('property', opt=True)))
 
     def execute(self, context, args, options=[]):     
@@ -47,6 +47,7 @@ class FilterBuiltin(Builtin):
             prop = None
         regexp = args[0]
         target_prop = prop
+        invert = '-v' in options
         stringify = '-s' in options
         compiled_re = re.compile(regexp, (('-i' in options) and re.IGNORECASE or 0) | re.UNICODE)
         for arg in context.input:
@@ -63,6 +64,8 @@ class FilterBuiltin(Builtin):
                 target_propvalue = unicode(target_propvalue, 'utf-8')                
                         
             match = compiled_re.search(target_propvalue)
+            if invert:
+                match = not match
             if match:
                 if isinstance(arg, str):
                     yield StringMatch(target_propvalue, match)
