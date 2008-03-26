@@ -138,10 +138,13 @@ class UnicodeRenderer(ObjectsRenderer):
             self.__locale_decoder = None
         else:
             (lcode, locale_encoding) = locale.getdefaultlocale()
-            if locale_encoding.lower() == 'utf-8':
+            if locale_encoding and locale_encoding.lower() == 'utf-8':
                 # This is the ideal, running on a UTF-8 system.
                 self.__locale_decoder = None
             else:
+                if not locale_encoding:
+                    _logger.debug("No locale set: using C locale")
+                    locale_encoding = 'ascii'
                 _logger.debug("creating decoder for locale encoding %r", locale_encoding)
                 self.__locale_decoder = codecs.getincrementaldecoder(locale_encoding)()
         
