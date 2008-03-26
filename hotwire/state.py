@@ -20,10 +20,10 @@
 # THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import os,sys,logging,time,datetime,threading
-if sys.version_info[0] < 2 or sys.version_info[1] < 5:
-    from pysqlite2 import dbapi2 as sqlite3
-else:    
+try:
     import sqlite3
+except:
+    from pysqlite2 import dbapi2 as sqlite3
 
 import gobject
 
