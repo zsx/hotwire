@@ -24,12 +24,17 @@ import os,sys
 if sys.platform.startswith('java'):
     import java
     osname = java.lang.System.getProperty('os.name')
+    _is_jython = True
 else:
     import platform
     osname = platform.system()
+    _is_jython = False
 _is_unix = osname in ('Linux', 'FreeBSD', 'Darwin')
 _is_windows = osname in ('Windows', 'Microsoft')
 _is_linux = osname == 'Linux'
+
+def is_jython():
+    return _is_jython
 
 def is_windows():
     return _is_windows
