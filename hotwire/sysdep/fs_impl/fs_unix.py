@@ -20,7 +20,6 @@
 # THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import os,sys,stat
-import pwd,grp
 
 from hotwire.fs import unix_basename
 from hotwire.sysdep.fs import BaseFilesystem, File
