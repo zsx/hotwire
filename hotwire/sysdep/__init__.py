@@ -19,16 +19,26 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR 
 # THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import os,sys,platform
+import os,sys
+
+if sys.platform.startswith('java'):
+    import java
+    osname = java.lang.System.getProperty('os.name')
+else:
+    import platform
+    osname = platform.system()
+_is_unix = osname in ('Linux', 'FreeBSD', 'Darwin')
+_is_windows = osname in ('Windows', 'Microsoft')
+_is_linux = osname == 'Linux'
 
 def is_windows():
-    return platform.system() in ('Windows', 'Microsoft')
+    return _is_windows
 
 def is_unix():
-    return platform.system() in ('Linux', 'FreeBSD', 'Darwin')
+    return _is_unix
 
 def is_linux():
-    return platform.system() == 'Linux'
+    return _is_linux
 
 # These files are the right place to do global, platform-specific early
 # initialization and share code between different components in this tree.
