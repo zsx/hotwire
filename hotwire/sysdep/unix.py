@@ -19,7 +19,16 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR 
 # THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import os, pwd, grp
+import os
+
+from hotwire.sysdep import is_jython
+
+if is_jython():
+    getpwuid = lambda x: 'nobody'
+    getgrgid = lambda x: 'nobody'
+else:        
+    from pwd import getpwuid
+    from grp import getgrgid
 
 os.environ['HOTWIRE_SHELL'] = '1'
 
