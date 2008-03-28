@@ -19,7 +19,7 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR 
 # THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import os, sys, fnmatch, stat, shutil, platform
+import os, sys, fnmatch, stat, shutil
 import posixpath, locale, urllib, codecs
 
 import hotwire
@@ -77,12 +77,12 @@ def win32_pathjoin(*args):
   return path_fastnormalize(os.path.join(*args))
 def win32_abspath(path):
   return path_fastnormalize(os.path.abspath(path))
-if platform.system() == 'Windows':
-  path_fastnormalize = win32_fast_normpath
-  path_normalize = win32_normpath
-  path_expanduser = win32_expanduser
-  path_join = win32_pathjoin
-  path_abs = win32_abspath
+if is_windows():
+    path_fastnormalize = win32_fast_normpath
+    path_normalize = win32_normpath
+    path_expanduser = win32_expanduser
+    path_join = win32_pathjoin
+    path_abs = win32_abspath
 
 _homepath = os.path.expanduser("~")
 def path_unexpanduser(path):

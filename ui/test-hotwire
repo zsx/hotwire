@@ -17,7 +17,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-import os, sys, unittest, logging, platform, getopt
+import os, sys, unittest, logging, getopt
 import tempfile, shutil, locale
 
 basedir = os.path.dirname(os.path.abspath(__file__))
@@ -72,7 +72,7 @@ def main():
     hotwire.builtin.load()
           
     import hotwire.test_command
-    if platform.system() == 'Linux':
+    if hotwire.sysdep.is_unix():
         import hotwire.test_command_unix
         import hotwire.test_completion_unix
         unix_avail = True
