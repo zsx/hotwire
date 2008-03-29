@@ -41,6 +41,9 @@ def call_timeout(timeout, func, *args, **kwargs):
 def call_idle(func, *args, **kwargs):
     return call_timeout(0, func, *args, **kwargs)
 
+def remove_idle(handle_id):
+    return gobject.source_remove(handle_id)
+
 _global_call_once_funcs = {}
 def _run_removing_from_call_once(f):
     try:

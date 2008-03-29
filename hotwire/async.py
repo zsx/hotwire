@@ -21,6 +21,8 @@
 
 import threading, Queue, logging
 
+import gobject
+from hotwire.gutil import call_timeout,remove_idle
 from hotwire.externals.singletonmixin import Singleton
 
 _logger = logging.getLogger("hotwire.Async")
@@ -92,7 +94,8 @@ class IterableQueue(Queue.Queue):
         self.__lock.acquire()
         self.__handler = None
         if self.__handler_idle_id > 0:
-            gobject.source_remove(self.__handler_idle_id)
+            remove_idle(self.__handler_idle_id)
+            self.__handler_idle_id = 0
         self.__lock.release()
 
     def __do_idle(self):
@@ -105,8 +108,7 @@ class IterableQueue(Queue.Queue):
 
     def __add_idle(self):
         self.__lock.acquire()
-        if self.__handler_idle_id == 0 and self.__handler:
-            from hotwire.gutil import call_timeout            
+        if self.__handler_idle_id == 0 and self.__handler:           
             self.__handler_idle_id = call_timeout(200, self.__do_idle, priority=gobject.PRIORITY_LOW)
         self.__lock.release()
 
