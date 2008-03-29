@@ -58,7 +58,7 @@ class PixbufCache(Singleton):
         if not path:
             if path == gtk.STOCK_MISSING_IMAGE:
                 return None
-            return self.get(gtk.STOCK_MISSING_IMAGE, size, trystock=True, stocksize=None)        
+            return self.get_stock(gtk.STOCK_MISSING_IMAGE)        
         if not self.__cache.has_key((path, size)):
             pixbuf = self.__do_load(path, size, animation)
             self.__cache[(path, size)] = pixbuf
