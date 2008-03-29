@@ -48,12 +48,9 @@ def head(context, *files):
     for fpath in files:
         fpath = path_join(context.cwd, fpath)
         f = None
-        try:
-            f = open_text_file(fpath)
-            for i,line in enumerate(f):
-                if i>= count:
-                    break
-                yield line
-        finally:
-            if f is not None:
-                f.close()
+        f = open_text_file(fpath)
+        for i,line in enumerate(f):
+            if i>= count:
+                break
+            yield line
+        f.close()
