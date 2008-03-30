@@ -323,7 +323,7 @@ class MultiObjectsDisplay(gtk.Notebook):
         else:
             odisp = None
         self.__queues[queue] = (odisp, name, merged)
-        queue.connect(self.__idle_handle_output)
+        queue.connect(self.__idle_handle_output, priority=gobject.PRIORITY_LOW)
 
     def cancel(self):
         self.__cancelled = True
