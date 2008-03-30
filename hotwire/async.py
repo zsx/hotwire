@@ -91,6 +91,7 @@ class IterableQueue(Queue.Queue):
             self.__add_idle()
 
     def disconnect(self):
+        _logger.debug("disconnecting from queue %r", self)
         self.__lock.acquire()
         self.__handler = None
         if self.__handler_idle_id > 0:
