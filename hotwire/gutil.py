@@ -25,10 +25,10 @@ import gobject
 
 def _run_logging(f, logger, *args):
     try:    
-        f(*args)
+        return f(*args)
     except:
         logger.exception('Exception in idle')        
-    return False
+        return False
 
 def call_timeout(timeout, func, *args, **kwargs):
     if 'logger' in kwargs:
