@@ -104,6 +104,15 @@ class PipelineRunTestsUnix(PipelineRunTestFramework):
         results.sort()
         self.assertEquals(len(results), 1)
         self.assertEquals(results[0], '0\n')
+        
+    def testCatCatCatCat(self):
+        self._setupTree1()
+        p = Pipeline.parse("/bin/cat testf | /bin/cat | /bin/cat | sys wc -c", self._context)
+        p.execute_sync()
+        results = list(p.get_output())
+        results.sort()
+        self.assertEquals(len(results), 1)
+        self.assertEquals(results[0], '0\n')        
 
     def testLs1(self):
         self._setupTree1()

@@ -65,8 +65,10 @@ class SysBuiltin(Builtin):
     __doc__ = _("""Execute a system command, returning output as text.""")
     def __init__(self, name='sys'):
         super(SysBuiltin, self).__init__(name,
-                                         input=InputStreamSchema(str, optional=True),
-                                         output=OutputStreamSchema(str, opt_formats=['x-filedescriptor/special', 'bytearray/chunked']),
+                                         input=InputStreamSchema(str, optional=True, opt_formats=['x-unix-pipe-file-object/special']),
+                                         output=OutputStreamSchema(str, opt_formats=['x-unix-pipe-file-object/special',
+                                                                                     'x-filedescriptor/special', 
+                                                                                     'bytearray/chunked']),
                                          hasstatus=True,
                                          argspec=MultiArgSpec('args'),
                                          options_passthrough=True)
@@ -144,17 +146,19 @@ class SysBuiltin(Builtin):
                     _logger.debug("matched completer %s", matcher)
                     return completer(context, args, i)
 
-    def execute(self, context, args, out_opt_format=None):
+    def execute(self, context, args, in_opt_format=None, out_opt_format=None):
         # This function is complex.  There are two major variables.  First,
         # are we on Unix or Windows?  This is effectively determined by
         # pty_available, though I suppose some Unixes might not have ptys.
         # Second, out_opt_format tells us whether we want to stream the 
         # output as lines (out_opt_format is None), or as unbuffered byte chunks
-        # (determined by bytearray/chunked).
+        # (determined by bytearray/chunked).  There is also a special hack
+        # x-filedescriptor/special where we pass along a file descriptor from
+        # the subprocess; this is used in unicode.py to directly read the output.
         
-        using_pty_out = pty_available and (out_opt_format is not None)
-        # FIXME need in_opt_format
-        using_pty_in = pty_available and context.input_is_first and hasattr(context.input, 'connect')
+        using_pty_out = pty_available and (out_opt_format not in (None, 'x-unix-pipe-file-object/special'))
+        using_pty_in = pty_available and (in_opt_format is None) and \
+                       context.input_is_first and hasattr(context.input, 'connect')
         _logger.debug("using pty in: %s out: %s", using_pty_in, using_pty_out)
         # TODO - we need to rework things so that we allocate only one pty per pipeline.
         # In the very common case of exactly one command, this doesn't matter, but 
@@ -166,7 +170,7 @@ class SysBuiltin(Builtin):
             # control the buffering used by subprocesses.
             (master_fd, slave_fd) = pty.openpty()
                       
-            # Set the terminal to not do any processing; if you changet this, you'll also
+            # Set the terminal to not do any processing; if you change this, you'll also
             # need to update unicode.py most likely.
             attrs = termios.tcgetattr(master_fd)
             attrs[1] = attrs[1] & (~termios.OPOST)
@@ -177,19 +181,30 @@ class SysBuiltin(Builtin):
                 stdout_target = slave_fd
             else:
                 stdout_target = subprocess.PIPE
+            if context.input is None:
+                stdin_target = None                
             if using_pty_in:
                 stdin_target = slave_fd
+            elif in_opt_format == 'x-unix-pipe-file-object/special':
+                stdin_target = iter(context.input).next()                
             else:
                 stdin_target = subprocess.PIPE
+            _logger.debug("using stdin target: %r", stdin_target)                
             context.attribs['master_fd'] = master_fd
         else:
             _logger.debug("no pty available or non-chunked output, not allocating fds")
             (master_fd, slave_fd) = (None, None)
             stdout_target = subprocess.PIPE
-            stdin_target = subprocess.PIPE
+            if context.input is None:
+                stdin_target = None
+            elif in_opt_format == 'x-unix-pipe-file-object/special':
+                stdin_target = iter(context.input).next()                
+            else:
+                stdin_target = subprocess.PIPE
+            _logger.debug("using stdin target: %r", stdin_target)
 
         subproc_args = {'bufsize': 0,
-                        'stdin': context.input and stdin_target or None,
+                        'stdin': stdin_target,
                         'stdout': stdout_target,
                         'stderr': subprocess.STDOUT,
                         'cwd': context.cwd}
@@ -235,9 +250,13 @@ class SysBuiltin(Builtin):
             raise ValueError('Failed to execute %s' % (args[0],))
         context.attribs['pid'] = subproc.pid
         if using_pty_in or using_pty_out:
-            os.close(slave_fd)
+            os.close(slave_fd)            
         context.status_notify('pid %d' % (context.attribs['pid'],))
-        if context.input:
+        if in_opt_format == 'x-unix-pipe-file-object/special':
+            stdin_target.close()
+            # If we were passed a file descriptor from another SysBuiltin, close it here;
+            # it's now owned by the child.            
+        elif context.input:
             if using_pty_in:
                 stdin_stream = BareFdStreamWriter(master_fd)
             else:
@@ -263,6 +282,8 @@ class SysBuiltin(Builtin):
                     yield buf
             except OSError, e:
                 pass
+        elif out_opt_format == 'x-unix-pipe-file-object/special':
+            yield subproc.stdout
         elif out_opt_format == 'x-filedescriptor/special':
             context.attribs['master_fd_passed'] = True            
             yield stdout_fd

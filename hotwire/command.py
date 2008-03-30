@@ -168,11 +168,11 @@ class CommandQueue(IterableQueue):
         self.opt_type = None
 
     def negotiate(self, out_fmts, in_fmts):
-        _logger.debug("negotating out_fmts: %s in_fmts: %s", out_fmts, in_fmts)
+        _logger.debug("negotiating stream; out_fmts: %s in_fmts: %s", out_fmts, in_fmts)
         for fmt in out_fmts:
             if fmt in in_fmts:
                 self.opt_type = fmt
-                _logger.debug("Negotiated optimized type %s", fmt)
+                _logger.debug("negotiated optimized type %s", fmt)
                 break
             
     def cancel(self):
@@ -327,6 +327,8 @@ class Command(gobject.GObject):
             kwargs = {}
             if self.context.options and not self.builtin.flattened_args:
                 kwargs['options'] = self.context.options
+            if self.input is not None and self.input.opt_type and not self.in_redir:
+                kwargs['in_opt_format'] = self.input.opt_type                
             if self.output.opt_type and not self.out_redir:
                 kwargs['out_opt_format'] = self.output.opt_type
             if self.in_redir:
@@ -533,7 +535,7 @@ class Pipeline(gobject.GObject):
                 cmd.connect("metadata", self.__on_cmd_metadata, meta_idx)
                 meta_idx += 1                
         prev_opt_formats = []
-        for cmd in self.__components[:-1]:
+        for cmd in self.__components:
             if cmd.input:
                 cmd.input.negotiate(prev_opt_formats, cmd.get_input_opt_formats())
             prev_opt_formats = cmd.get_output_opt_formats()
