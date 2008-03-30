@@ -347,6 +347,7 @@ class MultiObjectsDisplay(gtk.Notebook):
         
     def __idle_handle_output(self, queue):
         if self.__cancelled:
+            _logger.debug("cancelled")
             return False
         empty = False
         changed = False
@@ -393,7 +394,9 @@ class MultiObjectsDisplay(gtk.Notebook):
             odisp.do_autoscroll()
         if changed:
             self.emit("changed")
-        return (not empty) and (i == maxitems)
+        readd_idle = (not empty) and (i == maxitems)
+        _logger.debug("doing idle readd: %s", readd_idle)
+        return readd_idle
 
     def scroll_up(self, full=False):
         self.get_nth_page(self.get_current_page()).scroll_up(full)
