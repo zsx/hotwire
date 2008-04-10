@@ -220,6 +220,10 @@ class SysBuiltin(Builtin):
         
         if is_windows():
             subproc_args['universal_newlines'] = True
+            startupinfo = subprocess.STARTUPINFO()
+            startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+            import win32con
+            startupinfo.wShowWindow = win32con.SW_HIDE            
         elif is_unix():
             subproc_args['close_fds'] = True
             # Support freedesktop.org startup notification
