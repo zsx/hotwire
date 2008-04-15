@@ -41,13 +41,14 @@ class CompletionTests(unittest.TestCase):
     def _setupTree1(self):
         self._tmpd = tempfile.mkdtemp(prefix='hotwiretest')
         os.mkdir(path_join(self._tmpd, 'testdir'))
-        if is_unix(): 
-            self._test_exe_path = path_join(self._tmpd, 'testf')
-            open(self._test_exe_path, 'w').close()
-            os.chmod(self._test_exe_path, 744)
+        if is_unix():
+            self._test_exe = 'testf'
         elif is_windows():
-            self._test_exe_path = path_join(self._tmpd, 'testf.exe')
-            open(self._test_exe_path, 'w').close()
+            self._test_exe = 'testf.exe'
+        self._test_exe_path = path_join(self._tmpd, self._test_exe)
+        open(self._test_exe_path, 'w').close()
+        if is_unix():
+            os.chmod(self._test_exe_path, 744)            
         os.mkdir(path_join(self._tmpd, 'dir with spaces'))
 
     def _setupTree2(self):
@@ -140,8 +141,8 @@ class CompletionTests(unittest.TestCase):
         self.assertEquals(result.common_prefix, None)      
         self.assertEquals(result.results[0].target.path, path_join(self._tmpd, '.', 'testdir'))
         self.assertEquals(result.results[0].suffix, 'dir/')
-        self.assertEquals(result.results[1].target.path, path_join(self._tmpd, '.', 'testf'))
-        self.assertEquals(result.results[1].suffix, 'f')
+        self.assertEquals(result.results[1].target.path, path_join(self._tmpd, '.', self._test_exe))
+        self.assertEquals(result.results[1].suffix, self._test_exe[4:])
         
     def testCwd9(self):
         self._setupTree1()
