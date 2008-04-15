@@ -158,9 +158,12 @@ class CompletionTests(unittest.TestCase):
         self.assertEquals(len(result.results), 5)
         self.assertEquals(result.common_prefix, None)
         self.assertEquals(result.results[0].target.path, path_join(self._tmpd, '.bar'))
-        self.assertEquals(result.results[0].suffix, '.bar')        
-        self.assertEquals(result.results[2].target.path, path_join(self._tmpd, '.foo'))
-        self.assertEquals(result.results[2].suffix, '.foo')
+        self.assertEquals(result.results[0].suffix, '.bar')
+        foo_index=2
+        if is_windows():
+            foo_index = 1
+        self.assertEquals(result.results[foo_index].target.path, path_join(self._tmpd, '.foo'))
+        self.assertEquals(result.results[foo_index].suffix, '.foo')
         
     def testSafechar1(self):
         self._setupTree1()
