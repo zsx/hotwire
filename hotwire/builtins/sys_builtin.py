@@ -27,6 +27,7 @@ except:
     pty_available = False
 
 import hotwire
+from hotwire.logutil import log_except
 from hotwire.text import MarkupText
 from hotwire.async import MiniThreadPool
 from hotwire.externals.singletonmixin import Singleton
@@ -49,7 +50,11 @@ class BareFdStreamWriter(object):
     def __init__(self, fd):
         self.fd = fd
         
-    def write(self, buf):
+    def write(self, obj):
+        if isinstance(obj, unicode):
+            buf = obj.encode(sys.stdout.encoding or 'UTF-8')
+        else:
+            buf = obj
         blen = len(buf)
         offset = 0
         count = 0
@@ -73,6 +78,7 @@ class SysBuiltin(Builtin):
                                          argspec=MultiArgSpec('args'),
                                          options_passthrough=True)
 
+    @log_except(_logger)
     def __on_input(self, input, stream):
         try:
             for val in input.iter_avail():
@@ -83,6 +89,7 @@ class SysBuiltin(Builtin):
         except IOError, e:
             pass
             
+    @log_except(_logger)            
     def __inputwriter(self, input, stdin):
         try:
             for val in input:
