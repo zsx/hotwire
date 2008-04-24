@@ -109,7 +109,10 @@ class MatchView(gtk.VBox):
         self.__view.set_model(model)
         nchildren = self.__model.iter_n_children(None)
         if results and do_select:
-            self.__selection.select_iter(self.__model.iter_nth_child(None, nchildren-1))
+            i = self.__model.iter_nth_child(None, nchildren-1)
+            self.__selection.select_iter(i)
+            path = self.__model.get_path(i)
+            self.__view.scroll_to_cell(path)
         if results:
             self.__none_label.hide()
         else:
