@@ -94,9 +94,11 @@ def get_controlpath():
         _CONTROLPATH = tempfile.mkdtemp('', 'hotssh')
     return _CONTROLPATH
 
-# TODO - openssh should really do this out of the box
 def get_sshcmd():
-    return ['ssh', '-oControlMaster=auto', '-oControlPath=' + os.path.join(get_controlpath(), 'master-%r@%h:%p')]
+    return ['ssh']
+    # FIXME - disabled because it's too buggy
+    # TODO - openssh should really do this out of the box    
+    #return ['ssh', '-oControlMaster=auto', '-oControlPath=' + os.path.join(get_controlpath(), 'master-%r@%h:%p')]
 
 class HostConnectionMonitor(gobject.GObject):
     __gsignals__ = {
