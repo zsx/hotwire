@@ -24,30 +24,39 @@ import os,sys,logging
 from hotwire.sysdep.fs import Filesystem
 from hotwire.externals.singletonmixin import Singleton
 from hotwire.externals.dispatch import dispatcher
+from hotwire.gutil import call_idle_once
 
 _logger = logging.getLogger("hotwire.SshUtil")
 
 class OpenSSHKnownHosts(Singleton):
     def __init__(self):
+        super(OpenSSHKnownHosts, self).__init__()
         self.__path = os.path.expanduser('~/.ssh/known_hosts')
         self.__monitor = None
         self.__hostcache = None
         
     def __on_hostchange(self):
         try:
+            _logger.debug("reading %s", self.__path)
             f = open(self.__path)
         except:
             _logger.debug("failed to open known hosts")
-        hosts = []
-        for line in f:
-            hostip,rest = line.split(' ', 1)
-            if hostip.find(',') > 0:
-                host = hostip.split(',', 1)[0]
-            else:
-                host = hostip
-            hosts.append(host)
+            f = None
+        hosts = set()
+        if f is not None:
+            for line in f:
+                hostip,rest = line.split(' ', 1)
+                if hostip.find(',') > 0:
+                    host = hostip.split(',', 1)[0]
+                else:
+                    host = hostip
+                host = host.strip()
+                hosts.add(host)
+            f.close()
         self.__hostcache = hosts
-        dispatcher.send(sender=self)
+        _logger.debug("ssh cache: %r", self.__hostcache)     
+        # Do this in an idle to avoid recursion   
+        call_idle_once(lambda: dispatcher.send(sender=self))
         
     def get_hosts(self):
         if self.__monitor is None:
