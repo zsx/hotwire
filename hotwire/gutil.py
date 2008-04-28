@@ -26,6 +26,12 @@ if is_jython():
 else:
     from mainloop_g import *
 
+def call_idle_once(func, *args, **kwargs):
+    def func_false():
+        func(*args, **kwargs)
+        return False
+    return call_idle(func_false)
+
 def call_idle(func, *args, **kwargs):
     return call_timeout(0, func, *args, **kwargs)
 
