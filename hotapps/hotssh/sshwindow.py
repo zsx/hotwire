@@ -60,7 +60,6 @@ class ConnectDialog(gtk.Dialog):
         self.__idle_search_id = 0
    
         self.__hosts = OpenSSHKnownHosts.getInstance()
-        dispatcher.connect(self.__reload_entry)
    
         self.__entry = gtk.combo_box_entry_new_text()
         self.__entry.child.set_activates_default(True)
@@ -70,6 +69,7 @@ class ConnectDialog(gtk.Dialog):
         self.__entry.child.set_completion(self.__entrycompletion)
         self.__vbox.add(self.__entry)
         self.__reload_entry()
+        dispatcher.connect(self.__reload_entry)        
        
     def __reload_entry(self, *args, **kwargs):
         _logger.debug("reloading")
