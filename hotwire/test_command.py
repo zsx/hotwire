@@ -610,7 +610,14 @@ class PipelineRunTests(PipelineRunTestFramework):
         p = Pipeline.parse("setenv HOTWIRETESTVALUE42=blah", self._context)
         p.execute_sync()
         self.assertTrue('HOTWIRETESTVALUE42' in os.environ)
-        del os.environ['HOTWIRETESTVALUE42']        
+        del os.environ['HOTWIRETESTVALUE42']
+
+    def testSort1(self):
+        self._setupTree1()
+        p = Pipeline.parse("py-eval '[5,2,7,8,10,0]' | iter | sort")
+        p.execute_sync()
+        results = list(p.get_output())
+        self.assertEquals([0,2,5,7,8,10], results)
         
 def suite():
     loader = unittest.TestLoader()
